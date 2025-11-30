@@ -1,0 +1,60 @@
+# Vintix Training Configuration for Go2
+# 最適化版: Go2歩行タスク専用（単一タスク、小規模Transformer）
+
+# dataloader config
+data_dir: "data/go2_trajectories"
+context_len: 1024  # 2048→1024 (歩行タスクには十分)
+trajectory_sparsity: 16  # 64→16 (データを4倍活用、メモリ許す限り)
+preload: False
+last_frac: null
+
+# model config - 軽量版（Go2単一タスク用、約1Mパラメータ）
+action_emb_dim: 127
+observation_emb_dim: 127
+reward_emb_dim: 2
+hidden_dim: 256  # 固定値 (action_emb + obs_emb + reward_emb)
+transformer_depth: 3
+transformer_heads: 4
+attn_dropout: 0.1
+residual_dropout: 0.1
+normalize_qk: True
+bias: True
+parallel_residual: False
+shared_attention_norm: False
+norm_class: "LayerNorm"
+mlp_class: "GptNeoxMLP"
+intermediate_size: 128  # hidden_dim × 0.5
+inner_ep_pos_enc: False
+norm_acs: False
+norm_obs: True
+
+# optimizer config
+optimizer: "Adam"
+lr: 0.0003
+betas: [0.9, 0.99]
+weight_decay: 0.1
+precision: "bf16"
+clip_grad: 1.0
+grad_accum_steps: 1
+warmup_ratio: 0.01
+
+# training config
+local_rank: 0
+epochs: 100
+batch_size: 4
+save_every: 5
+save_dir: "models/vintix_go2"
+stats_path: "vintix/stats.json"
+load_ckpt: null
+start_epoch: 0
+seed: 5
+
+# Dataset config
+dataset_config_paths:
+  - "configs/go2_dataset_config.yaml"
+
+# wandb config
+project: "Vintix_Go2"
+group: "go2_locomotion"
+name: "go2_ad_training"
+
