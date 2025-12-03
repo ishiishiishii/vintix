@@ -176,6 +176,8 @@ def main():
 
     # 環境リセット
     obs, _ = env.reset()
+    # 観測値から行動を除外（訓練時と同じ33次元にする）
+    obs = obs[:, :-12]
     
     # 初期履歴の追加（ゼロアクション、ゼロ報酬）
     initial_action = np.zeros(env.num_actions)
@@ -244,9 +246,11 @@ def main():
             
             # 環境ステップ
             obs, rewards, dones, infos = env.step(action)
+            # 観測値から行動を除外（訓練時と同じ33次元にする）
+            obs = obs[:, :-12]
             env.cam.render()
             
-            # 報酬とアクション履歴に追加
+            # 報酬とアクション履歴に追加（行動を除外した観測値）
             reward_value = float(rewards.cpu().numpy()[0])
             history_buffer.add(
                 obs[0].cpu().numpy(),
@@ -286,6 +290,16 @@ def main():
                 episode_reward = 0.0
                 episode_step_count = 0
                 obs, _ = env.reset()
+                # 観測値から行動を除外（訓練時と同じ33次元にする）
+                obs = obs[:, :-12]
+    
+    # 最後のエピソードが完了していない場合でも、その報酬を記録
+    if episode_step_count > 0:
+        print(f"Final episode (incomplete) | Reward: {episode_reward:.3f} | Steps: {episode_step_count}")
+        episode_rewards.append(episode_reward)
+        episode_lengths.append(episode_step_count)
+        episode_avg_rewards.append(episode_reward / episode_step_count if episode_step_count > 0 else 0.0)
+        episode_starts.append(step_count)
     
     # 録画停止と保存
     print(f"\nStopping recording and saving to {args.output}...")
@@ -361,6 +375,29 @@ def main():
         ax4 = axes[1, 1]
         ax4.axis('off')
         
+        # 統計計算（空配列の場合はN/Aを表示）
+        if len(episode_rewards) > 0:
+            ep_reward_mean = np.mean(episode_rewards)
+            ep_reward_std = np.std(episode_rewards)
+            ep_reward_min = np.min(episode_rewards)
+            ep_reward_max = np.max(episode_rewards)
+        else:
+            ep_reward_mean = ep_reward_std = ep_reward_min = ep_reward_max = float('nan')
+        
+        if len(episode_lengths) > 0:
+            ep_length_mean = np.mean(episode_lengths)
+            ep_length_std = np.std(episode_lengths)
+            ep_length_min = np.min(episode_lengths)
+            ep_length_max = np.max(episode_lengths)
+        else:
+            ep_length_mean = ep_length_std = ep_length_min = ep_length_max = float('nan')
+        
+        # 統計値を文字列に変換
+        def format_stat(value, fmt):
+            if np.isnan(value):
+                return 'N/A'
+            return f"{value:{fmt}}"
+        
         summary_text = f"""
 Performance Summary
 
@@ -368,16 +405,16 @@ Total Episodes: {len(episode_rewards)}
 Total Steps: {step_count}
 
 Cumulative Reward:
-  Mean: {np.mean(episode_rewards):.3f}
-  Std: {np.std(episode_rewards):.3f}
-  Min: {np.min(episode_rewards):.3f}
-  Max: {np.max(episode_rewards):.3f}
+  Mean: {format_stat(ep_reward_mean, '.3f')}
+  Std: {format_stat(ep_reward_std, '.3f')}
+  Min: {format_stat(ep_reward_min, '.3f')}
+  Max: {format_stat(ep_reward_max, '.3f')}
 
 Episode Length:
-  Mean: {np.mean(episode_lengths):.1f}
-  Std: {np.std(episode_lengths):.1f}
-  Min: {np.min(episode_lengths):.0f}
-  Max: {np.max(episode_lengths):.0f}
+  Mean: {format_stat(ep_length_mean, '.1f')}
+  Std: {format_stat(ep_length_std, '.1f')}
+  Min: {format_stat(ep_length_min, '.0f')}
+  Max: {format_stat(ep_length_max, '.0f')}
 
 Reward per Step:
   Overall: {avg_reward_per_step:.6f}
