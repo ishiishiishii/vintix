@@ -2,7 +2,7 @@
 
 go2_walking_ad:
   type: "default"
-  path: "go2_ad_p06_train"  # data/go2_trajectories/go2_ad_p06_train (AD data with p=0.6, f=0.05, 10M steps)
+  path: "data_1M"  # data/go2_trajectories/data_1M (AD data with p=0.6, f=0.05, 10M steps, no data leak)
   group: "go2_locomotion"
   reward_scale: 1.0
   episode_sparsity: 1

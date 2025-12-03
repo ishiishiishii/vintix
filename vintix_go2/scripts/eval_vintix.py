@@ -188,6 +188,9 @@ def main():
     print("="*80)
     
     obs, _ = env.reset()
+    # 観測値から行動を除外（訓練時と同じ33次元にする）
+    obs = obs[:, :-12]
+    
     total_reward = 0.0
     episode_reward = 0.0
     step_count = 0  # 総ステップ数
@@ -227,8 +230,10 @@ def main():
             
             # 環境をステップ
             obs_next, reward, done, info = env.step(action)
+            # 観測値から行動を除外（訓練時と同じ33次元にする）
+            obs_next = obs_next[:, :-12]
             
-            # 履歴に追加
+            # 履歴に追加（行動を除外した観測値）
             history_buffer.add(
                 obs.cpu().numpy()[0],
                 action.cpu().numpy()[0],
@@ -258,10 +263,13 @@ def main():
                 
                 # 環境をリセット（履歴は保持、ダミーデータは追加しない）
                 obs, _ = env.reset()
+                # 観測値から行動を除外（訓練時と同じ33次元にする）
+                obs = obs[:, :-12]
                 episode_count += 1
                 episode_reward = 0.0
                 episode_step_count = 0  # エピソード内ステップをリセット
             else:
+                # 次のループで使用する観測値（既に行動を除外済み）
                 obs = obs_next
     
     # 最終統計

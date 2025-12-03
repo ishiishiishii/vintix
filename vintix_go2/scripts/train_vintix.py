@@ -24,8 +24,8 @@ from vintix.training.utils.train_utils import (compute_stats,
 class TrainConfig:
     # dataloader config
     data_dir: str = "data/go2_trajectories"
-    context_len: int = 2048  # 元の8192から調整（メモリ許容範囲で増加）
-    trajectory_sparsity: int = 128  # 16 → 128に変更（重複率99.2% → 93.8%）
+    context_len: int = 2048
+    trajectory_sparsity: int = 128
     preload: bool = False
     last_frac: Optional[float] = None
 
@@ -61,10 +61,10 @@ class TrainConfig:
 
     # training config
     local_rank: int = 0
-    epochs: int = 1  # 1エポックに設定
-    batch_size: int = 8  # 元の設定に合わせる（実効バッチサイズを増やす）
-    save_every: int = 1  # 1エポックごとに保存
-    save_every_steps: int = 1000  # 1000ステップごとに保存
+    epochs: int = 1
+    batch_size: int = 8
+    save_every: int = 1
+    save_every_steps: int = 1000
     save_dir: str = "models/vintix_go2"
     stats_path: str = "vintix/stats.json"
     load_ckpt: Optional[str] = None

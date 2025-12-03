@@ -16,7 +16,6 @@ import numpy as np
 import torch
 from tqdm import tqdm
 
-# Genesis locomotion環境のインポート用
 GENESIS_LOCOMOTION_PATH = str(Path(__file__).parents[2] / "Genesis" / "examples" / "locomotion")
 sys.path.insert(0, GENESIS_LOCOMOTION_PATH)
 
@@ -45,56 +44,55 @@ class PerEnvADDataCollector:
         self.env_idx = env_idx
         self.group_size = group_size
         
-        # HDF5ファイル（各環境1つ）
         filename = self.output_dir / f"trajectories_env_{env_idx:04d}.h5"
         self.h5_file = h5py.File(filename, 'w')
         self.filename = filename
         
-        # バッファ
-        self.buffer_obs = []
-        self.buffer_actions = []
-        self.buffer_rewards = []
-        self.buffer_steps = []
+        self.buffer_transitions = []
         self.total_transitions = 0
         self.global_written = 0
         self.group_count = 0
         
         print(f"[Env {env_idx} Collector] Created: {filename}")
     
-    def add_transitions_batch(self, obs_list, action_list, reward_list, step_num_list):
+    def add_transitions_batch(self, transitions):
         """複数のトランジションをまとめて追加
         
         Args:
-            obs_list: list of observations (after env.step(), i.e., next observations)
-            action_list: list of actions
-            reward_list: list of rewards
-            step_num_list: list of step numbers
+            transitions: list of transitions, each transition is a dict with keys:
+                'obs', 'action', 'next_obs', 'reward', 'step'
         """
-        self.buffer_obs.extend(obs_list)
-        self.buffer_actions.extend(action_list)
-        self.buffer_rewards.extend(reward_list)
-        self.buffer_steps.extend(step_num_list)
-        self.total_transitions += len(obs_list)
+        self.buffer_transitions.extend(transitions)
+        self.total_transitions += len(transitions)
         
-        # グループサイズに達したらフラッシュ
-        if len(self.buffer_obs) >= self.group_size:
+        if len(self.buffer_transitions) >= self.group_size:
             self._flush_buffer()
         
-        # 定期的なフラッシュ
         if self.total_transitions % 10000 == 0:
             self.h5_file.flush()
     
     def _flush_buffer(self):
         """バッファをHDF5に書き込み"""
-        if len(self.buffer_obs) == 0:
+        if len(self.buffer_transitions) == 0:
             return
         
-        chunk_size = min(len(self.buffer_obs), self.group_size)
+        chunk_size = min(len(self.buffer_transitions), self.group_size)
+        chunk_transitions = self.buffer_transitions[:chunk_size]
         
-        obs_chunk = np.array(self.buffer_obs[:chunk_size], dtype=np.float32)
-        act_chunk = np.array(self.buffer_actions[:chunk_size], dtype=np.float32)
-        rew_chunk = np.array(self.buffer_rewards[:chunk_size], dtype=np.float32)
-        step_chunk = np.array(self.buffer_steps[:chunk_size], dtype=np.int32)
+        obs_list = []
+        for i, t in enumerate(chunk_transitions):
+            if i == 0:
+                obs_list.append(t['obs'])
+            obs_list.append(t['next_obs'])
+        
+        action_list = [t['action'] for t in chunk_transitions]
+        reward_list = [t['reward'] for t in chunk_transitions]
+        step_num_list = [t['step'] for t in chunk_transitions]
+        
+        obs_chunk = np.array(obs_list, dtype=np.float32)
+        act_chunk = np.array(action_list, dtype=np.float32)
+        rew_chunk = np.array(reward_list, dtype=np.float32)
+        step_chunk = np.array(step_num_list, dtype=np.int32)
         
         start_idx = self.global_written
         end_idx = start_idx + chunk_size - 1
@@ -106,10 +104,7 @@ class PerEnvADDataCollector:
         group.create_dataset('reward', data=rew_chunk)
         group.create_dataset('step_num', data=step_chunk)
         
-        del self.buffer_obs[:chunk_size]
-        del self.buffer_actions[:chunk_size]
-        del self.buffer_rewards[:chunk_size]
-        del self.buffer_steps[:chunk_size]
+        del self.buffer_transitions[:chunk_size]
         
         self.global_written += chunk_size
         self.group_count += 1
@@ -118,7 +113,7 @@ class PerEnvADDataCollector:
     
     def finalize(self):
         """残りのデータを保存して終了"""
-        if len(self.buffer_obs) > 0:
+        if len(self.buffer_transitions) > 0:
             self._flush_buffer()
         
         if self.h5_file is not None:
@@ -128,7 +123,7 @@ class PerEnvADDataCollector:
         self._save_metadata()
     
     def _save_metadata(self):
-        """メタデータ保存"""
+        """メタデータを保存"""
         if not self.filename.exists():
             return
         
@@ -185,7 +180,7 @@ class PerEnvADDataCollector:
         metadata = {
             "task_name": "go2_walking_ad",
             "group_name": "go2_locomotion",
-            "observation_shape": {"proprio": [45]},
+            "observation_shape": {"proprio": [33]},  # 45次元から行動12次元を除外
             "action_dim": 12,
             "action_type": "continuous",
             "reward_scale": 1.0,
@@ -245,7 +240,6 @@ def main():
     
     gs.init(logging_level="warning", precision="64")
     
-    # モデルと設定をロード
     model_dir = Path(args.model_path).parent
     cfgs_path = model_dir / "cfgs.pkl"
     
@@ -268,29 +262,20 @@ def main():
     )
     print(f"✓ Created {args.num_envs} parallel {args.robot_type} environments")
     
-    # PPOモデルをロード
     runner = OnPolicyRunner(env, train_cfg, str(model_dir), device=gs.device)
     runner.load(args.model_path)
     policy = runner.get_inference_policy(device=gs.device)
     print(f"✓ Loaded model from {args.model_path}\n")
     
-    # 各環境ごとのデータ収集器を作成
     collectors = [PerEnvADDataCollector(args.output_dir, env_idx) 
                   for env_idx in range(args.num_envs)]
     
-    # 各環境ごとに異なるシード値を設定（ランダム行動生成用のみ）
-    # 各環境のインデックスをベースにしたシード値を使用
-    # 注意: 環境の初期化（コマンド生成など）のシードは変更しない
-    base_seed = 42  # 固定のベースシード値
+    base_seed = 42
     env_generators = [torch.Generator(device=gs.device) for _ in range(args.num_envs)]
     for env_idx, gen in enumerate(env_generators):
         gen.manual_seed(base_seed + env_idx)
     print(f"✓ Set independent random seeds for action generation (base_seed={base_seed}, env_seeds={base_seed}..{base_seed + args.num_envs - 1})")
     
-    # Go2の各関節の可動域（URDFから）をアクション空間にマッピング
-    # 関節名の順序: ["FR_hip", "FR_thigh", "FR_calf", "FL_hip", "FL_thigh", "FL_calf",
-    #                "RR_hip", "RR_thigh", "RR_calf", "RL_hip", "RL_thigh", "RL_calf"]
-    # デフォルト関節角度
     default_joint_angles = torch.tensor([
         0.0,   # FR_hip
         0.8,   # FR_thigh
@@ -306,7 +291,6 @@ def main():
         -1.5,  # RL_calf
     ], device=gs.device)
     
-    # 関節の可動域（URDFから）[rad]
     joint_limits = torch.tensor([
         [-1.0472,  1.0472],   # FR_hip
         [-1.5708,  3.4907],   # FR_thigh
@@ -320,13 +304,10 @@ def main():
         [-1.0472,  1.0472],   # RL_hip
         [-0.5236,  4.5379],   # RL_thigh
         [-2.7227, -0.83776],  # RL_calf
-    ], device=gs.device)  # shape: [12, 2] where [:, 0]=lower, [:, 1]=upper
+    ], device=gs.device)
     
-    # アクション空間での範囲を計算
-    # target_dof_pos = action * action_scale + default_dof_pos
-    # より: action = (target_dof_pos - default_dof_pos) / action_scale
     action_scale = env_cfg["action_scale"]
-    action_limits = (joint_limits - default_joint_angles.unsqueeze(1)) / action_scale  # shape: [12, 2]
+    action_limits = (joint_limits - default_joint_angles.unsqueeze(1)) / action_scale
     
     print(f"✓ Computed action ranges from joint limits (action_scale={action_scale})")
     print(f"  Action ranges per joint:")
@@ -336,16 +317,7 @@ def main():
         print(f"    {i:2d}: {name:12s} [{action_limits[i, 0]:7.2f}, {action_limits[i, 1]:7.2f}]")
     print()
     
-    # εスケジュール設定（Algorithm Distillation論文の式）
-    # ε(n_s) = (1 - (n_s / ((1-f)N_s))^p)^{1/p}  if n_s <= (1-f)N_s
-    # ε(n_s) = 0                                  if n_s > (1-f)N_s
-    # 
-    # n_s: 現在のステップ数（各環境の累積ステップ）
-    # N_s: 各環境の目標ステップ数 (target_steps_per_env)
-    # f: 軌道の最後でノイズを0にする部分の割合（f=0.05なら最後の5%のステップでε=0）
-    # p: 減衰曲線の形状パラメータ
-    
-    f = args.noise_free_fraction  # 最後のf*N_sステップでε=0（完全専門家）
+    f = args.noise_free_fraction
     p = args.decay_power
     target_steps_tensor = torch.tensor(float(args.target_steps_per_env), device=gs.device)
     raw_threshold = (1.0 - f) * args.target_steps_per_env
@@ -368,35 +340,26 @@ def main():
     print(f"  Each environment saves to: trajectories_env_XXXX.h5")
     print()
     
-    # 環境をリセット
     obs, _ = env.reset()
+    # obsは45次元のまま（policyに渡すため）
     
-    # 各環境の状態
     episode_steps = torch.zeros(args.num_envs, dtype=torch.int32, device=gs.device)
     env_active = torch.ones(args.num_envs, dtype=torch.bool, device=gs.device)
     env_completed = torch.zeros(args.num_envs, dtype=torch.bool, device=gs.device)
-    target_reached_flag = torch.zeros(args.num_envs, dtype=torch.bool, device=gs.device)  # 目標到達フラグ（エピソード完了まで待つ）
+    target_reached_flag = torch.zeros(args.num_envs, dtype=torch.bool, device=gs.device)
     completed_env_count = 0
     
-    # 統計
     episode_rewards_list = []
     episode_lengths_list = []
     current_episode_rewards = torch.zeros(args.num_envs, device=gs.device)
     env_total_steps = torch.zeros(args.num_envs, dtype=torch.float32, device=gs.device)
     
-    # 各環境のエピソード内データを一時保存
-    env_episode_data = {
-        'obs': [[] for _ in range(args.num_envs)],
-        'actions': [[] for _ in range(args.num_envs)],
-        'rewards': [[] for _ in range(args.num_envs)],
-        'steps': [[] for _ in range(args.num_envs)]
-    }
+    env_episode_data = [[] for _ in range(args.num_envs)]
     
     pbar = tqdm(total=args.num_envs, desc="Collecting AD trajectories")
     
     with torch.no_grad():
         while bool(env_active.any().item()):
-            # 環境ごとのεを計算（各環境の現在のステップ数に基づく）
             if not threshold_valid:
                 eps_values = torch.zeros(args.num_envs, device=gs.device)
             else:
@@ -405,48 +368,39 @@ def main():
                 eps_values = torch.pow(torch.clamp(1.0 - ratio_term, 0.0), 1.0 / p)
             eps_values = torch.where(env_active, eps_values, torch.zeros_like(eps_values))
 
-            # 専門家の行動を取得
             expert_actions = policy(obs)
             
-            # ランダム行動を生成（論文のアルゴリズムに従って一様分布からサンプリング）
-            # u ~ Uniform(amin, amax) - 各関節の可動域で一様分布
-            # 各環境ごとに独立したランダムシーケンスを生成
             random_actions = torch.zeros_like(expert_actions)
             for env_idx in range(args.num_envs):
-                # 各関節について、可動域の範囲で一様分布からサンプリング
-                # torch.rand() は [0, 1) の一様分布なので、線形変換で [amin, amax] にスケール
-                # 式: random_action = amin + rand() * (amax - amin)
                 random_actions[env_idx] = action_limits[:, 0] + torch.rand(
                     expert_actions[env_idx].shape,
                     device=gs.device,
                     generator=env_generators[env_idx]
                 ) * (action_limits[:, 1] - action_limits[:, 0])
             
-            # 線形補間
             eps_expanded = eps_values.unsqueeze(1)
             actions = eps_expanded * random_actions + (1.0 - eps_expanded) * expert_actions
-            
-            # 関節の可動域範囲でクリッピング（線形補間により範囲外になる可能性があるため）
             actions = torch.clamp(actions, action_limits[:, 0], action_limits[:, 1])
             
-            # 環境をステップ
+            obs_without_actions = obs[:, :-12]
             next_obs, rewards, dones, infos = env.step(actions)
+            next_obs_without_actions = next_obs[:, :-12]
             
-            # ステップ後の観測値、行動、報酬を記録
-            # next_obsは次のステップのobsとして使用されるため、proprio_observationとして保存
             for env_idx in range(args.num_envs):
                 if env_active[env_idx]:
-                    env_episode_data['obs'][env_idx].append(next_obs[env_idx].cpu().numpy())
-                    env_episode_data['actions'][env_idx].append(actions[env_idx].cpu().numpy())
-                    env_episode_data['rewards'][env_idx].append(float(rewards[env_idx].cpu()))
-                    env_episode_data['steps'][env_idx].append(int(episode_steps[env_idx].cpu()))
+                    transition = {
+                        'obs': obs_without_actions[env_idx].cpu().numpy(),
+                        'action': actions[env_idx].cpu().numpy(),
+                        'next_obs': next_obs_without_actions[env_idx].cpu().numpy(),
+                        'reward': float(rewards[env_idx].cpu()),
+                        'step': int(episode_steps[env_idx].cpu())
+                    }
+                    env_episode_data[env_idx].append(transition)
             
-            # 統計用
             current_episode_rewards += rewards
             episode_steps += 1
             env_total_steps += env_active.to(env_total_steps.dtype)
             
-            # エピソード完了検出（目標到達チェックより先に実行して、エピソードを完了させる）
             done_mask = (dones | (episode_steps >= args.max_steps)) & env_active
             
             if done_mask.any():
@@ -454,37 +408,22 @@ def main():
                 
                 for idx in done_indices:
                     idx_int = int(idx.cpu())
+                    episode_transitions = env_episode_data[idx_int]
+                    collectors[idx_int].add_transitions_batch(episode_transitions)
                     
-                    # エピソード完了: データをバッファに追加
-                    collectors[idx_int].add_transitions_batch(
-                        obs_list=env_episode_data['obs'][idx_int],
-                        action_list=env_episode_data['actions'][idx_int],
-                        reward_list=env_episode_data['rewards'][idx_int],
-                        step_num_list=env_episode_data['steps'][idx_int]
-                    )
-                    
-                    # 統計を記録
                     ep_reward = float(current_episode_rewards[idx].cpu())
                     ep_length = int(episode_steps[idx].cpu())
                     
                     episode_rewards_list.append(ep_reward)
                     episode_lengths_list.append(ep_length)
                     
-                    # 環境のエピソードデータをクリア
-                    env_episode_data['obs'][idx_int] = []
-                    env_episode_data['actions'][idx_int] = []
-                    env_episode_data['rewards'][idx_int] = []
-                    env_episode_data['steps'][idx_int] = []
-                    
-                    # 環境をリセット
+                    env_episode_data[idx_int] = []
                     current_episode_rewards[idx] = 0.0
                     episode_steps[idx] = 0
                     
-                    # 目標達成チェック（エピソード完了時のみ）
-                    # エピソード途中で目標に達した場合は、target_reached_flagが立っているので、ここで処理
                     if target_reached_flag[idx] or env_total_steps[idx] >= target_steps_tensor:
                         env_active[idx] = False
-                        target_reached_flag[idx] = False  # フラグをクリア
+                        target_reached_flag[idx] = False
                         if not env_completed[idx]:
                             env_completed[idx] = True
                             completed_env_count += 1
@@ -493,13 +432,11 @@ def main():
                             print(f"\n[Env {completed_env_count}/{args.num_envs} completed] active_envs={int(env_active.sum().cpu())}")
                             print(f"  Collected steps (sum/env): {int(total_steps_so_far):,}")
                 
-                # 完了した環境をリセット（重要：これがないと次のエピソードが前の状態から始まる）
                 if len(done_indices) > 0:
                     env.reset_idx(done_indices)
-                    # リセット後の観測を取得
-                    next_obs[done_indices] = env.obs_buf[done_indices]
+                    # リセット後の観測値からも行動を除外してnext_obs_without_actionsを更新
+                    next_obs_without_actions[done_indices] = env.obs_buf[done_indices][:, :-12]
                 
-                # 進捗表示（統計）
                 recent_rews = episode_rewards_list[-100:] if len(episode_rewards_list) >= 100 else episode_rewards_list
                 recent_lens = episode_lengths_list[-100:] if len(episode_lengths_list) >= 100 else episode_lengths_list
                 if env_active.any():
@@ -514,29 +451,23 @@ def main():
                 if recent_rews:
                     print(f"  Last {len(recent_rews)} eps: len={np.mean(recent_lens):.1f}, reward={np.mean(recent_rews):.4f}")
             
-            # 目標ステップ数に到達した環境をマーク（エピソード完了チェックの後）
-            # エピソード途中で目標に達した場合は、フラグを立てるだけで、エピソードが終わるまで待つ
-            # エピソード完了時に、このフラグが立っている環境を非アクティブにする
             target_reached_mask = (env_total_steps >= target_steps_tensor) & env_active & ~target_reached_flag
             if target_reached_mask.any():
                 reached_indices = torch.where(target_reached_mask)[0]
                 for idx in reached_indices:
-                    # フラグを立てる（エピソード完了時に処理される）
                     target_reached_flag[idx] = True
                     idx_int = int(idx.cpu())
                     print(f"\n[Env {idx_int}] Target steps reached ({int(env_total_steps[idx].cpu()):,} >= {int(target_steps_tensor):,})")
                     print(f"  Waiting for current episode to complete (episode step: {int(episode_steps[idx].cpu())})")
             
-            # 次のステップへ
+            # 次のループで使用する観測値（policyに渡すため45次元のまま）
             obs = next_obs
     
     pbar.close()
     
-    # データ保存
     for collector in collectors:
         collector.finalize()
     
-    # 最終統計
     print(f"\n{'='*80}")
     print("Parallel AD Data Collection Complete!")
     print(f"{'='*80}")

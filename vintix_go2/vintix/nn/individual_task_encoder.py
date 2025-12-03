@@ -468,7 +468,7 @@ class IndividualTaskEncoderNew(nn.Module):
             mask.sum(), 1).type(rews_emb.dtype)
 
         sar_emb = torch.cat(
-            [obs_emb, acs_emb, rews_emb], axis=1)
+            [acs_emb, rews_emb, obs_emb], axis=1)
         out_emb = sar_emb
 
         # Add within episode positional embedding
