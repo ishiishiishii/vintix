@@ -169,21 +169,6 @@ def analyze_batch(batch, batch_idx=0):
                 print("  ⚠️⚠️⚠️  重大な警告: 観測値の最後の次元が行動と一致しています！データリークの可能性があります！")
             else:
                 print("  ✓ 観測値と行動は異なります（リークなし）")
-                
-            # 観測値の最後の次元がprev_actionと一致しているかチェック（これが正しい関係）
-            if 'prev_action' in batch:
-                prev_acs = batch['prev_action']
-                if prev_acs.dim() == 3 and prev_acs.shape[0] == 1:
-                    prev_acs = prev_acs.squeeze(0)
-                if prev_acs.shape[0] == obs.shape[0] and prev_acs.shape[1] == acs.shape[1]:
-                    # 観測値の最後の次元とprev_actionが一致しているか
-                    if torch.allclose(obs_last_dims, prev_acs, atol=1e-3):
-                        print("  ⚠️⚠️⚠️  重大な警告: 観測値の最後の次元がprev_actionと一致しています！")
-                        print("     これは、観測値に「前のステップで実行した行動」が含まれていることを意味します。")
-                        print("     これは正しい動作です（観測値に前の行動が含まれるのは正常）。")
-                        print("     しかし、もし観測値の最後の次元が「現在のステップで予測すべき行動」と一致している場合はデータリークです。")
-                    else:
-                        print(f"  ✓ 観測値の最後の次元とprev_actionは異なります（差分: {(obs_last_dims - prev_acs).abs().mean().item():.6f}）")
         
         # prev_actionとactionの関係をチェック
         if 'prev_action' in batch:
@@ -197,32 +182,6 @@ def analyze_batch(batch, batch_idx=0):
                     print("  ✓ prev_actionとactionの関係は正しい（1ステップシフト）")
                 else:
                     print("  ⚠️  警告: prev_actionとactionの関係が期待通りではありません")
-                    
-        # 詳細な時系列対応を確認
-        print("\n【時系列対応の詳細確認】")
-        print("  最初の5ステップで、観測値の最後の12次元と各行動の関係を確認:")
-        for i in range(min(5, obs.shape[0])):
-            obs_last_12 = obs[i, -12:]
-            action_i = acs[i]
-            if 'prev_action' in batch:
-                prev_acs = batch['prev_action']
-                if prev_acs.dim() == 3 and prev_acs.shape[0] == 1:
-                    prev_acs = prev_acs.squeeze(0)
-                prev_action_i = prev_acs[i] if i < prev_acs.shape[0] else None
-                
-                match_action = torch.allclose(obs_last_12, action_i, atol=1e-3)
-                match_prev_action = torch.allclose(obs_last_12, prev_action_i, atol=1e-3) if prev_action_i is not None else False
-                
-                print(f"    Step {i}:")
-                print(f"      obs[-12:] と action[{i}] の一致: {match_action}")
-                if prev_action_i is not None:
-                    print(f"      obs[-12:] と prev_action[{i}] の一致: {match_prev_action}")
-                if match_action:
-                    print(f"      ⚠️  データリーク: 観測値に「予測すべき行動」が含まれています！")
-                elif match_prev_action:
-                    print(f"      ✓ 正常: 観測値に「前のステップの行動」が含まれています（これは正しい）")
-                else:
-                    print(f"      ? 観測値の最後の12次元は行動ともprev_actionとも一致しません")
     
     print("\n" + "=" * 100)
 

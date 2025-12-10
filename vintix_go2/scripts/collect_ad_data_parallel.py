@@ -33,16 +33,19 @@ except (metadata.PackageNotFoundError, ImportError) as e:
 from rsl_rl.runners import OnPolicyRunner
 import genesis as gs
 from env import Go2Env
+from env import MiniCheetahEnv
+from env import LaikagoEnv
 
 
 class PerEnvADDataCollector:
     """各環境ごとのADデータ収集器（各環境1つのファイル）"""
     
-    def __init__(self, output_dir, env_idx, group_size=50000):
+    def __init__(self, output_dir, env_idx, group_size=50000, robot_type="go2"):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.env_idx = env_idx
         self.group_size = group_size
+        self.robot_type = robot_type
         
         filename = self.output_dir / f"trajectories_env_{env_idx:04d}.h5"
         self.h5_file = h5py.File(filename, 'w')
@@ -177,9 +180,20 @@ class PerEnvADDataCollector:
         reward_var = max(reward_sq_sum / obs_count - reward_mean ** 2, 0.0)
         reward_std = math.sqrt(reward_var)
         
+        # robot_typeに基づいてtask_nameとgroup_nameを設定
+        if self.robot_type == "minicheetah":
+            task_name = "minicheetah_walking_ad"
+            group_name = "minicheetah_locomotion"
+        elif self.robot_type == "laikago":
+            task_name = "laikago_walking_ad"
+            group_name = "laikago_locomotion"
+        else:  # go2
+            task_name = "go2_walking_ad"
+            group_name = "go2_locomotion"
+        
         metadata = {
-            "task_name": "go2_walking_ad",
-            "group_name": "go2_locomotion",
+            "task_name": task_name,
+            "group_name": group_name,
             "observation_shape": {"proprio": [33]},  # 45次元から行動12次元を除外
             "action_dim": 12,
             "action_type": "continuous",
@@ -252,14 +266,35 @@ def main():
     env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(cfgs_path, "rb"))
     
     print("Creating parallel environments...")
-    env = Go2Env(
-        num_envs=args.num_envs,
-        env_cfg=env_cfg,
-        obs_cfg=obs_cfg,
-        reward_cfg=reward_cfg,
-        command_cfg=command_cfg,
-        show_viewer=False
-    )
+    if args.robot_type == "go2":
+        env = Go2Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False
+        )
+    elif args.robot_type == "minicheetah":
+        env = MiniCheetahEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False
+        )
+    elif args.robot_type == "laikago":
+        env = LaikagoEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False
+        )
+    else:
+        raise ValueError(f"Unknown robot type: {args.robot_type}")
     print(f"✓ Created {args.num_envs} parallel {args.robot_type} environments")
     
     runner = OnPolicyRunner(env, train_cfg, str(model_dir), device=gs.device)
@@ -267,7 +302,7 @@ def main():
     policy = runner.get_inference_policy(device=gs.device)
     print(f"✓ Loaded model from {args.model_path}\n")
     
-    collectors = [PerEnvADDataCollector(args.output_dir, env_idx) 
+    collectors = [PerEnvADDataCollector(args.output_dir, env_idx, robot_type=args.robot_type) 
                   for env_idx in range(args.num_envs)]
     
     base_seed = 42
