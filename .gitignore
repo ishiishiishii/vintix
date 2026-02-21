@@ -82,13 +82,8 @@ vintix_go2/results/
 *_collect.log
 *_eval.log
 
-# Secrets / credentials (vintix_go2 pipeline etc.)
-vintix_go2/.env
-vintix_go2/scripts/.env
-vintix_go2/**/.env.local
+# Secrets / credentials (e.g. *.pem for SSH keys; pipeline の API キーはスクリプトに書かず環境変数で渡す)
 *.pem
-.env
-.env.local
 
 # Embedded git repositories (track separately or as submodules)
 Genesis/
