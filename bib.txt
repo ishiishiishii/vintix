@@ -1,0 +1,11 @@
+研究でGenesisを使用する場合、以下を引用してください：
+
+```bibtex
+@misc{Genesis,
+  author = {Genesis Authors},
+  title = {Genesis: A Generative and Universal Physics Engine for Robotics and Beyond},
+  month = {December},
+  year = {2024},
+  url = {https://github.com/Genesis-Embodied-AI/Genesis}
+}
+```

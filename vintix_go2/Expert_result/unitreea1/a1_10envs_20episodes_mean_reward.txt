@@ -1,0 +1,15 @@
+Expert Policy Evaluation Summary
+============================================================
+Robot Type: unitreea1
+Total Steps: 20000
+Number of Environments: 10
+Total Episodes: 200
+
+Mean Reward per Step: 0.020872
+Std Reward per Step: 0.000206
+
+Mean Reward per Episode: 20.860417
+Std Reward per Episode: 0.019473
+Mean Episode Length: 1000.00
+Std Episode Length: 0.00
+============================================================

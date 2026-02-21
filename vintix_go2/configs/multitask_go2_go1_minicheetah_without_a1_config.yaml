@@ -1,0 +1,32 @@
+# Multi-Task Dataset Configuration for Vintix (Go2 + Go1 + Minicheetah, without A1)
+# 
+# 3種類のロボット（Go2、Go1、Minicheetah）で訓練し、A1でゼロショット評価を行う実験用
+# episode_range: Optional parameter to select a specific fraction of episodes.
+#   Format: [start_fraction, end_fraction] (e.g., [0.0, 0.1] for first 10%)
+#   If not specified, all episodes are used (equivalent to [0.0, 1.0])
+#   If specified, last_frac is ignored.
+
+go2_walking_ad:
+  type: "default"
+  path: "go2_trajectories/data_1M"  # data/go2_trajectories/data_1M (AD data with p=0.6, f=0.05, 1M steps per env, no data leakage)
+  group: "quadruped_locomotion"  # 統一されたグループ名
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)
+
+go1_walking_ad:
+  type: "default"
+  path: "go1_trajectories"  # data/go1_trajectories (AD data)
+  group: "quadruped_locomotion"  # 統一されたグループ名
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)
+
+minicheetah_walking_ad:
+  type: "default"
+  path: "minicheetah_trajectories"  # data/minicheetah_trajectories (AD data with p=0.6, f=0.05, 1M steps per env)
+  group: "quadruped_locomotion"  # 統一されたグループ名
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)
+

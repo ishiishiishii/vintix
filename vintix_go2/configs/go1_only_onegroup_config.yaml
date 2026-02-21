@@ -1,0 +1,20 @@
+# Go1-only dataset config for decoder-only finetuning from "All_onegroup"
+#
+# - This keeps the original shared group name ("quadruped_locomotion") so the loaded
+#   All_onegroup checkpoint's encoder still matches.
+# - In decoder-only finetune, `train_vintix.py` will create a new decoder group
+#   (e.g. "go1_finetune") and redirect ONLY the head mapping for go1_walking_ad.
+#
+# Usage example:
+#   python scripts/train_vintix.py --config configs/train_config.yaml \
+#     --dataset_config_paths configs/go1_only_onegroup_config.yaml \
+#     --load_ckpt models/vintix_go2/All_onegroup/All_onegroup/0015_epoch \
+#     --finetune_decoder_only true --finetune_robot go1 --epochs 5
+
+go1_walking_ad:
+  type: "default"
+  path: "go1_trajectories"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+

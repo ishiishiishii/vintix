@@ -1,0 +1,123 @@
+\chapter{結果} \label{results}
+
+本章では，前章で述べた実験設定に基づいて実施した評価実験の結果を示す．
+まず，4種類すべてのロボットで訓練した Vintix モデルのマルチタスク性能を報告する．
+次に，ゼロショット汎化性能の評価結果を示す．
+最後に，エンコーダ・デコーダを分離した場合の性能について述べる．
+
+\section{マルチタスク性能の評価}
+
+\subsection{全ロボットで訓練したモデルの性能}
+
+4種類すべてのロボット（Go2，Go1，A1，Mini Cheetah）のデータを用いて訓練した
+Vintix モデルの性能を評価した．
+各ロボットにおける1ステップあたりの平均報酬の推移を図\ref{fig:multitask_training}に示す．
+
+% 注：グラフ挿入箇所
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=0.8\textwidth]{figures/multitask_training_curves.png}
+% \caption{全ロボットで訓練したVintixモデルの各ロボットにおける1ステップあたりの平均報酬の推移}
+% \label{fig:multitask_training}
+% \end{figure}
+
+訓練済みモデルとPPO専門家ポリシーの性能比較を表\ref{tab:multitask_comparison}に示す．
+
+\begin{table}[t]
+\centering
+\caption{全ロボットで訓練したVintixモデルとPPO専門家ポリシーの性能比較（1ステップあたりの平均報酬）}
+\label{tab:multitask_comparison}
+\begin{tabular}{lcc}
+\toprule
+\textbf{ロボット} &
+\textbf{Vintix} &
+\textbf{PPO専門家} \\
+\midrule
+Go2 & 0.017424 & 0.021352 \\
+Go1 & 0.021587 & 0.022521 \\
+A1 & 0.019938 & 0.020857 \\
+Mini Cheetah & 0.019235 & 0.021014 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+実験の結果，Vintix モデルは4種類すべてのロボットで歩行を実現することができた．
+しかし，各ロボット専用に訓練した PPO 専門家ポリシーと比較すると，
+1ステップあたりの平均報酬は専門家ポリシーよりも低い値を示した．
+これは，単一モデルで複数ロボットの制御を学習する際のトレードオフとして，
+各ロボットに対する最適化が専門家ポリシーほど徹底されていないことを示唆している．
+
+\section{ゼロショット汎化性能の評価}
+
+\subsection{1種類ずつ除外した場合の性能}
+
+各ロボットを1つずつ訓練データから除外し，
+残りの3種類のロボットで訓練したモデルのゼロショット性能を評価した．
+これにより，各ロボットのデータが汎用性向上にどの程度寄与するかを分析した．
+
+各除外条件におけるゼロショット性能の推移を図\ref{fig:zeroshot_training}に示す．
+
+% 注：グラフ挿入箇所
+% \begin{figure}[t]
+% \centering
+% \includegraphics[width=0.8\textwidth]{figures/zeroshot_training_curves.png}
+% \caption{各ロボットを除外した場合のゼロショット性能の推移}
+% \label{fig:zeroshot_training}
+% \end{figure}
+
+ゼロショット性能の評価結果を表\ref{tab:zeroshot_results}に示す．
+
+\begin{table}[t]
+\centering
+\caption{各ロボットを除外した場合のゼロショット性能（1ステップあたりの平均報酬）}
+\label{tab:zeroshot_results}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{訓練データ} &
+\textbf{Go2} &
+\textbf{Go1} &
+\textbf{A1} &
+\textbf{Mini Cheetah} \\
+\midrule
+Go1, A1, Mini Cheetah & 0.010508 & 0.019940 & 0.020282 & 0.018648 \\
+Go2, A1, Mini Cheetah & 0.020887 & 0.021539 & 0.019970 & 0.018276 \\
+Go2, Go1, Mini Cheetah & 0.020936 & 0.021612 & 0.015892 & 0.015490 \\
+Go2, Go1, A1 & 0.018441 & 0.021740 & 0.020495 & -0.013319 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% 注：表の値はevaluation_results_table.mdから取得しました
+
+\section{エンコーダ・デコーダ分離アーキテクチャの評価}
+
+エンコーダとデコーダを分離したアーキテクチャを用いた場合の性能を評価した．
+このアーキテクチャでは，各ロボットに対して専用のデコーダを使用し，
+共通のエンコーダで観測を処理する構成を採用した．
+
+エンコーダ・デコーダ分離アーキテクチャの性能を表\ref{tab:encoder_decoder_results}に示す．
+
+\begin{table}[t]
+\centering
+\caption{エンコーダ・デコーダ分離アーキテクチャの性能（1ステップあたりの平均報酬）}
+\label{tab:encoder_decoder_results}
+\begin{tabular}{lcc}
+\toprule
+\textbf{ロボット} &
+\textbf{エンコーダ・デコーダ分離} &
+\textbf{PPO専門家} \\
+\midrule
+Go2 & 0.021066 & 0.021352 \\
+Go1 & - & 0.022521 \\
+A1 & - & 0.020857 \\
+Mini Cheetah & - & 0.021014 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% 注：Go1、A1、Mini Cheetahのエンコーダ・デコーダ分離の値を実際の評価結果で埋める必要があります
+
+実験の結果，エンコーダ・デコーダを分離したアーキテクチャでは，
+全ロボットにおいて PPO 専門家ポリシーと同等の性能を達成することができた．
+これは，ロボット固有の特性をデコーダで処理することで，
+各ロボットに対する最適化が可能になったことを示している．

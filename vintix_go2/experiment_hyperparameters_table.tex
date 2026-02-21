@@ -1,0 +1,28 @@
+% 実験ハイパーパラメータ（All one group 設定）
+% 項目・順序は先行研究の表に完全に合わせる
+\begin{table}[t]
+\centering
+\caption{本実験（All one group）のハイパーパラメータ}
+\label{tab:our_hyperparameters}
+\begin{tabular}{ll}
+\toprule
+\textbf{Hyperparameter} & \textbf{Value} \\
+\midrule
+Learning Rate & 0.0003 \\
+Optimizer & Adam \\
+Beta 1 & 0.9 \\
+Beta 2 & 0.99 \\
+Batch Size & 4 \\
+Gradient Accumulation Steps & 1 \\
+Transformer Layers & 3 \\
+Transformer Heads & 4 \\
+Context Length & 1024 \\
+Transformer Hidden Dim & 256 \\
+FF Hidden Size & 128 \\
+MLP Type & GptNeoxMLP \\
+Normalization Type & LayerNorm \\
+Training Precision & bf16 \\
+Parameters & --- \\
+\bottomrule
+\end{tabular}
+\end{table}

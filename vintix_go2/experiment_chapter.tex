@@ -1,0 +1,210 @@
+\chapter{実験} \label{experiment}
+
+本章では，本研究で実施した実験の目的，設定，および評価方法について述べる．
+本研究の実験は，Algorithm Distillation に基づく文脈内強化学習モデル Vintix が，
+単一モデルで複数種類の四足歩行ロボットに対する歩行制御を実現できるかを検証することを目的とする．
+
+\section{実験目標}
+
+本研究では，Vintix を用いたマルチタスク歩行制御の有効性を検証するため，
+以下の3点を主な実験目標とする．
+
+\begin{enumerate}
+    \item \textbf{マルチタスク学習の有効性}：
+    4種類の四足歩行ロボット（Go2，Go1，Unitree A1，Mini Cheetah）の
+    学習履歴を統合して訓練した Vintix モデルが，
+    各ロボットにおいて安定した歩行行動を実現できるかを検証する．
+
+    \item \textbf{ゼロショット汎化性能}：
+    3種類のロボットのみで訓練したモデルを，
+    訓練に含まれていない残り1種類のロボットに適用し，
+    未学習ロボットに対する歩行性能および安定性を評価する．
+
+    \item \textbf{PPO専門家との比較}：
+    各ロボット専用に訓練した PPO 専門家ポリシーを他ロボットに適用し，
+    単一ロボット特化型ポリシーの汎化性能と，
+    Vintix によるマルチタスク学習の違いを明確化する．
+\end{enumerate}
+
+\section{実験設定}
+
+\subsection{使用ロボット}
+
+本研究では，Unitree 社製の Go2，Go1，A1，および MIT が開発した Mini Cheetah の
+4種類の四足歩行ロボットを対象とする．
+これらのロボットはいずれも 12 自由度の関節構成を持ち，
+制御構造が類似している一方で，
+質量分布やリンク長などの物理的特性が異なる．
+
+これらのロボットは，
+Genesis 物理シミュレータ上での実装が容易であり，
+同一の報酬設計および制御周波数での比較が可能であることから選定した．
+また，体格や自由度構成が近いため，
+PPO における報酬設計を統一しやすいという利点を有する．
+
+各ロボットの物理的特性を表\ref{tab:robot_specs}に示す．
+これらの値は，Genesis 上で使用した URDF ファイルの定義に基づいて取得した．
+
+\begin{table}[t]
+\centering
+\caption{実験で使用した四足歩行ロボットの物理的特性（URDF定義に基づく）}
+\label{tab:robot_specs}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{項目} &
+\textbf{Go2} &
+\textbf{Go1} &
+\textbf{Unitree A1} &
+\textbf{Mini Cheetah} \\
+\midrule
+自由度（DoF） & 12 & 12 & 12 & 12 \\
+Trunk質量 [kg] & 6.921 & 5.204 & 6.000 & 3.300 \\
+Trunkサイズ [m] & 0.376$\times$0.094$\times$0.114 & 0.376$\times$0.094$\times$0.114 & -- & -- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{評価指標}
+
+本研究では，歩行性能および安定性を定量的に評価するため，
+以下の2つの指標を用いる．
+
+\begin{itemize}
+    \item \textbf{1ステップあたりの平均報酬}：
+    各エピソードにおける総報酬をステップ数で正規化した値であり，
+    目標速度追従性や姿勢安定性などを総合的に反映する指標である．
+
+    \item \textbf{平均エピソード長}：
+    転倒や終了条件に達するまでの平均ステップ数を表し，
+    歩行の安定性および継続性を評価する指標である．
+\end{itemize}
+
+評価は，各ロボットにつき 100 並列環境で実行し，
+1エピソード最大 1000 ステップまでの複数エピソードを収集した上で，
+それらの平均値を算出する．
+
+\subsection{実験環境}
+
+すべての実験は，Genesis 物理シミュレータ上で実行した．
+シミュレーションの時間刻みは一定とし，
+1エピソードの最大長は 20 秒と設定した．
+
+\section{専門家ポリシーの訓練}
+
+\subsection{PPO訓練設定}
+
+各ロボットに対して，
+Proximal Policy Optimization（PPO）を用いて
+歩行専門家ポリシーを個別に訓練した．
+PPO のハイパーパラメータを表\ref{tab:ppo_config}に示す．
+
+\begin{table}[t]
+\centering
+\caption{PPO専門家ポリシーの訓練ハイパーパラメータ}
+\label{tab:ppo_config}
+\begin{tabular}{lc}
+\toprule
+\textbf{パラメータ} & \textbf{値} \\
+\midrule
+割引率 $\gamma$ & 0.99 \\
+GAE パラメータ $\lambda$ & 0.95 \\
+クリップ係数 & 0.2 \\
+目標 KL ダイバージェンス & 0.01 \\
+エントロピー係数 & 0.01 \\
+価値損失係数 & 1.0 \\
+学習率 & $1.0\times10^{-3}$ \\
+最適化手法 & Adam \\
+最大勾配ノルム & 1.0 \\
+更新エポック数 & 5 \\
+環境数 & 4096 \\
+エピソード長 [秒] & 20.0 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+各ロボットに共通の報酬構造を採用し，
+物理特性の違いに応じて一部の目標値のみを調整した．
+報酬設計の概要を表\ref{tab:reward_config}に示す．
+
+\begin{table}[t]
+\centering
+\caption{各ロボットにおける歩行タスクの報酬設計}
+\label{tab:reward_config}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{報酬項目} &
+\textbf{Go2} &
+\textbf{Go1} &
+\textbf{A1} &
+\textbf{Mini Cheetah} \\
+\midrule
+目標ベース高さ [m] & 0.30 & 0.32 & 0.27 & 0.30 \\
+目標足クリアランス [m] & 0.075 & 0.073 & 0.075 & 0.060 \\
+目標前進速度 [m/s] & 0.5 & 0.5 & 0.5 & 0.5 \\
+線形速度追従係数 & 1.0 & 1.0 & 1.0 & 1.0 \\
+姿勢逸脱ペナルティ & $-0.1$ & $-0.1$ & $-0.1$ & $-0.1$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{アルゴリズム蒸留 データセット}
+
+訓練済みの PPO 専門家ポリシーを用いて，
+連続ノイズ蒸留（Continuous Noise Distillation）に基づく
+Algorithm Distillation データを収集した．
+
+データ収集設定を表\ref{tab:ad_config}に示す．4 種類のロボットすべてで共通である．
+
+\begin{table}[htbp]
+\centering
+\caption{Algorithm Distillation データ収集設定}
+\label{tab:ad_config}
+\begin{tabular}{lc}
+\toprule
+\textbf{項目} & \textbf{値} \\
+\midrule
+1 履歴あたりのステップ数 & 1,000,000 \\
+履歴数（ロボットあたり） & 10 \\
+合計ステップ数（ロボットあたり） & 1,000 万 \\
+ノイズフリー割合 $f$ & 0.05 \\
+減衰指数 $p$ & 0.6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+ノイズフリー割合 $f=0.05$ により，
+各軌道の終盤 5\% のステップでは，
+完全に専門家ポリシーに基づく行動のみが実行される．
+
+\section{Vintixモデルの訓練}
+
+Vintix モデルは，
+4種類すべてのロボットのデータを統合した
+マルチタスクデータセットを用いて訓練した．
+訓練設定を表\ref{tab:vintix_config}に示す．
+
+\begin{table}[t]
+\centering
+\caption{Vintix モデルの訓練設定}
+\label{tab:vintix_config}
+\begin{tabular}{lc}
+\toprule
+\textbf{項目} & \textbf{値} \\
+\midrule
+コンテキスト長 & 2048 \\
+隠れ層次元 & 256 \\
+Transformer 層数 & 3 \\
+Attention ヘッド数 & 4 \\
+学習率 & $3.0\times10^{-4}$ \\
+エポック数 & 100 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{評価実験}
+
+マルチタスク性能，
+ゼロショット汎化性能，
+および PPO 専門家ポリシーとの比較実験を行った．
+評価結果およびその詳細な考察については，
+次章にて述べる．

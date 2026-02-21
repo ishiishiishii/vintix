@@ -1,0 +1,12 @@
+# Go2追加訓練用設定ファイル
+# 
+# Go2タスクのみを含むデータセット設定
+# Transformerパラメータを凍結して、Go2用のデコーダーのみを訓練
+
+go2_walking_ad:
+  type: "default"
+  path: "go2_trajectories/data_1M"  # data/go2_trajectories/data_1M (AD data with p=0.6, f=0.05, 1M steps per env, no data leakage)
+  group: "quadruped_locomotion"  # 既存のグループ名を使用
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)

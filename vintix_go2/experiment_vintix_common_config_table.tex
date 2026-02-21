@@ -1,0 +1,47 @@
+\begin{table}[htbp]
+\centering
+\caption{Vintix における Transformer モデルおよび学習設定}
+\label{tab:vintix_common_config}
+\begin{tabular}{lc|lc}
+\toprule
+\textbf{項目} & \textbf{値} & \textbf{項目} & \textbf{値} \\
+\midrule
+コンテキスト長 & 2048 & 軌道サンプリング間隔 & 128 \\
+観測埋め込み次元 & 127 & 行動埋め込み次元 & 127 \\
+報酬埋め込み次元 & 2 & 総埋め込み次元 & 256 \\
+Transformer 層数 & 3 & Attention ヘッド数 & 4 \\
+FFN 中間層次元 & 128 & Dropout（Attn / Res） & 0.1 / 0.1 \\
+MLP クラス & GptNeoxMLP & Norm クラス & LayerNorm \\
+最適化手法 & Adam & 学習率 & $3.0\times10^{-4}$ \\
+Adam $\beta$ & (0.9, 0.99) & Weight Decay & 0.1 \\
+バッチサイズ & 8 & 勾配累積ステップ数 & 8 \\
+学習エポック数 & 1 & 数値精度 & bf16 \\
+Transformer パラメータ数 & 991,616 & & \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表\ref{tab:vintix_common_config}の Transformer パラメータ数は，
+Transformer ブロック（Attention および FFN）のみの値である．
+Transformer の前後に配置した MLP エンコーダ・デコーダのパラメータ数を
+表\ref{tab:vintix_mlp_enc_dec}に示す．
+以上を合わせたモデル全体のパラメータ数は 1,231,706 である．
+
+\begin{table}[htbp]
+\centering
+\caption{Transformer 外側の MLP エンコーダ・デコーダのパラメータ数（1グループあたり）}
+\label{tab:vintix_mlp_enc_dec}
+\begin{tabular}{lc}
+\toprule
+\textbf{モジュール} & \textbf{パラメータ数} \\
+\midrule
+観測エンコーダ & 21,082 \\
+行動エンコーダ & 18,415 \\
+報酬エンコーダ & 4 \\
+パディング用パラメータ & 129 \\
+行動デコーダ & 200,460 \\
+\midrule
+合計（MLP エンコーダ・デコーダ） & 240,090 \\
+\bottomrule
+\end{tabular}
+\end{table}

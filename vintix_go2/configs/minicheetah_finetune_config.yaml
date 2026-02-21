@@ -1,0 +1,15 @@
+# Minicheetah追加訓練用設定ファイル
+# 
+# Minicheetahタスクのみを含むデータセット設定
+# Transformerパラメータを凍結して、Minicheetah用のエンコーダー/デコーダーのみを訓練
+
+minicheetah_walking_ad:
+  type: "default"
+  path: "minicheetah_trajectories"  # data/minicheetah_trajectories (AD data)
+  # NOTE:
+  # `minicheetah_without` の事前学習チェックポイントには decoder group として
+  # `quadruped_locomotion` しか存在しないため、decoder-only finetune でも同じ group を使う。
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)

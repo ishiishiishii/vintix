@@ -9,6 +9,7 @@ import argparse
 import os
 import pickle
 import sys
+import json
 from pathlib import Path
 from collections import deque
 from importlib import metadata
@@ -35,17 +36,49 @@ import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
+from env import UnitreeA1Env
+from env import Go1Env
 
 # Vintixモジュールのインポート
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from vintix.vintix import Vintix
 
 
+def _default_trajectory_stats_path(robot_type: str) -> Path:
+    """Return default trajectory stats json path for a robot_type, if it exists."""
+    # scripts/eval_vintix.py -> vintix_go2/ (parents[1])
+    root = Path(__file__).parents[1]
+    candidates = {
+        "go2": root / "data" / "go2_trajectories" / "go2_trajectories.json",
+        "go1": root / "data" / "go1_trajectories" / "go1_trajectories.json",
+        "unitreea1": root / "data" / "a1_trajectories" / "a1_trajectories.json",
+        "minicheetah": root / "data" / "minicheetah_trajectories" / "minicheetah_trajectories.json",
+        "laikago": root / "data" / "laikago_trajectories" / "laikago_trajectories.json",
+    }
+    return candidates.get(robot_type, Path())
+
+
+def _load_stats_from_trajectory_json(json_path: Path, task_name: str) -> dict:
+    """Load obs/acs normalization stats from a trajectory JSON file."""
+    with open(json_path, "r") as f:
+        meta = json.load(f)
+    stats = {
+        task_name: {
+            "obs_mean": meta["obs_mean"],
+            "obs_std": meta["obs_std"],
+            "acs_mean": meta["acs_mean"],
+            "acs_std": meta["acs_std"],
+        }
+    }
+    return stats
+
+
 class VintixHistoryBuffer:
     """Vintix用の履歴バッファ（環境リセット後も保持）"""
     
-    def __init__(self, max_len=1024):
+    def __init__(self, max_len=1024, task_name='go2_walking_ad'):
         self.max_len = max_len
+        self.task_name = task_name
         self.observations = deque(maxlen=max_len)
         self.actions = deque(maxlen=max_len)
         self.rewards = deque(maxlen=max_len)
@@ -77,7 +110,7 @@ class VintixHistoryBuffer:
             'prev_action': torch.tensor(np.array(act_list), dtype=torch.bfloat16),  # [T, act_dim] bf16
             'prev_reward': torch.tensor(np.array(rew_list), dtype=torch.bfloat16).unsqueeze(1),  # [T, 1] bf16
             'step_num': torch.tensor(step_list, dtype=torch.int32),  # [T]
-            'task_name': 'go2_walking_ad',  # タスク名
+            'task_name': self.task_name,  # タスク名
         }]
         
         return batch
@@ -93,9 +126,9 @@ class VintixHistoryBuffer:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("-e", "--exp_name", type=str, default="go2-walking",
-                        help="Experiment name (for loading env config)")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago"], 
+    parser.add_argument("-e", "--exp_name", type=str, default=None,
+                        help="Experiment name (for loading env config). If not specified, will be auto-set based on robot_type")
+    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago", "unitreea1", "go1"], 
                         default="go2", help="Robot type")
     parser.add_argument("--vintix_path", type=str, required=True,
                         help="Path to trained Vintix model directory")
@@ -105,7 +138,33 @@ def main():
                         help="Maximum evaluation steps")
     parser.add_argument("--reset_threshold", type=int, default=1000,
                         help="Reset environment every N steps")
+    parser.add_argument(
+        "--show_viewer",
+        action="store_true",
+        help="Show Genesis viewer (requires a display; use Xvfb for headless machines)",
+    )
+    parser.add_argument(
+        "--trajectory_stats_path",
+        type=str,
+        default=None,
+        help="Optional path to trajectory stats JSON for unknown tasks (defaults to data/<robot>_trajectories/<robot>_trajectories.json if present)",
+    )
     args = parser.parse_args()
+    
+    # exp_nameが指定されていない場合、robot_typeに基づいて自動設定
+    if args.exp_name is None:
+        if args.robot_type == "go2":
+            args.exp_name = "go2-walking"
+        elif args.robot_type == "minicheetah":
+            args.exp_name = "mini_cheetah-walking"
+        elif args.robot_type == "laikago":
+            args.exp_name = "laikago-walking"
+        elif args.robot_type == "unitreea1":
+            args.exp_name = "unitreea1-walking"
+        elif args.robot_type == "go1":
+            args.exp_name = "go1-walking"
+        else:
+            raise ValueError(f"Unknown robot_type: {args.robot_type}")
     
     print("="*80)
     print("Vintix Go2 Evaluation")
@@ -118,11 +177,32 @@ def main():
     # Genesis初期化
     gs.init()
     
-    # 環境設定をロード（PPO訓練時の設定を使用）
-    log_dir = f"{GENESIS_LOCOMOTION_PATH}/logs/{args.exp_name}"
-    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(
-        open(f"{log_dir}/cfgs.pkl", "rb")
-    )
+    # 環境設定をロード（PPO訓練時の設定を使用、なければデフォルト設定を使用）
+    genesis_root = Path(__file__).parents[2] / "Genesis"
+    log_dir = genesis_root / "logs" / args.exp_name
+    cfgs_path = log_dir / "cfgs.pkl"
+    
+    if cfgs_path.exists():
+        env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(cfgs_path, "rb"))
+        print(f"Loaded config from: {cfgs_path}")
+    else:
+        # デフォルト設定を使用
+        print(f"Config file not found: {cfgs_path}. Using default configuration.")
+        from train import get_go2_cfgs, get_minicheetah_cfgs, get_laikago_cfgs, get_unitreea1_cfgs, get_go1_cfgs
+        
+        if args.robot_type == "go2":
+            env_cfg, obs_cfg, reward_cfg, command_cfg = get_go2_cfgs()
+        elif args.robot_type == "minicheetah":
+            env_cfg, obs_cfg, reward_cfg, command_cfg = get_minicheetah_cfgs()
+        elif args.robot_type == "laikago":
+            env_cfg, obs_cfg, reward_cfg, command_cfg = get_laikago_cfgs()
+        elif args.robot_type == "unitreea1":
+            env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
+        elif args.robot_type == "go1":
+            env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
+        else:
+            raise ValueError(f"Unknown robot type: {args.robot_type}")
+        train_cfg = None  # train_cfgは評価では使用しない
     
     # 報酬計算を有効にする（PPOと同じ設定）
     # reward_cfg["reward_scales"] = {}  # この行をコメントアウトして報酬計算を有効化
@@ -135,7 +215,7 @@ def main():
             obs_cfg=obs_cfg,
             reward_cfg=reward_cfg,
             command_cfg=command_cfg,
-            show_viewer=True,
+            show_viewer=args.show_viewer,
         )
     elif args.robot_type == "minicheetah":
         env = MiniCheetahEnv(
@@ -144,7 +224,7 @@ def main():
             obs_cfg=obs_cfg,
             reward_cfg=reward_cfg,
             command_cfg=command_cfg,
-            show_viewer=True,
+            show_viewer=args.show_viewer,
         )
     elif args.robot_type == "laikago":
         env = LaikagoEnv(
@@ -153,7 +233,25 @@ def main():
             obs_cfg=obs_cfg,
             reward_cfg=reward_cfg,
             command_cfg=command_cfg,
-            show_viewer=True,
+            show_viewer=args.show_viewer,
+        )
+    elif args.robot_type == "unitreea1":
+        env = UnitreeA1Env(
+            num_envs=1,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=args.show_viewer,
+        )
+    elif args.robot_type == "go1":
+        env = Go1Env(
+            num_envs=1,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=args.show_viewer,
         )
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
@@ -179,8 +277,42 @@ def main():
     print(f"✓ Vintix model loaded")
     print(f"  Parameters: {sum(p.numel() for p in vintix_model.parameters()):,}\n")
     
-    # 履歴バッファを作成
-    history_buffer = VintixHistoryBuffer(max_len=args.context_len)
+    # タスク名をrobot_typeに基づいて設定
+    if args.robot_type == "go2":
+        task_name = "go2_walking_ad"
+    elif args.robot_type == "minicheetah":
+        task_name = "minicheetah_walking_ad"
+    elif args.robot_type == "laikago":
+        task_name = "laikago_walking_ad"
+    elif args.robot_type == "unitreea1":
+        task_name = "unitreea1_walking_ad"
+    elif args.robot_type == "go1":
+        task_name = "go1_walking_ad"
+    else:
+        task_name = "go2_walking_ad"  # デフォルト
+
+    # Unknown task handling (e.g., go1_without evaluated on go1): add task with trajectory stats
+    model_metadata = vintix_model.metadata if hasattr(vintix_model, "metadata") else {}
+    if task_name not in model_metadata:
+        print(f"\n{'='*80}")
+        print(f"Unknown task detected for this model: {task_name}")
+        stats_path = Path(args.trajectory_stats_path) if args.trajectory_stats_path else _default_trajectory_stats_path(args.robot_type)
+        if not stats_path or not stats_path.exists():
+            raise ValueError(
+                f"Task {task_name!r} not found in model metadata and trajectory stats JSON not found. "
+                f"Provide --trajectory_stats_path. "
+                f"Available tasks in model: {list(model_metadata.keys())}"
+            )
+        print(f"Loading normalization statistics from: {stats_path}")
+        stats = _load_stats_from_trajectory_json(stats_path, task_name)
+        group_name = "quadruped_locomotion"
+        rew_scale = float(stats.get(task_name, {}).get("reward_scale", 1.0)) if isinstance(stats.get(task_name, {}), dict) else 1.0
+        vintix_model.add_task(task_name=task_name, group_name=group_name, stats=stats, rew_scale=rew_scale)
+        print(f"✓ Added task {task_name} to group {group_name}")
+        print(f"{'='*80}\n")
+    
+    # 履歴バッファを作成（環境リセット後も保持）
+    history_buffer = VintixHistoryBuffer(max_len=args.context_len * 2, task_name=task_name)
     
     # 評価ループ
     print("="*80)
@@ -188,6 +320,10 @@ def main():
     print("="*80)
     
     obs, _ = env.reset()
+    # 観測値から行動を除外（最後の12次元を削除）
+    obs = obs[:, :-12] if len(obs.shape) > 1 else obs[:-12]
+    obs = torch.tensor(obs, device=gs.device)
+    
     total_reward = 0.0
     episode_reward = 0.0
     step_count = 0  # 総ステップ数
@@ -227,13 +363,18 @@ def main():
             
             # 環境をステップ
             obs_next, reward, done, info = env.step(action)
+            # 観測値から行動を除外（最後の12次元を削除）
+            obs_next = obs_next[:, :-12] if len(obs_next.shape) > 1 else obs_next[:-12]
+            obs_next = torch.tensor(obs_next, device=gs.device)
             
-            # 履歴に追加
+            # 履歴に追加（観測値は既に行動を除外済み）
             history_buffer.add(
-                obs.cpu().numpy()[0],
+                obs.cpu().numpy()[0] if len(obs.shape) > 1 else obs.cpu().numpy(),
                 action.cpu().numpy()[0],
                 float(reward.cpu().numpy()[0])
             )
+            
+            obs = obs_next
             
             # 統計更新
             total_reward += float(reward.cpu().numpy()[0])
@@ -258,6 +399,9 @@ def main():
                 
                 # 環境をリセット（履歴は保持、ダミーデータは追加しない）
                 obs, _ = env.reset()
+                # 観測値から行動を除外（最後の12次元を削除）
+                obs = obs[:, :-12] if len(obs.shape) > 1 else obs[:-12]
+                obs = torch.tensor(obs, device=gs.device)
                 episode_count += 1
                 episode_reward = 0.0
                 episode_step_count = 0  # エピソード内ステップをリセット

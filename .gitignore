@@ -82,3 +82,19 @@ vintix_go2/results/
 *_collect.log
 *_eval.log
 
+# Secrets / credentials (vintix_go2 pipeline etc.)
+vintix_go2/.env
+vintix_go2/scripts/.env
+vintix_go2/**/.env.local
+*.pem
+.env
+.env.local
+
+# Embedded git repositories (track separately or as submodules)
+Genesis/
+ad-eps/
+bullet3/
+laikago_ros/
+mini_cheetah_urdf/
+vintix/
+

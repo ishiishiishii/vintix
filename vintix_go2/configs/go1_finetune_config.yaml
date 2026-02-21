@@ -1,0 +1,12 @@
+# Go1追加訓練用設定ファイル
+# 
+# Go1タスクのみを含むデータセット設定
+# Transformerパラメータを凍結して、Go1用のデコーダーのみを訓練
+
+go1_walking_ad:
+  type: "default"
+  path: "go1_trajectories"  # data/go1_trajectories (AD data)
+  group: "quadruped_locomotion"  # 既存のグループ名を使用
+  reward_scale: 1.0
+  episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)

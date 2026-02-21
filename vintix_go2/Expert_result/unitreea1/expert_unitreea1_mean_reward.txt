@@ -1,0 +1,9 @@
+Expert Policy Evaluation Summary
+============================================================
+Robot Type: unitreea1
+Total Steps: 1000
+Number of Environments: 10
+
+Mean Reward per Step: 0.020857
+Std Reward per Step: 0.000212
+============================================================

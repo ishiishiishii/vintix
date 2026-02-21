@@ -1,0 +1,15 @@
+Expert Policy Evaluation Summary
+============================================================
+Robot Type: go2
+Total Steps: 20000
+Number of Environments: 10
+Total Episodes: 200
+
+Mean Reward per Step: 0.021348
+Std Reward per Step: 0.000146
+
+Mean Reward per Episode: 21.325001
+Std Reward per Episode: 0.011296
+Mean Episode Length: 1000.00
+Std Episode Length: 0.00
+============================================================

@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 """
-Vintix モデルの動作を動画として保存するスクリプト
-
-eval_vintix.pyをベースに録画機能を追加
-
-Usage:
-    python scripts/save_vintix.py --vintix_path models/vintix_go2/vintix_go2_ad/0095_epoch --output movie/vintix_expert_only.mp4
+Vintix モデルの評価と録画を行うスクリプト
 """
 import argparse
 import os
 import pickle
 import sys
+import json
 from pathlib import Path
 from collections import deque
 from importlib import metadata
@@ -19,13 +15,10 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend
+matplotlib.use('Agg')
 
-# Genesis locomotion環境のインポート用
 GENESIS_LOCOMOTION_PATH = str(Path(__file__).parents[2] / "Genesis" / "examples" / "locomotion")
 sys.path.insert(0, GENESIS_LOCOMOTION_PATH)
-
-# rsl_rl バージョンチェック
 try:
     try:
         if metadata.version("rsl-rl"):
@@ -40,88 +33,280 @@ import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
+from env import Go1Env
+from env import UnitreeA1Env
+from env import ANYmalCEnv
 
-# Vintixモジュールのインポート
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from vintix.vintix import Vintix
+
+
+def generate_output_filename(vintix_path: str, robot_type: str, num_envs: int, max_episodes: int, output_dir: str = None, base_mass: float = None):
+    """出力ファイル名を自動生成: robotname_envsnumber_episodenumber"""
+    filename = f"{robot_type}_{num_envs}envs_{max_episodes}episodes"
+    
+    if base_mass is not None:
+        filename = f"{filename}_mass_{base_mass:.3f}kg"
+    
+    if output_dir is None:
+        model_dir = Path(vintix_path).parent
+        result_dir = model_dir / "Result" / robot_type
+        result_dir.mkdir(parents=True, exist_ok=True)
+        output_path = result_dir / filename
+    else:
+        output_path = Path(output_dir) / filename
+    return str(output_path)
+
+
+def _create_env(robot_type: str, num_envs: int, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer: bool = False):
+    """環境を作成するヘルパー関数"""
+    env_classes = {
+        "go2": Go2Env,
+        "minicheetah": MiniCheetahEnv,
+        "laikago": LaikagoEnv,
+        "go1": Go1Env,
+        "unitreea1": UnitreeA1Env,
+        "anymalc": ANYmalCEnv,
+    }
+    if robot_type not in env_classes:
+        raise ValueError(f"Unknown robot type: {robot_type}")
+    
+    return env_classes[robot_type](
+        num_envs=num_envs,
+        env_cfg=env_cfg,
+        obs_cfg=obs_cfg,
+        reward_cfg=reward_cfg,
+        command_cfg=command_cfg,
+        show_viewer=show_viewer,
+    )
+
+
+def _load_stats_from_trajectory_json(json_path: str, task_name: str) -> dict:
+    """Trajectory JSONファイルから正規化統計を読み込む"""
+    with open(json_path, 'r') as f:
+        metadata = json.load(f)
+    
+    if task_name not in metadata.get("task_name", ""):
+        print(f"Warning: task_name mismatch. Expected '{task_name}', found '{metadata.get('task_name', 'N/A')}'")
+    
+    stats = {
+        task_name: {
+            "obs_mean": metadata["obs_mean"],
+            "obs_std": metadata["obs_std"],
+            "acs_mean": metadata["acs_mean"],
+            "acs_std": metadata["acs_std"],
+        }
+    }
+    return stats
+
+
+def _compute_averaged_stats_from_known_tasks(model_metadata: dict, task_name: str) -> dict:
+    """未知タスク用に、学習済みタスク（既知タスク）の正規化情報を平均して1つの正規化情報を生成する。
+
+    ゼロショット評価ではこの方法をメインで使う。対象ロボットのデータを一切使わず、
+    モデルが学習時に用いたタスクの obs_mean/obs_std, acs_mean/acs_std を
+    要素ごとに平均したものを未知タスクの正規化として利用する。
+    """
+    if not model_metadata:
+        raise ValueError("Cannot compute averaged stats: model has no known tasks")
+    obs_means = []
+    obs_stds = []
+    acs_means = []
+    acs_stds = []
+    for tn, meta in model_metadata.items():
+        if "obs_mean" in meta and "obs_std" in meta and "acs_mean" in meta and "acs_std" in meta:
+            obs_means.append(np.array(meta["obs_mean"]))
+            obs_stds.append(np.array(meta["obs_std"]))
+            acs_means.append(np.array(meta["acs_mean"]))
+            acs_stds.append(np.array(meta["acs_std"]))
+    if not obs_means:
+        raise ValueError(
+            "No task in model_metadata has obs_mean/obs_std/acs_mean/acs_std. "
+            "Cannot compute averaged normalization for unknown task."
+        )
+    obs_mean_avg = np.mean(obs_means, axis=0)
+    obs_std_avg = np.mean(obs_stds, axis=0)
+    acs_mean_avg = np.mean(acs_means, axis=0)
+    acs_std_avg = np.mean(acs_stds, axis=0)
+    return {
+        task_name: {
+            "obs_mean": obs_mean_avg.tolist(),
+            "obs_std": obs_std_avg.tolist(),
+            "acs_mean": acs_mean_avg.tolist(),
+            "acs_std": acs_std_avg.tolist(),
+        }
+    }
+
+
+def _get_action_limits_for_robot(robot_type: str, env_cfg, device):
+    """ロボットタイプに基づいてaction_limitsを計算"""
+    if robot_type == "go2":
+        default_joint_angles = torch.tensor([
+            0.0, 0.8, -1.5, 0.0, 0.8, -1.5,
+            0.0, 1.0, -1.5, 0.0, 1.0, -1.5,
+        ], device=device)
+        joint_limits = torch.tensor([
+            [-1.0472, 1.0472], [-1.5708, 3.4907], [-2.7227, -0.83776],
+            [-1.0472, 1.0472], [-1.5708, 3.4907], [-2.7227, -0.83776],
+            [-1.0472, 1.0472], [-0.5236, 4.5379], [-2.7227, -0.83776],
+            [-1.0472, 1.0472], [-0.5236, 4.5379], [-2.7227, -0.83776],
+        ], device=device)
+    elif robot_type == "unitreea1":
+        default_joint_angles = torch.tensor([
+            0.0, 0.8, -1.5, 0.0, 0.8, -1.5,
+            0.0, 1.0, -1.5, 0.0, 1.0, -1.5,
+        ], device=device)
+        joint_limits = torch.tensor([
+            [-0.80, 0.80], [-1.05, 4.19], [-2.70, -0.92],
+            [-0.80, 0.80], [-1.05, 4.19], [-2.70, -0.92],
+            [-0.80, 0.80], [-1.05, 4.19], [-2.70, -0.92],
+            [-0.80, 0.80], [-1.05, 4.19], [-2.70, -0.92],
+        ], device=device)
+    elif robot_type == "go1":
+        default_joint_angles = torch.tensor([
+            0.0, 0.8, -1.6, 0.0, 0.8, -1.6,
+            0.0, 1.0, -1.6, 0.0, 1.0, -1.6,
+        ], device=device)
+        joint_limits = torch.tensor([
+            [-0.863, 0.863], [-0.686, 4.501], [-2.818, -0.888],
+            [-0.863, 0.863], [-0.686, 4.501], [-2.818, -0.888],
+            [-0.863, 0.863], [-0.686, 4.501], [-2.818, -0.888],
+            [-0.863, 0.863], [-0.686, 4.501], [-2.818, -0.888],
+        ], device=device)
+    elif robot_type == "minicheetah":
+        default_joint_angles = torch.tensor([
+            0.0, 0.8, -1.5, 0.0, 0.8, -1.5,
+            0.0, 1.0, -1.5, 0.0, 1.0, -1.5,
+        ], device=device)
+        joint_limits = torch.tensor([
+            [-0.802, 0.802], [-1.047, 4.189], [-2.697, -0.916],
+            [-0.802, 0.802], [-1.047, 4.189], [-2.697, -0.916],
+            [-0.802, 0.802], [-1.047, 4.189], [-2.697, -0.916],
+            [-0.802, 0.802], [-1.047, 4.189], [-2.697, -0.916],
+        ], device=device)
+    else:
+        return None
+    
+    action_scale = env_cfg.get("action_scale", 0.25)
+    action_limits = (joint_limits - default_joint_angles.unsqueeze(1)) / action_scale
+    return action_limits
+
+
+def _get_task_name_for_robot(robot_type: str, model_metadata: dict):
+    """ロボットタイプに基づいてtask_nameを取得
+    
+    Args:
+        robot_type: ロボットタイプ（go2, go1, minicheetah, unitreea1等）
+        model_metadata: モデルのメタデータ辞書
+        
+    Returns:
+        (task_name, is_unknown): タスク名と未知タスクかどうかのフラグ
+    """
+    task_name_map = {
+        "go2": "go2_walking_ad",
+        "minicheetah": "minicheetah_walking_ad",
+        "laikago": "laikago_walking_ad",
+        "go1": "go1_walking_ad",
+        "unitreea1": "unitreea1_walking_ad",
+        "anymalc": "anymalc_walking_ad",
+    }
+    
+    task_name = task_name_map.get(robot_type)
+    if task_name is None:
+        raise ValueError(f"Unknown robot_type: {robot_type}")
+    
+    if task_name in model_metadata:
+        return task_name, False
+    
+    return task_name, True
 
 
 def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
     """並列評価を実行"""
     NUM_ENVS = args.num_envs
-    MAX_STEPS = args.max_steps
     MAX_EPISODE_STEPS = 1000
+    MAX_EPISODES = args.max_episodes
     
-    # 環境作成
-    print(f"Creating {NUM_ENVS} parallel environments...")
-    if args.robot_type == "go2":
-        env = Go2Env(
-            num_envs=NUM_ENVS,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,
-        )
-    elif args.robot_type == "minicheetah":
-        env = MiniCheetahEnv(
-            num_envs=NUM_ENVS,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,
-        )
-    elif args.robot_type == "laikago":
-        env = LaikagoEnv(
-            num_envs=NUM_ENVS,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,
-        )
-    else:
-        raise ValueError(f"Unknown robot type: {args.robot_type}")
-    
-    print(f"✓ Created {NUM_ENVS} parallel {args.robot_type} environments")
-    
-    # Vintixモデルのロード
     print(f"Loading Vintix model from {args.vintix_path}...")
     vintix_model = Vintix()
     vintix_model.load_model(args.vintix_path)
     vintix_model = vintix_model.to(gs.device)
     vintix_model.eval()
+    
+    print(f"Creating {NUM_ENVS} parallel environments...")
+    env = _create_env(args.robot_type, NUM_ENVS, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False)
+    print(f"✓ Created {NUM_ENVS} parallel {args.robot_type} environments")
+    
+    if args.base_mass is not None:
+        try:
+            base_link = env.robot.get_link("base")
+            original_mass = base_link.get_mass()
+            base_link.set_mass(args.base_mass)
+            print(f"✓ Changed base mass from {original_mass:.3f} kg to {args.base_mass:.3f} kg")
+        except Exception as e:
+            print(f"Warning: Could not change base mass: {e}")
+    
     print("✓ Vintix model loaded")
     
-    # 各環境に独立した履歴バッファを作成
-    history_buffers = [VintixHistoryBuffer(max_len=args.context_len) for _ in range(NUM_ENVS)]
+    model_metadata = vintix_model.metadata if hasattr(vintix_model, 'metadata') else {}
+    print(f"Available task names in model: {list(model_metadata.keys())}")
     
-    # 環境リセット
+    task_name, is_unknown = _get_task_name_for_robot(args.robot_type, model_metadata)
+    
+    if is_unknown:
+        print(f"\n{'=' * 80}")
+        print(f"Unknown task detected: {task_name}")
+        # 既知のデータセットから読み取る設定: --trajectory_stats_path を指定した場合はそちらを優先
+        if hasattr(args, 'trajectory_stats_path') and args.trajectory_stats_path is not None:
+            stats_path = Path(args.trajectory_stats_path)
+            if stats_path.exists():
+                print(f"Loading normalization statistics from trajectory JSON: {args.trajectory_stats_path}")
+                print(f"{'=' * 80}")
+                stats = _load_stats_from_trajectory_json(args.trajectory_stats_path, task_name)
+                print(f"✓ Loaded statistics from trajectory data")
+            else:
+                # メイン: 未知タスクの正規化は学習タスクの正規化情報を平均したものを使用する
+                print(f"Trajectory stats file not found. Using averaged normalization from known tasks (main).")
+                print(f"{'=' * 80}")
+                stats = _compute_averaged_stats_from_known_tasks(model_metadata, task_name)
+                print(f"✓ Using averaged obs/acs mean/std from {len([k for k, v in model_metadata.items() if 'obs_mean' in v])} known task(s)")
+        else:
+            # メイン: 未知タスクの正規化は学習タスクの正規化情報を平均したものを使用する（ゼロショット評価のデフォルト）
+            print(f"Using averaged normalization from known tasks (main for zero-shot evaluation).")
+            print(f"{'=' * 80}")
+            stats = _compute_averaged_stats_from_known_tasks(model_metadata, task_name)
+            print(f"✓ Using averaged obs/acs mean/std from {len([k for k, v in model_metadata.items() if 'obs_mean' in v])} known task(s)")
+        
+        group_name = "quadruped_locomotion"
+        print(f"\nAdding task '{task_name}' to model with group '{group_name}'...")
+        vintix_model.add_task(task_name, group_name, stats, rew_scale=1.0)
+        print(f"✓ Task '{task_name}' added successfully")
+        print(f"{'=' * 80}\n")
+    
+    print(f"Using task_name: {task_name} for robot_type: {args.robot_type}")
+    
+    CONTEXT_LEN = 2048
+    history_buffers = [VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name) for _ in range(NUM_ENVS)]
+    
     obs, _ = env.reset()
     
-    # 各環境の初期状態をランダム化（標準偏差が0になるのを防ぐため）
     from genesis.utils.geom import transform_quat_by_quat as transform_quat
     env_indices = torch.arange(NUM_ENVS, device=gs.device, dtype=torch.long)
     
-    # 初期位置にランダムなオフセット（±0.1m）
     pos_offset = (torch.rand(NUM_ENVS, 3, device=gs.device) - 0.5) * 0.2
-    pos_offset[:, 2] = 0.0  # Z軸（高さ）は変更しない
+    pos_offset[:, 2] = 0.0
     env.base_pos[env_indices] = env.base_init_pos + pos_offset
     env.robot.set_pos(env.base_pos[env_indices], zero_velocity=False, envs_idx=env_indices)
     
-    # 初期姿勢（ロール・ピッチ）にランダムな角度（±5度）
     roll = (torch.rand(NUM_ENVS, device=gs.device) - 0.5) * 10.0 * np.pi / 180.0
     pitch = (torch.rand(NUM_ENVS, device=gs.device) - 0.5) * 10.0 * np.pi / 180.0
     cr, sr = torch.cos(roll * 0.5), torch.sin(roll * 0.5)
     cp, sp = torch.cos(pitch * 0.5), torch.sin(pitch * 0.5)
     quat_noise = torch.stack([cr * cp, cr * sp, sr * cp, -sr * sp], dim=1)
-    # base_init_quatは[4]の形状なので、各環境に対して拡張する
     base_init_quat_expanded = env.base_init_quat.reshape(1, -1).expand(NUM_ENVS, -1)
     env.base_quat[env_indices] = transform_quat(base_init_quat_expanded, quat_noise)
     env.robot.set_quat(env.base_quat[env_indices], zero_velocity=False, envs_idx=env_indices)
     
-    # 関節角度にランダムなオフセット（±0.1ラジアン）
     dof_noise = (torch.rand(NUM_ENVS, env.num_actions, device=gs.device) - 0.5) * 0.2
     env.dof_pos[env_indices] = env.default_dof_pos + dof_noise
     env.robot.set_dofs_position(
@@ -131,169 +316,139 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         envs_idx=env_indices,
     )
     
-    # 観測値を更新（ランダム化後の状態を反映）
-    # env.step()の最初でobs_bufが更新されるので、ゼロアクションで1ステップ進める
     zero_actions = torch.zeros(NUM_ENVS, env.num_actions, device=gs.device)
     obs, _, _, _ = env.step(zero_actions)
-    obs = obs[:, :-12]  # 観測値から行動を除外
+    obs = obs[:, :-12]
     
-    # 初期履歴の追加
     initial_action = np.zeros(env.num_actions)
     initial_reward = 0.0
     for env_idx in range(NUM_ENVS):
         history_buffers[env_idx].add(obs[env_idx].cpu().numpy(), initial_action, initial_reward)
     
-    # 出力ディレクトリの作成
     output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    graph_path = output_path.parent / f"{output_path.stem}.png"
+    graph_path.parent.mkdir(parents=True, exist_ok=True)
     
-    # ビジュアライズは環境0のみ（rendered_envs_idx=[0]）
-    # 録画開始（環境0のみ）
-    print(f"\nStarting video recording (env 0 only)...")
-    print(f"Recording {MAX_STEPS} steps at {args.fps} FPS...")
-    env.cam.start_recording()
+    print(f"\nRunning parallel evaluation...")
     
-    # 各環境の報酬を記録（ステップごと）
-    # all_rewards[step][env_idx] = reward
-    all_rewards = []  # 各ステップでの全環境の報酬
-    
-    # 各環境のエピソードステップ数を記録
+    all_rewards = []
     env_episode_steps = [0 for _ in range(NUM_ENVS)]
-    
-    # 各環境のエピソードごとの累積報酬を記録
-    # env_episode_rewards[env_idx] = [ep1_reward, ep2_reward, ...]
     env_episode_rewards = [[] for _ in range(NUM_ENVS)]
-    # 各環境のエピソード開始時の累積ステップ数を記録
-    # env_episode_cumulative_steps[env_idx] = [ep1_start_step, ep2_start_step, ...]
-    env_episode_cumulative_steps = [[0] for _ in range(NUM_ENVS)]
-    # 各環境の現在のエピソード累積報酬
+    env_episode_lengths = [[] for _ in range(NUM_ENVS)]
+    # Per-environment cumulative step counter (actual executed steps per env).
+    # We record it at episode boundaries for episodes.csv.
+    env_total_steps = [0 for _ in range(NUM_ENVS)]
+    env_episode_cumulative_steps = [[] for _ in range(NUM_ENVS)]
     env_current_episode_rewards = [0.0 for _ in range(NUM_ENVS)]
-    # 各環境がリセット直後かどうかを記録（リセット直後の報酬を除外するため）
     env_just_reset = [False for _ in range(NUM_ENVS)]
+    env_episode_counts = [0 for _ in range(NUM_ENVS)]
+    env_completed = [False for _ in range(NUM_ENVS)]
     
     step_count = 0
     with torch.no_grad():
-        while step_count < MAX_STEPS:
-            # 各環境のコンテキストを個別に処理（履歴長が異なるため）
+        while True:
+            if all(env_completed):
+                break
+            
             actions = torch.zeros(NUM_ENVS, env.num_actions, device=gs.device)
             for env_idx in range(NUM_ENVS):
-                context = history_buffers[env_idx].get_context(args.context_len)
+                if env_completed[env_idx]:
+                    continue
+                
+                context = history_buffers[env_idx].get_context(CONTEXT_LEN)
                 if context is not None:
-                    # デバイスに転送
                     for key in context[0]:
                         if isinstance(context[0][key], torch.Tensor):
                             context[0][key] = context[0][key].to(gs.device)
                     
-                    # Vintixで予測（個別処理）
                     with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                         pred_actions_list, metadata = vintix_model(context)
                     
-                    # 予測行動を取得
                     pred_actions = pred_actions_list[0]
                     if isinstance(pred_actions, list):
                         pred_actions = pred_actions[0]
                     
-                    if pred_actions.dim() == 3:  # [batch, seq, act_dim]
+                    if pred_actions.dim() == 3:
                         action = pred_actions[0, -1, :].float()
-                    elif pred_actions.dim() == 2:  # [seq, act_dim]
+                    elif pred_actions.dim() == 2:
                         action = pred_actions[-1, :].float()
                     else:
                         raise ValueError(f"Unexpected pred_actions shape: {pred_actions.shape}")
                     
                     actions[env_idx] = action
             
-            # 環境ステップ
             obs, rewards, dones, infos = env.step(actions)
-            obs = obs[:, :-12]  # 観測値から行動を除外
+            obs = obs[:, :-12]
             
-            # ビジュアライズ（環境0のみ）
-            if step_count % 5 == 0:  # レンダリング頻度を下げる
-                env.cam.render()
-            
-            # 各環境の報酬と履歴を更新
             step_rewards = []
             rewards_cpu = rewards.cpu().numpy()
             obs_cpu = obs.cpu().numpy()
             actions_cpu = actions.cpu().numpy()
             
             for env_idx in range(NUM_ENVS):
+                if env_completed[env_idx]:
+                    continue
+                
                 reward_value = float(rewards_cpu[env_idx])
                 
-                # リセット直後のステップの報酬は除外（前のステップの報酬を維持）
                 if env_just_reset[env_idx]:
-                    # リセット直後の報酬は記録しない（前のステップの報酬を維持）
-                    # ただし、履歴バッファには追加する（Vintixの学習には必要）
-                    history_buffers[env_idx].add(
-                        obs_cpu[env_idx],
-                        actions_cpu[env_idx],
-                        reward_value
-                    )
-                    # 報酬は前のステップの平均報酬を使用（グラフの連続性のため）
-                    if len(all_rewards) > 0:
-                        prev_reward = all_rewards[-1][env_idx]
-                    else:
-                        prev_reward = initial_reward
-                    step_rewards.append(prev_reward)
-                    env_just_reset[env_idx] = False  # リセットフラグをクリア
-                else:
-                    step_rewards.append(reward_value)
+                    if env_episode_counts[env_idx] >= MAX_EPISODES:
+                        env_completed[env_idx] = True
+                        continue
                     
-                    history_buffers[env_idx].add(
-                        obs_cpu[env_idx],
-                        actions_cpu[env_idx],
-                        reward_value
-                    )
+                    step_rewards.append(reward_value)
+                    history_buffers[env_idx].add(obs_cpu[env_idx], actions_cpu[env_idx], reward_value)
+                    env_episode_steps[env_idx] += 1
+                    env_current_episode_rewards[env_idx] += reward_value
+                    env_total_steps[env_idx] += 1
+                    env_just_reset[env_idx] = False
+                    continue
                 
+                step_rewards.append(reward_value)
+                history_buffers[env_idx].add(obs_cpu[env_idx], actions_cpu[env_idx], reward_value)
                 env_episode_steps[env_idx] += 1
                 env_current_episode_rewards[env_idx] += reward_value
+                env_total_steps[env_idx] += 1
                 
-                # エピソードリセット判定
-                episode_done = dones[env_idx] or (env_episode_steps[env_idx] >= MAX_EPISODE_STEPS)
-                if episode_done:
-                    # エピソードの累積報酬を記録
+                if dones[env_idx] or (env_episode_steps[env_idx] >= MAX_EPISODE_STEPS):
                     env_episode_rewards[env_idx].append(env_current_episode_rewards[env_idx])
-                    env_episode_cumulative_steps[env_idx].append(step_count)
-                    env_current_episode_rewards[env_idx] = 0.0
+                    env_episode_lengths[env_idx].append(env_episode_steps[env_idx])
+                    env_episode_cumulative_steps[env_idx].append(env_total_steps[env_idx])
                     
-                    # 環境リセット
-                    reset_indices = torch.tensor([env_idx], device=gs.device, dtype=torch.long)
-                    env.reset_idx(reset_indices)
-                    obs[env_idx] = env.obs_buf[env_idx, :-12]  # 行動を除外
+                    env_episode_counts[env_idx] += 1
+                    if env_episode_counts[env_idx] >= MAX_EPISODES:
+                        env_completed[env_idx] = True
                     
-                    # 履歴はクリアしない（Vintixは履歴を保持する）
-                    
-                    # 履歴バッファに初期状態を追加
-                    history_buffers[env_idx].add(
-                        obs[env_idx].cpu().numpy(),
-                        initial_action,
-                        initial_reward
-                    )
-                    env_episode_steps[env_idx] = 0
-                    env_just_reset[env_idx] = True  # リセットフラグを設定
+                    if not env_completed[env_idx]:
+                        reset_indices = torch.tensor([env_idx], device=gs.device, dtype=torch.long)
+                        env.reset_idx(reset_indices)
+                        obs[env_idx] = env.obs_buf[env_idx, :-12]
+                        env_episode_steps[env_idx] = 0
+                        env_current_episode_rewards[env_idx] = 0.0
+                        env_just_reset[env_idx] = True
             
             all_rewards.append(step_rewards)
             step_count += 1
             
-            # 進捗表示（100ステップごと）
             if step_count % 100 == 0:
-                mean_reward = np.mean(step_rewards)
-                std_reward = np.std(step_rewards)
-                print(f"Step {step_count:5d} / {MAX_STEPS} | Mean Reward: {mean_reward:7.5f} | Std: {std_reward:7.5f}")
+                if step_rewards:
+                    mean_reward = np.mean(step_rewards)
+                    std_reward = np.std(step_rewards) if len(step_rewards) > 1 else 0.0
+                else:
+                    mean_reward = 0.0
+                    std_reward = 0.0
+                
+                completed_info = [f"{count}/{MAX_EPISODES}{'✓' if env_completed[i] else ''}" 
+                                 for i, count in enumerate(env_episode_counts)]
+                episode_info = f"Episodes: {completed_info}"
+                print(f"Step {step_count:5d} | {episode_info} | Mean Reward: {mean_reward:7.5f} | Std: {std_reward:7.5f}")
     
-    # 録画停止と保存
-    print(f"\nStopping recording and saving to {args.output}...")
-    env.cam.stop_recording(save_to_filename=str(args.output), fps=args.fps)
-    
-    # グラフの作成（平均と標準偏差）
     print(f"\nCreating performance graphs...")
-    graph_path = output_path.with_suffix('.png')
-    # 元のファイル名を使用（_parallelサフィックスを追加しない）
     
     steps = np.arange(1, len(all_rewards) + 1)
     mean_rewards = [np.mean(rewards) for rewards in all_rewards]
     std_rewards = [np.std(rewards) for rewards in all_rewards]
     
-    # 最後の10ステップを除外（エピソードリセットによる異常な低報酬を除去）
     exclude_last_n_steps = 10
     if len(all_rewards) > exclude_last_n_steps:
         steps = steps[:-exclude_last_n_steps]
@@ -301,28 +456,45 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         std_rewards = std_rewards[:-exclude_last_n_steps]
         all_rewards = all_rewards[:-exclude_last_n_steps]
     
-    # エピソードごとの累積報酬を集計（visualize_trajectories_by_steps.pyと同じ形式）
-    # 全環境のエピソードを累積ステップ数でソートして集計
-    all_episodes_data = []  # [(cumulative_steps, cumulative_reward), ...]
+    all_episodes_data = []
+    all_episodes_by_episode_num = []
+    episode_counter = 0
     for env_idx in range(NUM_ENVS):
-        for ep_idx, (cum_steps, cum_reward) in enumerate(zip(env_episode_cumulative_steps[env_idx], 
-                                                               env_episode_rewards[env_idx])):
-            all_episodes_data.append((cum_steps, cum_reward))
+        for cum_steps, cum_reward, ep_length in zip(
+            env_episode_cumulative_steps[env_idx], 
+            env_episode_rewards[env_idx],
+            env_episode_lengths[env_idx]
+        ):
+            all_episodes_data.append((cum_steps, cum_reward, ep_length))
+            all_episodes_by_episode_num.append((episode_counter, cum_reward))
+            episode_counter += 1
     
-    # 累積ステップ数でソート
     all_episodes_data.sort(key=lambda x: x[0])
+    all_episodes_by_episode_num.sort(key=lambda x: x[0])
     
-    # ビン分割（100分割）して平均・標準偏差を計算
-    if len(all_episodes_data) > 0:
-        max_cum_steps = max([x[0] for x in all_episodes_data])
+    episode_num_to_rewards = {}
+    for env_idx in range(NUM_ENVS):
+        for ep_idx, cum_reward in enumerate(env_episode_rewards[env_idx]):
+            episode_num_to_rewards.setdefault(ep_idx, []).append(cum_reward)
+    
+    episode_nums = []
+    episode_means = []
+    episode_stds = []
+    for ep_num in sorted(episode_num_to_rewards.keys()):
+        rewards = episode_num_to_rewards[ep_num]
+        if rewards:
+            episode_nums.append(ep_num + 1)
+            episode_means.append(np.mean(rewards))
+            episode_stds.append(np.std(rewards) if len(rewards) > 1 else 0.0)
+    
+    if all_episodes_data:
+        max_cum_steps = max(x[0] for x in all_episodes_data)
         num_bins = 100
         step_bins = np.linspace(0, max_cum_steps, num_bins + 1)
         
         bin_cumulative_rewards = []
         for i in range(num_bins):
-            step_min = step_bins[i]
-            step_max = step_bins[i + 1]
-            rewards_in_bin = [x[1] for x in all_episodes_data if step_min <= x[0] < step_max]
+            rewards_in_bin = [x[1] for x in all_episodes_data if step_bins[i] <= x[0] < step_bins[i + 1]]
             bin_cumulative_rewards.append(rewards_in_bin)
         
         mean_cum_rewards = [np.mean(rews) if rews else np.nan for rews in bin_cumulative_rewards]
@@ -339,27 +511,62 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         valid_mean_rewards = np.array([])
         valid_std_rewards = np.array([])
     
-    fig, ax = plt.subplots(1, 1, figsize=(10, 6))
-    fig.suptitle(f'Vintix Model Performance (Parallel) - {output_path.stem}', fontsize=16, fontweight='bold')
+    episode_numbers = [ep[0] for ep in all_episodes_by_episode_num]
+    episode_rewards_list = [ep[1] for ep in all_episodes_by_episode_num]
     
-    # ステップごとの報酬の平均と標準偏差
-    ax.plot(steps, mean_rewards, linewidth=2, label='Mean Reward', color='blue')
-    ax.fill_between(steps,
+    valid_ep_bin_centers = np.array(episode_nums) if episode_nums else np.array([])
+    valid_ep_mean_rewards = np.array(episode_means) if episode_means else np.array([])
+    valid_ep_std_rewards = np.array(episode_stds) if episode_stds else np.array([])
+    
+    # グラフスタイル: generate_readable_eval_graphs と同じ文字サイズ、題名なし、凡例は右上
+    FONT_SIZE_LABEL = 34
+    FONT_SIZE_TICK = 28
+    fig1, ax1 = plt.subplots(1, 1, figsize=(14, 10))
+    ax1.plot(steps, mean_rewards, linewidth=2, label='Mean Reward', color='blue')
+    ax1.fill_between(steps,
                      np.array(mean_rewards) - np.array(std_rewards),
                      np.array(mean_rewards) + np.array(std_rewards),
                      alpha=0.3, color='blue', label='±1 Std')
-    ax.set_xlabel('Step', fontsize=11)
-    ax.set_ylabel('Reward', fontsize=11)
-    ax.set_title('Reward per Step (Mean ± Std)', fontsize=12, fontweight='bold')
-    ax.grid(True, alpha=0.3)
-    ax.axhline(y=0, color='black', linestyle='-', alpha=0.2, linewidth=0.5)
-    ax.legend()
-    
+    ax1.set_xlabel('Step', fontsize=FONT_SIZE_LABEL)
+    ax1.set_ylabel('Reward', fontsize=FONT_SIZE_LABEL)
+    ax1.tick_params(axis='both', which='major', labelsize=FONT_SIZE_TICK)
+    ax1.set_ylim(-0.03, 0.03)
+    ax1.grid(True, alpha=0.3)
+    ax1.axhline(y=0, color='black', linestyle='-', alpha=0.2, linewidth=0.5)
+    ax1.legend(fontsize=FONT_SIZE_TICK, loc='upper right')
     plt.tight_layout()
     plt.savefig(str(graph_path), dpi=150, bbox_inches='tight')
+    plt.close(fig1)
     print(f"✓ Graph saved: {graph_path}")
     
-    # CSVファイルにも保存（ステップごとのデータ）
+    episode_graph_path = graph_path.parent / f"{graph_path.stem}_episodes.png"
+    fig2, ax2 = plt.subplots(1, 1, figsize=(14, 10))
+    if len(valid_ep_bin_centers):
+        ax2.plot(valid_ep_bin_centers, valid_ep_mean_rewards, linewidth=2, label='Mean Cumulative Reward per Episode', color='green')
+        ax2.fill_between(valid_ep_bin_centers,
+                           valid_ep_mean_rewards - valid_ep_std_rewards,
+                           valid_ep_mean_rewards + valid_ep_std_rewards,
+                           alpha=0.3, color='green', label='±1 Std')
+    else:
+        if episode_rewards_list:
+            mean_ep_reward = np.mean(episode_rewards_list)
+            std_ep_reward = np.std(episode_rewards_list)
+            ax2.axhline(y=mean_ep_reward, linewidth=2, color='green', linestyle='-', label='Mean Cumulative Reward per Episode')
+            ax2.axhspan(mean_ep_reward - std_ep_reward, mean_ep_reward + std_ep_reward,
+                        alpha=0.3, color='green', label='±1 Std')
+            ax2.plot(episode_numbers, episode_rewards_list, linewidth=1, alpha=0.3, color='green', label='Individual Episodes')
+    ax2.set_xlabel('Episode Number', fontsize=FONT_SIZE_LABEL)
+    ax2.set_ylabel('Cumulative Reward per Episode', fontsize=FONT_SIZE_LABEL)
+    ax2.tick_params(axis='both', which='major', labelsize=FONT_SIZE_TICK)
+    ax2.set_ylim(-5, 28)
+    ax2.set_xlim(0, 11)
+    ax2.grid(True, alpha=0.3)
+    ax2.legend(fontsize=FONT_SIZE_TICK, loc='upper right')
+    plt.tight_layout()
+    plt.savefig(str(episode_graph_path), dpi=150, bbox_inches='tight')
+    plt.close(fig2)
+    print(f"✓ Episode graph saved: {episode_graph_path}")
+    
     csv_path = graph_path.with_suffix('.csv')
     with open(csv_path, 'w') as f:
         f.write("step,mean_reward,std_reward\n")
@@ -367,35 +574,288 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
             f.write(f"{i},{mean_r:.6f},{std_r:.6f}\n")
     print(f"✓ CSV saved: {csv_path}")
     
-    # エピソードごとの累積報酬のCSVも保存
     episode_csv_path = graph_path.parent / f"{graph_path.stem}_episodes.csv"
     with open(episode_csv_path, 'w') as f:
-        f.write("cumulative_steps,cumulative_reward\n")
-        for cum_steps, cum_reward in all_episodes_data:
-            f.write(f"{cum_steps},{cum_reward:.6f}\n")
+        f.write("episode_number,env_index,cumulative_steps,cumulative_reward,episode_length\n")
+        for env_idx in range(NUM_ENVS):
+            for ep_idx, (cum_steps, cum_reward, ep_length) in enumerate(zip(
+                env_episode_cumulative_steps[env_idx],
+                env_episode_rewards[env_idx],
+                env_episode_lengths[env_idx]
+            )):
+                f.write(f"{ep_idx},{env_idx},{cum_steps},{cum_reward:.6f},{ep_length}\n")
     print(f"✓ Episode CSV saved: {episode_csv_path}")
     
-    # 最終統計
     final_mean_reward = np.mean(mean_rewards)
     final_std_reward = np.mean(std_rewards)
+
+    # Actual executed steps (sum over environments). Note: step_count is the number of parallel loop iterations.
+    total_steps_executed = int(sum(env_total_steps))
+    
+    all_episode_rewards_flat = [reward for env_rewards in env_episode_rewards for reward in env_rewards]
+    all_episode_lengths_flat = [length for env_lengths in env_episode_lengths for length in env_lengths]
+    mean_episode_reward = np.mean(all_episode_rewards_flat) if all_episode_rewards_flat else 0.0
+    std_episode_reward = np.std(all_episode_rewards_flat) if len(all_episode_rewards_flat) > 1 else 0.0
+    mean_episode_length = np.mean(all_episode_lengths_flat) if all_episode_lengths_flat else 0.0
+    std_episode_length = np.std(all_episode_lengths_flat) if len(all_episode_lengths_flat) > 1 else 0.0
+    total_episodes = len(all_episode_rewards_flat)
+    
+    actual_episodes_per_env = [len(env_rewards) for env_rewards in env_episode_rewards]
+    min_episodes_per_env = min(actual_episodes_per_env) if actual_episodes_per_env else 0
+    max_episodes_per_env = max(actual_episodes_per_env) if actual_episodes_per_env else 0
+    mean_episodes_per_env = np.mean(actual_episodes_per_env) if actual_episodes_per_env else 0.0
+    
+    episode_num_to_rewards = {}
+    for env_idx in range(NUM_ENVS):
+        for ep_idx, cum_reward in enumerate(env_episode_rewards[env_idx]):
+            episode_num_to_rewards.setdefault(ep_idx, []).append(cum_reward)
+    
+    episode_stats = []
+    for ep_num in sorted(episode_num_to_rewards.keys()):
+        rewards = episode_num_to_rewards[ep_num]
+        if rewards:
+            episode_stats.append({
+                'episode_num': ep_num + 1,
+                'mean_reward': np.mean(rewards),
+                'std_reward': np.std(rewards) if len(rewards) > 1 else 0.0,
+                'num_envs': len(rewards)
+            })
+    
+    mean_reward_path = graph_path.parent / f"{graph_path.stem}_mean_reward.txt"
+    with open(mean_reward_path, 'w') as f:
+        f.write(f"Vintix Model Evaluation Summary\n")
+        f.write(f"{'=' * 60}\n")
+        f.write(f"Robot Type: {args.robot_type}\n")
+        f.write(f"Number of Environments: {NUM_ENVS}\n")
+        f.write(f"Evaluation Mode: Episode-based\n")
+        f.write(f"\n")
+        f.write(f"=== Actual Results (from collected data) ===\n")
+        f.write(f"Total Steps Executed: {total_steps_executed}\n")
+        f.write(f"Total Episodes Collected: {total_episodes}\n")
+        f.write(f"\n")
+        f.write(f"Episodes per Environment:\n")
+        f.write(f"  Min: {min_episodes_per_env}\n")
+        f.write(f"  Max: {max_episodes_per_env}\n")
+        f.write(f"  Mean: {mean_episodes_per_env:.2f}\n")
+        f.write(f"  Per Environment: {actual_episodes_per_env}\n")
+        f.write(f"\n")
+        f.write(f"=== Step-based Statistics ===\n")
+        f.write(f"Mean Reward per Step: {final_mean_reward:.6f}\n")
+        f.write(f"Std Reward per Step: {final_std_reward:.6f}\n")
+        f.write(f"\n")
+        f.write(f"=== Episode-based Statistics ===\n")
+        f.write(f"Mean Reward per Episode: {mean_episode_reward:.6f}\n")
+        f.write(f"Std Reward per Episode: {std_episode_reward:.6f}\n")
+        if all_episode_rewards_flat:
+            f.write(f"Min Reward per Episode: {min(all_episode_rewards_flat):.6f}\n")
+            f.write(f"Max Reward per Episode: {max(all_episode_rewards_flat):.6f}\n")
+        else:
+            f.write(f"Min Reward per Episode: 0.000000\n")
+            f.write(f"Max Reward per Episode: 0.000000\n")
+        f.write(f"\n")
+        f.write(f"Mean Episode Length (steps): {mean_episode_length:.2f}\n")
+        f.write(f"Std Episode Length (steps): {std_episode_length:.2f}\n")
+        if all_episode_lengths_flat:
+            f.write(f"Min Episode Length (steps): {min(all_episode_lengths_flat)}\n")
+            f.write(f"Max Episode Length (steps): {max(all_episode_lengths_flat)}\n")
+        else:
+            f.write(f"Min Episode Length (steps): 0\n")
+            f.write(f"Max Episode Length (steps): 0\n")
+        f.write(f"\n")
+        if episode_stats:
+            f.write(f"=== Reward per Episode Number (across all environments) ===\n")
+            for stat in episode_stats[:20]:
+                f.write(f"Episode {stat['episode_num']:3d}: Mean={stat['mean_reward']:8.6f}, Std={stat['std_reward']:8.6f}, N={stat['num_envs']}\n")
+            if len(episode_stats) > 20:
+                f.write(f"... (showing first 20 episodes, total {len(episode_stats)} episodes)\n")
+        f.write(f"{'=' * 60}\n")
+    print(f"✓ Mean reward summary saved: {mean_reward_path}")
+    
     print(f"\n{'=' * 80}")
     print(f"✓ Parallel evaluation completed!")
-    print(f"  Output video: {output_path.absolute()}")
     print(f"  Output graph: {graph_path.absolute()}")
-    print(f"  Total steps: {step_count}")
+    print(f"  Total steps: {total_steps_executed}")
     print(f"  Number of environments: {NUM_ENVS}")
     print(f"  Mean reward per step: {final_mean_reward:.6f}")
     print(f"  Std reward per step: {final_std_reward:.6f}")
+    print(f"{'=' * 80}")
+    
+    # グラフパスを返す（単一録画で使用）
+    return graph_path
+
+
+def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
+    """単一環境で1000ステップの動画録画を実行"""
+    MAX_RECORDING_STEPS = 1000
+    
+    print(f"Loading Vintix model from {args.vintix_path}...")
+    vintix_model = Vintix()
+    vintix_model.load_model(args.vintix_path)
+    vintix_model = vintix_model.to(gs.device)
+    vintix_model.eval()
+    
+    model_metadata = vintix_model.metadata if hasattr(vintix_model, 'metadata') else {}
+    task_name, is_unknown = _get_task_name_for_robot(args.robot_type, model_metadata)
+    
+    if is_unknown:
+        print(f"\n{'=' * 80}")
+        print(f"Unknown task detected: {task_name}")
+        # 既知のデータセットから読み取る設定: --trajectory_stats_path を指定した場合はそちらを優先
+        if hasattr(args, 'trajectory_stats_path') and args.trajectory_stats_path is not None:
+            stats_path = Path(args.trajectory_stats_path)
+            if stats_path.exists():
+                print(f"Loading normalization statistics from trajectory JSON: {args.trajectory_stats_path}")
+                print(f"{'=' * 80}")
+                stats = _load_stats_from_trajectory_json(args.trajectory_stats_path, task_name)
+                print(f"✓ Loaded statistics from trajectory data")
+            else:
+                # メイン: 未知タスクの正規化は学習タスクの正規化情報を平均したものを使用する
+                print(f"Trajectory stats file not found. Using averaged normalization from known tasks (main).")
+                print(f"{'=' * 80}")
+                stats = _compute_averaged_stats_from_known_tasks(model_metadata, task_name)
+                print(f"✓ Using averaged obs/acs mean/std from {len([k for k, v in model_metadata.items() if 'obs_mean' in v])} known task(s)")
+        else:
+            # メイン: 未知タスクの正規化は学習タスクの正規化情報を平均したものを使用する（ゼロショット評価のデフォルト）
+            print(f"Using averaged normalization from known tasks (main for zero-shot evaluation).")
+            print(f"{'=' * 80}")
+            stats = _compute_averaged_stats_from_known_tasks(model_metadata, task_name)
+            print(f"✓ Using averaged obs/acs mean/std from {len([k for k, v in model_metadata.items() if 'obs_mean' in v])} known task(s)")
+        
+        group_name = "quadruped_locomotion"
+        print(f"\nAdding task '{task_name}' to model with group '{group_name}'...")
+        vintix_model.add_task(task_name, group_name, stats, rew_scale=1.0)
+        print(f"✓ Task '{task_name}' added successfully")
+        print(f"{'=' * 80}\n")
+    
+    print(f"Using task_name: {task_name} for robot_type: {args.robot_type}")
+    
+    print(f"\n{'=' * 80}")
+    print(f"Starting video recording...")
+    print(f"{'=' * 80}")
+    
+    env = _create_env(args.robot_type, 1, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False)
+    print(f"✓ Created {args.robot_type} environment")
+    
+    if args.base_mass is not None:
+        try:
+            base_link = env.robot.get_link("base")
+            original_mass = base_link.get_mass()
+            base_link.set_mass(args.base_mass)
+            print(f"✓ Changed base mass from {original_mass:.3f} kg to {args.base_mass:.3f} kg")
+        except Exception as e:
+            print(f"Warning: Could not change base mass: {e}")
+    
+    CONTEXT_LEN = 2048
+    history_buffer = VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name)
+    
+    obs, _ = env.reset()
+    obs = obs[:, :-12]
+    
+    from genesis.utils.geom import transform_quat_by_quat as transform_quat
+    env_idx = torch.tensor([0], device=gs.device, dtype=torch.long)
+    
+    pos_offset = (torch.rand(1, 3, device=gs.device) - 0.5) * 0.2
+    pos_offset[:, 2] = 0.0
+    env.base_pos[env_idx] = env.base_init_pos + pos_offset
+    env.robot.set_pos(env.base_pos[env_idx], zero_velocity=False, envs_idx=env_idx)
+    
+    roll = (torch.rand(1, device=gs.device) - 0.5) * 10.0 * np.pi / 180.0
+    pitch = (torch.rand(1, device=gs.device) - 0.5) * 10.0 * np.pi / 180.0
+    cr, sr = torch.cos(roll * 0.5), torch.sin(roll * 0.5)
+    cp, sp = torch.cos(pitch * 0.5), torch.sin(pitch * 0.5)
+    quat_noise = torch.stack([cr * cp, cr * sp, sr * cp, -sr * sp], dim=1)
+    base_init_quat_expanded = env.base_init_quat.reshape(1, -1).expand(1, -1)
+    env.base_quat[env_idx] = transform_quat(base_init_quat_expanded, quat_noise)
+    env.robot.set_quat(env.base_quat[env_idx], zero_velocity=False, envs_idx=env_idx)
+    
+    dof_noise = (torch.rand(1, env.num_actions, device=gs.device) - 0.5) * 0.2
+    env.dof_pos[env_idx] = env.default_dof_pos + dof_noise
+    env.robot.set_dofs_position(
+        position=env.dof_pos[env_idx],
+        dofs_idx_local=env.motors_dof_idx,
+        zero_velocity=True,
+        envs_idx=env_idx,
+    )
+    
+    zero_actions = torch.zeros(1, env.num_actions, device=gs.device)
+    obs, _, _, _ = env.step(zero_actions)
+    obs = obs[:, :-12]
+    
+    initial_action = np.zeros(env.num_actions)
+    initial_reward = 0.0
+    history_buffer.add(obs[0].cpu().numpy(), initial_action, initial_reward)
+    
+    output_path = Path(args.output)
+    if output_path.suffix == '':
+        output_path = output_path.with_suffix('.mp4')
+        args.output = str(output_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    FPS = 30
+    print(f"Recording {MAX_RECORDING_STEPS} steps at {FPS} FPS...")
+    env.cam.start_recording()
+    
+    step_count = 0
+    with torch.no_grad():
+        while step_count < MAX_RECORDING_STEPS:
+            context = history_buffer.get_context(CONTEXT_LEN)
+            
+            if context is not None:
+                for key in context[0]:
+                    if isinstance(context[0][key], torch.Tensor):
+                        context[0][key] = context[0][key].to(gs.device)
+                
+                with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+                    pred_actions, metadata = vintix_model(context)
+                
+                if isinstance(pred_actions, list):
+                    pred_actions = pred_actions[0]
+                
+                if pred_actions.dim() == 3:
+                    action = pred_actions[0, -1, :].unsqueeze(0).float()
+                elif pred_actions.dim() == 2:
+                    action = pred_actions[-1, :].unsqueeze(0).float()
+                else:
+                    raise ValueError(f"Unexpected pred_actions shape: {pred_actions.shape}")
+            else:
+                action = torch.zeros(1, env.num_actions, device=gs.device)
+            
+            obs, rewards, dones, infos = env.step(action)
+            obs = obs[:, :-12]
+            env.cam.render()
+            
+            reward_value = float(rewards.cpu().numpy()[0])
+            history_buffer.add(obs[0].cpu().numpy(), action[0].cpu().numpy(), reward_value)
+            
+            step_count += 1
+            
+            if step_count % 100 == 0:
+                print(f"Recording step {step_count:5d} / {MAX_RECORDING_STEPS}...")
+            
+            if dones[0]:
+                reset_indices = torch.tensor([0], device=gs.device, dtype=torch.long)
+                env.reset_idx(reset_indices)
+                obs[0] = env.obs_buf[0, :-12]
+    
+    print(f"\nStopping recording and saving to {args.output}...")
+    env.cam.stop_recording(save_to_filename=str(args.output), fps=FPS)
+    
+    print(f"\n{'=' * 80}")
+    print(f"✓ Video recording completed!")
+    print(f"  Output video: {output_path.absolute()}")
     if output_path.exists():
         print(f"  Video file size: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
     print(f"{'=' * 80}")
 
 
+
+
 class VintixHistoryBuffer:
     """Vintix用の履歴バッファ（環境リセット後も保持）"""
     
-    def __init__(self, max_len=1024):
+    def __init__(self, max_len=1024, task_name='go2_walking_ad'):
         self.max_len = max_len
+        self.task_name = task_name
         self.observations = deque(maxlen=max_len)
         self.actions = deque(maxlen=max_len)
         self.rewards = deque(maxlen=max_len)
@@ -411,23 +871,21 @@ class VintixHistoryBuffer:
         self.current_step += 1
     
     def get_context(self, context_len=1024):
-        """Vintix用のコンテキストを取得（eval_vintix.pyと同じ）"""
-        if len(self.observations) == 0:
+        """Vintix用のコンテキストを取得"""
+        if not self.observations:
             return None
         
-        # 最新のcontext_len分を取得
         obs_list = list(self.observations)[-context_len:]
         act_list = list(self.actions)[-context_len:]
         rew_list = list(self.rewards)[-context_len:]
         step_list = list(self.step_nums)[-context_len:]
         
-        # Vintixの入力形式：eval_vintix.pyと同じ
         batch = [{
             'observation': torch.tensor(np.array(obs_list), dtype=torch.float32),
             'prev_action': torch.tensor(np.array(act_list), dtype=torch.float32),
             'prev_reward': torch.tensor(np.array(rew_list), dtype=torch.float32).unsqueeze(1),
             'step_num': torch.tensor(step_list, dtype=torch.int32),
-            'task_name': 'go2_walking_ad',
+            'task_name': self.task_name,
         }]
         
         return batch
@@ -435,335 +893,144 @@ class VintixHistoryBuffer:
 
 def main():
     parser = argparse.ArgumentParser(description="Save Vintix model behavior as video")
-    parser.add_argument("-e", "--exp_name", type=str, default="go2-walking",
-                        help="Experiment name (for loading env config)")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago"], 
-                        default="go2", help="Robot type")
+    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago", "go1", "unitreea1", "anymalc"], 
+                        default=None, action="append", help="Robot type (can be specified multiple times for multiple robots). Default: go2")
     parser.add_argument("--vintix_path", type=str, required=True,
                         help="Path to Vintix model directory")
-    parser.add_argument("--output", type=str, required=True,
-                        help="Output video file path (e.g., movie/vintix_expert.mp4)")
-    parser.add_argument("--max_steps", type=int, default=500,
-                        help="Maximum steps to record (default: 500 = 10 seconds at 50Hz)")
-    parser.add_argument("--fps", type=int, default=30,
-                        help="Video FPS")
-    parser.add_argument("--context_len", type=int, default=1024,
-                        help="Context length for Vintix")
-    parser.add_argument("--parallel", action="store_true",
-                        help="Use parallel evaluation")
-    parser.add_argument("--num_envs", type=int, default=100,
-                        help="Number of parallel environments (default: 100)")
+    parser.add_argument("--output", type=str, default=None,
+                        help="Output file path (if not specified, auto-generated as robotname_envsnumber_episodenumber)")
+    parser.add_argument("--max_episodes", type=int, default=10,
+                        help="Maximum number of episodes to evaluate (default: 10)")
+    parser.add_argument("--num_envs", type=int, default=10,
+                        help="Number of parallel environments (default: 10)")
+    parser.add_argument("--output_dir", type=str, default=None,
+                        help="Custom output directory name (relative to Result directory). If not specified, uses robot_type as directory name.")
+    parser.add_argument("--base_mass", type=float, default=None,
+                        help="Override base mass of the robot (in kg). If not specified, uses URDF default mass.")
+    parser.add_argument("--record", action="store_true",
+                        help="Record video of the evaluation")
+    parser.add_argument("--trajectory_stats_path", type=str, default=None,
+                        help="Path to trajectory JSON file containing normalization statistics. If specified, skips random data collection and uses statistics from this file.")
     args = parser.parse_args()
-
+    
+    if args.robot_type is None:
+        args.robot_type = ["go2"]
+    elif not isinstance(args.robot_type, list):
+        args.robot_type = [args.robot_type]
+    
+    seen = set()
+    unique_robot_types = []
+    for robot_type in args.robot_type:
+        if robot_type not in seen:
+            seen.add(robot_type)
+            unique_robot_types.append(robot_type)
+    
+    robot_types = unique_robot_types
+    
+    if not robot_types:
+        raise ValueError("No robot types specified. Please specify at least one robot type with -r/--robot_type.")
+    
+    def get_exp_name_for_robot(robot_type):
+        if robot_type == "go2":
+            return "go2-walking"
+        elif robot_type == "minicheetah":
+            return "minicheetah-walking2"
+        elif robot_type == "laikago":
+            return "laikago-walking"
+        elif robot_type == "go1":
+            return "go1-walking"
+        elif robot_type == "unitreea1":
+            return "unitreea1-walking"
+        elif robot_type == "anymalc":
+            return "anymalc-walking"
+        else:
+            return "go2-walking"
+    
     print("=" * 80)
-    if args.parallel:
-        print("Vintix Go2 Parallel Evaluation")
-    else:
-        print("Vintix Go2 Video Recording")
+    print("Vintix Parallel Evaluation (Multiple Robots)")
     print("=" * 80)
+    print(f"Robot types: {', '.join(robot_types)}")
     print(f"Vintix model: {args.vintix_path}")
-    print(f"Output video: {args.output}")
-    print(f"Max steps: {args.max_steps}")
-    print(f"FPS: {args.fps}")
-    if args.parallel:
-        print(f"Mode: Parallel ({args.num_envs} envs, {args.max_steps} steps each)")
+    print(f"Max episodes: {args.max_episodes}")
+    print(f"Mode: Parallel ({args.num_envs} envs, {args.max_episodes} episodes each)")
+    if args.base_mass is not None:
+        print(f"Base mass override: {args.base_mass:.3f} kg")
     print("=" * 80)
     print()
+    
+    gs.init(performance_mode=True)
+    for robot_idx, robot_type in enumerate(robot_types, 1):
+        print(f"\n{'=' * 80}")
+        print(f"Evaluating Robot {robot_idx}/{len(robot_types)}: {robot_type}")
+        print(f"{'=' * 80}")
 
-    # Genesis初期化
-    if args.parallel:
-        gs.init(performance_mode=True)  # 並列評価時はパフォーマンスモードを有効化
-    else:
-        gs.init()
-
-    # 環境設定の読み込み（eval_vintix.pyと同じ）
-    genesis_root = Path(__file__).parents[2] / "Genesis"
-    log_dir = genesis_root / "logs" / args.exp_name
-    cfgs_path = log_dir / "cfgs.pkl"
-    
-    if not cfgs_path.exists():
-        raise FileNotFoundError(f"Config file not found: {cfgs_path}")
-    
-    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(cfgs_path, "rb"))
-    
-    # 並列評価の場合は別処理
-    if args.parallel:
-        _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg)
-        return
-    
-    # 環境作成（eval_vintix.pyと同じ）
-    print("Creating environment...")
-    if args.robot_type == "go2":
-        env = Go2Env(
-            num_envs=1,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,  # 録画時はビューアー非表示
-        )
-    elif args.robot_type == "minicheetah":
-        env = MiniCheetahEnv(
-            num_envs=1,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,
-        )
-    elif args.robot_type == "laikago":
-        env = LaikagoEnv(
-            num_envs=1,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False,
-        )
-    else:
-        raise ValueError(f"Unknown robot type: {args.robot_type}")
-    
-    print(f"✓ Created {args.robot_type} environment")
-
-    # Vintixモデルのロード（eval_vintix.pyと同じ）
-    print(f"Loading Vintix model from {args.vintix_path}...")
-    vintix_model = Vintix()
-    vintix_model.load_model(args.vintix_path)
-    vintix_model = vintix_model.to(gs.device)
-    vintix_model.eval()
-    print("✓ Vintix model loaded")
-
-    # 履歴バッファの初期化
-    history_buffer = VintixHistoryBuffer(max_len=args.context_len)
-    
-    # エピソードの最大ステップ数（1000ステップ）
-    MAX_EPISODE_STEPS = 1000
-
-    # 環境リセット
-    obs, _ = env.reset()
-    # 観測値から行動を除外（訓練時と同じ33次元にする）
-    obs = obs[:, :-12]
-    
-    # 初期履歴の追加（ゼロアクション、ゼロ報酬）
-    initial_action = np.zeros(env.num_actions)
-    initial_reward = 0.0
-    history_buffer.add(obs[0].cpu().numpy(), initial_action, initial_reward)
-
-    # 出力ディレクトリの作成
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    
-    print(f"\nStarting video recording...")
-    print(f"Recording {args.max_steps} steps at {args.fps} FPS...")
-    
-    # 録画開始
-    env.cam.start_recording()
-    
-    step_count = 0
-    episode_count = 0
-    episode_reward = 0.0
-    episode_step_count = 0
-    total_reward = 0.0
-    
-    # ステップごとの統計を記録（グラフの横軸をステップ数にするため）
-    step_rewards = []  # 各ステップの報酬
-    episode_starts = []  # エピソード開始位置（グラフで区切りを表示するため）
-    
-    # エピソード統計の記録（サマリー表示）
-    episode_rewards = []  # 各エピソードの累積報酬
-    episode_lengths = []
-    episode_avg_rewards = []
-    episode_cumulative_steps = []  # 各エピソード開始時の累積ステップ数
-    
-    # 最初のエピソード開始位置
-    episode_starts.append(0)
-    episode_cumulative_steps.append(0)
-    
-    with torch.no_grad():
-        while step_count < args.max_steps:
-            # Vintixから行動予測（eval_vintix.pyと同じロジック）
-            context = history_buffer.get_context(args.context_len)
-            
-            if context is not None:
-                # デバイスに転送
-                for key in context[0]:
-                    if isinstance(context[0][key], torch.Tensor):
-                        context[0][key] = context[0][key].to(gs.device)
-                
-                # Vintixで予測（eval_vintix.pyと同じ）
-                with torch.amp.autocast("cuda", dtype=torch.bfloat16):
-                    pred_actions, metadata = vintix_model(context)
-                
-                # 最新の予測行動を取得（fp32に変換）
-                # pred_actionsはリストの場合があるので、最初の要素を取得
-                if isinstance(pred_actions, list):
-                    pred_actions = pred_actions[0]
-                
-                # pred_actionsの次元を確認
-                if pred_actions.dim() == 3:  # [batch, seq, act_dim]
-                    action = pred_actions[0, -1, :].unsqueeze(0).float()
-                elif pred_actions.dim() == 2:  # [seq, act_dim]
-                    action = pred_actions[-1, :].unsqueeze(0).float()
-                else:
-                    raise ValueError(f"Unexpected pred_actions shape: {pred_actions.shape}")
-            else:
-                # 履歴がない場合はゼロアクション
-                action = torch.zeros(1, env.num_actions, device=gs.device)
-            
-            # 環境ステップ
-            obs, rewards, dones, infos = env.step(action)
-            # 観測値から行動を除外（訓練時と同じ33次元にする）
-            obs = obs[:, :-12]
-            env.cam.render()
-            
-            # 報酬とアクション履歴に追加（行動を除外した観測値）
-            reward_value = float(rewards.cpu().numpy()[0])
-            history_buffer.add(
-                obs[0].cpu().numpy(),
-                action[0].cpu().numpy(),
-                reward_value
-            )
-            
-            # ステップごとのデータを記録
-            step_rewards.append(reward_value)
-            total_reward += reward_value
-            
-            episode_reward += reward_value
-            step_count += 1
-            episode_step_count += 1
-            
-            # 進捗表示（100ステップごと）
-            if step_count % 100 == 0:
-                avg_reward = total_reward / step_count
-                print(f"Step {step_count:5d} / {args.max_steps} | Episode {episode_count + 1} | "
-                      f"Ep Step: {episode_step_count:4d} | Ep Reward: {episode_reward:7.3f} | "
-                      f"Avg Reward: {avg_reward:7.5f}")
-            
-            # 環境リセット判定（環境のdoneまたは1000ステップ到達）
-            episode_done = dones[0] or (episode_step_count >= MAX_EPISODE_STEPS)
-            
-            if episode_done:
-                if episode_step_count >= MAX_EPISODE_STEPS:
-                    print(f"Episode {episode_count + 1} reached max steps ({MAX_EPISODE_STEPS}) | Reward: {episode_reward:.3f}")
-                else:
-                    print(f"Episode {episode_count + 1} completed | Reward: {episode_reward:.3f} | Steps: {episode_step_count}")
-                
-                # エピソード統計を記録
-                episode_rewards.append(episode_reward)
-                episode_lengths.append(episode_step_count)
-                episode_avg_rewards.append(episode_reward / episode_step_count if episode_step_count > 0 else 0.0)
-                
-                # 次のエピソード開始位置を記録
-                episode_starts.append(step_count)
-                episode_cumulative_steps.append(step_count)
-                
-                episode_count += 1
-                episode_reward = 0.0
-                episode_step_count = 0
-                obs, _ = env.reset()
-                # 観測値から行動を除外（訓練時と同じ33次元にする）
-                obs = obs[:, :-12]
-                
-                # 履歴はクリアしない（Vintixは履歴を保持する）
-                # 新しい初期状態を履歴に追加
-                history_buffer.add(obs[0].cpu().numpy(), initial_action, initial_reward)
-    
-    # 最後のエピソードが完了していない場合でも、その報酬を記録
-    if episode_step_count > 0:
-        print(f"Final episode (incomplete) | Reward: {episode_reward:.3f} | Steps: {episode_step_count}")
-        episode_rewards.append(episode_reward)
-        episode_lengths.append(episode_step_count)
-        episode_avg_rewards.append(episode_reward / episode_step_count if episode_step_count > 0 else 0.0)
-        episode_starts.append(step_count)
-        episode_cumulative_steps.append(step_count)
-    
-    # 録画停止と保存
-    print(f"\nStopping recording and saving to {args.output}...")
-    env.cam.stop_recording(save_to_filename=str(args.output), fps=args.fps)
-    
-    # 最終統計
-    avg_reward_per_step = total_reward / step_count if step_count > 0 else 0.0
-    
-    # グラフの作成
-    if len(step_rewards) > 0:
-        print(f"\nCreating performance graphs...")
+        robot_args = argparse.Namespace(**vars(args))
+        robot_args.robot_type = robot_type
         
-        # グラフのファイル名（動画と同じディレクトリに保存）
-        graph_path = output_path.with_suffix('.png')
+        robot_exp_name = get_exp_name_for_robot(robot_type)
+        robot_args.exp_name = robot_exp_name
         
-        # ステップ数配列
-        steps = np.arange(1, len(step_rewards) + 1)
-        
-        fig, axes = plt.subplots(1, 2, figsize=(14, 5))
-        fig.suptitle(f'Vintix Model Performance - {output_path.stem}', fontsize=16, fontweight='bold')
-        
-        # 1. エピソードごとの累積報酬（visualize_trajectories_by_steps.pyと同じ形式）
-        ax1 = axes[0]
-        if len(episode_rewards) > 0:
-            # 各エピソードの累積ステップ数と累積報酬をプロット
-            ax1.plot(episode_cumulative_steps[:len(episode_rewards)], episode_rewards, 
-                    marker='o', linewidth=2, markersize=4, label='Episode Cumulative Reward', color='blue')
-            ax1.set_xlabel('Cumulative Steps', fontsize=11)
-            ax1.set_ylabel('Cumulative Reward per Episode', fontsize=11)
-            ax1.set_title('Episode Cumulative Reward vs Cumulative Steps', fontsize=12, fontweight='bold')
-            ax1.grid(True, alpha=0.3)
-            ax1.legend()
+        if args.output_dir is not None:
+            model_dir = Path(args.vintix_path).parent
+            custom_result_dir = model_dir / "Result" / args.output_dir
+            custom_result_dir.mkdir(parents=True, exist_ok=True)
+            output_dir_str = str(custom_result_dir)
         else:
-            ax1.text(0.5, 0.5, 'No episodes completed', ha='center', va='center', transform=ax1.transAxes)
-            ax1.set_xlabel('Cumulative Steps', fontsize=11)
-            ax1.set_ylabel('Cumulative Reward per Episode', fontsize=11)
-            ax1.set_title('Episode Cumulative Reward vs Cumulative Steps', fontsize=12, fontweight='bold')
-            ax1.grid(True, alpha=0.3)
+            output_dir_str = None
         
-        # 2. ステップごとの報酬（ステップ数ベース）
-        ax2 = axes[1]
-        ax2.plot(steps, step_rewards, linewidth=1, alpha=0.6, label='Reward per Step', color='blue')
-        ax2.set_xlabel('Step', fontsize=11)
-        ax2.set_ylabel('Reward', fontsize=11)
-        ax2.set_title('Reward per Step', fontsize=12, fontweight='bold')
-        ax2.grid(True, alpha=0.3)
-        # エピソードの区切りを縦線で表示
-        for ep_start in episode_starts[1:]:  # 最初の0は除く
-            if ep_start < len(step_rewards):
-                ax2.axvline(x=ep_start, color='r', linestyle='--', alpha=0.3, linewidth=1)
-        ax2.axhline(y=0, color='black', linestyle='-', alpha=0.2, linewidth=0.5)
-        ax2.legend()
+        if args.output is None:
+            robot_args.output = generate_output_filename(args.vintix_path, robot_type, args.num_envs, args.max_episodes, output_dir=output_dir_str, base_mass=args.base_mass)
+        else:
+            output_path = Path(args.output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            robot_args.output = str(output_path)
         
-        plt.tight_layout()
-        plt.savefig(str(graph_path), dpi=150, bbox_inches='tight')
-        print(f"✓ Graph saved: {graph_path}")
+        print(f"Robot type: {robot_type}")
+        print(f"Experiment name: {robot_args.exp_name}")
+        print(f"Output: {robot_args.output}")
+        print()
         
-        # CSVファイルにも保存（ステップごとのデータとエピソードごとの累積報酬）
-        csv_path = output_path.with_suffix('.csv')
-        with open(csv_path, 'w') as f:
-            f.write("step,reward,episode\n")
-            current_episode = 0
-            for i, reward in enumerate(step_rewards, 1):
-                # 現在のエピソード番号を判定
-                if current_episode + 1 < len(episode_starts) and i >= episode_starts[current_episode + 1]:
-                    current_episode += 1
-                f.write(f"{i},{reward:.6f},{current_episode + 1}\n")
-        print(f"✓ CSV saved: {csv_path}")
+        genesis_root = Path(__file__).parents[2] / "Genesis"
+        log_dir = genesis_root / "logs" / robot_args.exp_name
+        cfgs_path = log_dir / "cfgs.pkl"
         
-        # エピソードごとの累積報酬のCSVも保存
-        episode_csv_path = output_path.with_name(output_path.stem + '_episodes.csv')
-        with open(episode_csv_path, 'w') as f:
-            f.write("episode,cumulative_steps,cumulative_reward,episode_length\n")
-            for i, (cum_steps, cum_reward, ep_length) in enumerate(zip(episode_cumulative_steps[:len(episode_rewards)], 
-                                                                        episode_rewards, episode_lengths), 1):
-                f.write(f"{i},{cum_steps},{cum_reward:.6f},{ep_length}\n")
-        print(f"✓ Episode CSV saved: {episode_csv_path}")
-    
+        if cfgs_path.exists():
+            env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(cfgs_path, "rb"))
+            print(f"Loaded config from: {cfgs_path}")
+        else:
+            print(f"Config file not found: {cfgs_path}. Using default configuration.")
+            from train import get_go2_cfgs, get_minicheetah_cfgs, get_laikago_cfgs, get_go1_cfgs, get_unitreea1_cfgs, get_anymalc_cfgs
+            
+            if robot_type == "go2":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_go2_cfgs()
+            elif robot_type == "minicheetah":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_minicheetah_cfgs()
+            elif robot_type == "laikago":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_laikago_cfgs()
+            elif robot_type == "go1":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
+            elif robot_type == "unitreea1":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
+            elif robot_type == "anymalc":
+                env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalc_cfgs()
+            else:
+                raise ValueError(f"Unknown robot type: {robot_type}")
+            train_cfg = None
+        
+        graph_path = _run_parallel_evaluation(robot_args, env_cfg, obs_cfg, reward_cfg, command_cfg)
+        
+        if args.record:
+            print(f"\n{'=' * 80}")
+            print(f"Parallel evaluation completed for {robot_type}. Starting video recording...")
+            print(f"{'=' * 80}")
+            
+            video_output_path = graph_path.parent / f"{graph_path.stem}.mp4"
+            robot_args.output = str(video_output_path)
+            _run_video_recording(robot_args, env_cfg, obs_cfg, reward_cfg, command_cfg)
     print(f"\n{'=' * 80}")
-    print(f"✓ Video saved successfully!")
-    print(f"  Output: {output_path.absolute()}")
-    print(f"  Total steps: {step_count}")
-    print(f"  Total episodes: {episode_count}")
-    print(f"  Average reward per step: {avg_reward_per_step:.6f}")
-    if output_path.exists():
-        print(f"  File size: {output_path.stat().st_size / 1024 / 1024:.2f} MB")
+    print(f"✓ All evaluations completed!")
+    print(f"  Evaluated {len(robot_types)} robot(s): {', '.join(robot_types)}")
     print(f"{'=' * 80}")
-
-
+    return
 if __name__ == "__main__":
     main()

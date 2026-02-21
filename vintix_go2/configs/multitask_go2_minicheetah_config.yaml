@@ -1,4 +1,9 @@
 # Multi-Task Dataset Configuration for Vintix (Go2 + Minicheetah)
+#
+# episode_range: Optional parameter to select a specific fraction of episodes.
+#   Format: [start_fraction, end_fraction] (e.g., [0.0, 0.1] for first 10%)
+#   If not specified, all episodes are used (equivalent to [0.0, 1.0])
+#   If specified, last_frac is ignored.
 
 go2_walking_ad:
   type: "default"
@@ -6,6 +11,7 @@ go2_walking_ad:
   group: "go2_locomotion"
   reward_scale: 1.0
   episode_sparsity: 1
+  # episode_range: [0.0, 1.0]  # Use all episodes (default)
 
 minicheetah_walking_ad:
   type: "default"
@@ -13,4 +19,5 @@ minicheetah_walking_ad:
   group: "minicheetah_locomotion"
   reward_scale: 1.0
   episode_sparsity: 1
+  episode_range: [0.0, 0.5]  # Use first 50% of episodes
 

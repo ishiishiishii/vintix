@@ -1,7 +1,7 @@
 import json
 import os
 from copy import copy
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import h5py
 import numpy as np
@@ -34,6 +34,9 @@ class FoundationMapDataset(Dataset):
             preserving episode order
         last_frac: if not None selects only the last fraction of
             collected trajectory, used for expert distillation
+        episode_range: if not None, selects only episodes within the specified
+            range [start_frac, end_frac] (e.g., [0.0, 0.1] for first 10%).
+            If specified, last_frac is ignored.
         preload: load dataset into RAM
         dtype: the base type of data
     """
@@ -44,6 +47,7 @@ class FoundationMapDataset(Dataset):
                  traj_sparsity: int,
                  ep_sparsity: int = 1,
                  last_frac: Optional[float] = None,
+                 episode_range: Optional[Tuple[float, float]] = None,
                  preload: bool = False,
                  dtype: np.dtype = np.float32):
         self.ds_path = ds_path
@@ -51,6 +55,7 @@ class FoundationMapDataset(Dataset):
         self.traj_sparsity = traj_sparsity
         self.ep_sparsity = ep_sparsity
         self.last_frac = last_frac
+        self.episode_range = episode_range
         self.preload = preload
         self.dtype = dtype
 
@@ -109,10 +114,58 @@ class FoundationMapDataset(Dataset):
                 step_num = np.array(ds.get(key).get('step_num'))
                 step_nums.append(step_num)
             step_nums = np.hstack(step_nums)
-            for i in range(step_nums.shape[0]):
-                if step_nums[i] == 0 or len(transes) == 0:
-                    transes.append([])
-                transes[-1].append(i)
+            total_steps = step_nums.shape[0]
+            
+            # Apply episode_range filter if specified (step-based, not episode-based)
+            if self.episode_range is not None:
+                start_frac, end_frac = self.episode_range
+                start_step_idx = int(total_steps * start_frac)
+                end_step_idx = int(total_steps * end_frac)
+                
+                # If start_step_idx is in the middle of an episode, include from the episode start
+                # Find the previous episode boundary (step_num == 0) before start_step_idx
+                actual_start_step_idx = start_step_idx
+                if start_step_idx > 0 and step_nums[start_step_idx] != 0:
+                    # start_step_idx is in the middle of an episode, find episode start
+                    for i in range(start_step_idx - 1, -1, -1):
+                        if step_nums[i] == 0:
+                            # Found the start of current episode
+                            actual_start_step_idx = i
+                            break
+                    # If no episode start found before start_step_idx, start from 0
+                    if actual_start_step_idx == start_step_idx:
+                        actual_start_step_idx = 0
+                
+                # If end_step_idx is in the middle of an episode, include the entire episode
+                # Find the next episode boundary (step_num == 0) after end_step_idx
+                if end_step_idx >= total_steps:
+                    # end_step_idx is at or beyond the end, use the last valid index
+                    actual_end_step_idx = total_steps - 1
+                else:
+                    actual_end_step_idx = end_step_idx
+                    for i in range(end_step_idx, total_steps):
+                        if step_nums[i] == 0:
+                            # Found the start of next episode, so previous episode ends at i-1
+                            actual_end_step_idx = i - 1
+                            break
+                    else:
+                        # No next episode found, so current episode extends to the end
+                        actual_end_step_idx = total_steps - 1
+                
+                # Process transactions from actual_start_step_idx to actual_end_step_idx
+                for i in range(step_nums.shape[0]):
+                    if i < actual_start_step_idx or i > actual_end_step_idx:
+                        continue  # Skip transactions outside the range
+                    if step_nums[i] == 0 or len(transes) == 0:
+                        transes.append([])
+                    transes[-1].append(i)
+            else:
+                # Original behavior: process all transactions
+                for i in range(step_nums.shape[0]):
+                    if step_nums[i] == 0 or len(transes) == 0:
+                        transes.append([])
+                    transes[-1].append(i)
+            
             transes = transes[::self.ep_sparsity]
             self.transes.append(np.hstack(transes))
         # prepare splits
@@ -130,7 +183,11 @@ class FoundationMapDataset(Dataset):
                 while (right(self.keys[ds_num][end_key]) <
                        self.transes[ds_num][end_trans - 1]):
                     end_key += 1
-                if self.last_frac is None:
+                # If episode_range is specified, ignore last_frac
+                if self.episode_range is not None:
+                    self.splits.append(
+                        (ds_num, start_trans, start_key, end_trans, end_key))
+                elif self.last_frac is None:
                     self.splits.append(
                         (ds_num, start_trans, start_key, end_trans, end_key))
                 else:
@@ -548,10 +605,11 @@ class MultiTaskMapDataset(Dataset):
                  datasets_info: Dict[str, str],
                  trajectory_len: int,
                  trajectory_sparsity: int,
-                 ep_sparsity: Tuple[List[int], int] = 1,
-                 last_frac: Optional[float] = None,
-                 preload: Tuple[List[bool], bool] = False,
-                 randomized: bool = False):
+        ep_sparsity: Tuple[List[int], int] = 1,
+        last_frac: Optional[float] = None,
+        episode_range: Optional[Union[List[Tuple[float, float]], Tuple[float, float]]] = None,
+        preload: Tuple[List[bool], bool] = False,
+        randomized: bool = False):
         self.data_dir = data_dir
         self.datasets_info = datasets_info
         self.dataset_paths = list(self.datasets_info.keys())
@@ -569,6 +627,15 @@ class MultiTaskMapDataset(Dataset):
         else:
             assert len(preload) == len(self.dataset_paths)
             self.preload = preload
+        if episode_range is None:
+            self.episode_range = [None] * len(self.dataset_paths)
+        elif isinstance(episode_range, tuple) and len(episode_range) == 2 and isinstance(episode_range[0], (int, float)):
+            # Single tuple for all datasets
+            self.episode_range = [episode_range] * len(self.dataset_paths)
+        else:
+            # List of tuples, one per dataset
+            assert len(episode_range) == len(self.dataset_paths)
+            self.episode_range = episode_range
 
         self.datasets = []
         dataset_lens = [0]
@@ -585,6 +652,7 @@ class MultiTaskMapDataset(Dataset):
                 traj_sparsity=trajectory_sparsity,
                 ep_sparsity=self.ep_sparsity[i],
                 last_frac=last_frac,
+                episode_range=self.episode_range[i],
                 preload=self.preload[i])
             self.datasets.append(new_dataset)
             dataset_lens.append(len(new_dataset))

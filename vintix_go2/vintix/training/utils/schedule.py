@@ -12,7 +12,13 @@ def _cosine_decay_warmup(iteration: int,
     """
     Linear warmup from 0 --> 1.0, then decay using cosine decay to 0.0
     """
-    if iteration <= warmup_iterations:
+    if warmup_iterations == 0:
+        # No warmup, directly apply cosine decay
+        if total_iterations == 0:
+            return 1.0
+        multiplier = iteration / total_iterations
+        multiplier = 0.5 * (1 + math.cos(math.pi * multiplier))
+    elif iteration <= warmup_iterations:
         multiplier = iteration / warmup_iterations
     else:
         multiplier = (iteration - warmup_iterations) / \
@@ -27,7 +33,7 @@ def _constant_warmup(iteration: int,
     Linear warmup from 0 --> 1.0, then constant
     """
     multiplier = 1.0
-    if iteration <= warmup_iterations:
+    if warmup_iterations > 0 and iteration <= warmup_iterations:
         multiplier = iteration / warmup_iterations
     return multiplier
 

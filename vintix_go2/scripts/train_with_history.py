@@ -251,50 +251,70 @@ def get_minicheetah_cfgs():
 
 
 def get_laikago_cfgs():
+    """
+    Laikago専用の設定（URDFと物理的特性に基づく）
+    Laikagoの仕様:
+    - 高さ: 60cm（立ち姿勢）
+    - 重量: 約22kg
+    - ベース質量: 13.715kg（URDFから）
+    - 最大歩行速度: 0.8m/秒
+    """
     env_cfg = {
         "num_actions": 12,
-        "default_joint_angles": {
+        # joint/link names (URDFから確認済み)
+        "default_joint_angles": {  # [rad] - Laikagoの適切なスタンディング姿勢
+            # Front Right leg (FR) - 1st
             "FR_hip_motor_2_chassis_joint": 0.0,
-            "FR_upper_leg_2_hip_motor_joint": -0.8,
-            "FR_lower_leg_2_upper_leg_joint": 1.5,
+            "FR_upper_leg_2_hip_motor_joint": -0.8,  # 約-46度（前脚はやや低め）
+            "FR_lower_leg_2_upper_leg_joint": 1.5,   # 約86度（膝を適度に曲げる）
+            # Front Left leg (FL) - 2nd
             "FL_hip_motor_2_chassis_joint": 0.0,
             "FL_upper_leg_2_hip_motor_joint": -0.8,
             "FL_lower_leg_2_upper_leg_joint": 1.5,
+            # Rear Right leg (RR) - 3rd
             "RR_hip_motor_2_chassis_joint": 0.0,
             "RR_upper_leg_2_hip_motor_joint": -0.8,
             "RR_lower_leg_2_upper_leg_joint": 1.5,
+            # Rear Left leg (RL) - 4th
             "RL_hip_motor_2_chassis_joint": 0.0,
             "RL_upper_leg_2_hip_motor_joint": -0.8,
-            "RL_lower_leg_2_upper_leg_joint": 1.5,
+            "RL_lower_leg_2_upper_leg_joint": 1.5
         },
         "joint_names": [
+            # Front Right leg (FR) - 1st
             "FR_hip_motor_2_chassis_joint",
-            "FR_upper_leg_2_hip_motor_joint",
+            "FR_upper_leg_2_hip_motor_joint", 
             "FR_lower_leg_2_upper_leg_joint",
+            # Front Left leg (FL) - 2nd
             "FL_hip_motor_2_chassis_joint",
             "FL_upper_leg_2_hip_motor_joint",
-            "FL_lower_leg_2_upper_leg_joint",
+            "FL_lower_leg_2_upper_leg_joint", 
+            # Rear Right leg (RR) - 3rd
             "RR_hip_motor_2_chassis_joint",
             "RR_upper_leg_2_hip_motor_joint",
             "RR_lower_leg_2_upper_leg_joint",
-            "RL_hip_motor_2_chassis_joint",
+            # Rear Left leg (RL) - 4th
+            "RL_hip_motor_2_chassis_joint", 
             "RL_upper_leg_2_hip_motor_joint",
-            "RL_lower_leg_2_upper_leg_joint",
+            "RL_lower_leg_2_upper_leg_joint"
         ],
-        "kp": 20.0,
-        "kd": 0.5,
-        "termination_if_roll_greater_than": 10,
-        "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.45],
+        # PD control parameters (Laikagoに適した値)
+        "kp": 20.0,  # 位置ゲイン
+        "kd": 0.5,   # 速度ゲイン
+        # termination conditions
+        "termination_if_roll_greater_than": 10,   # degree
+        "termination_if_pitch_greater_than": 10,  # degree
+        # base pose (Laikagoの立ち姿勢高さ60cmを考慮、初期高さを50cmに設定)
+        "base_init_pos": [0.0, 0.0, 0.50],  # Laikagoのスタンディング高さ（50cm）
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
-        "action_scale": 0.25,
+        "action_scale": 0.25,  # アクションスケール
         "simulate_action_latency": True,
         "clip_actions": 100.0,
     }
     obs_cfg = {
-        "num_obs": 45,
+        "num_obs": 45,  # 3(ang_vel) + 3(gravity) + 3(commands) + 12(dof_pos) + 12(dof_vel) + 12(actions)
         "obs_scales": {
             "lin_vel": 2.0,
             "ang_vel": 0.25,
@@ -304,22 +324,22 @@ def get_laikago_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.45,
-        "feet_height_target": 0.095,
+        "base_height_target": 0.50,  # Laikagoの目標ベース高さ（50cm）- 立ち姿勢60cmを考慮
+        "feet_height_target": 0.095,  # 足の目標高さ
         "reward_scales": {
-            "tracking_lin_vel": 1.0,
-            "tracking_ang_vel": 0.2,
-            "lin_vel_z": -1.0,
-            "base_height": -50.0,
-            "action_rate": -0.005,
-            "similar_to_default": -0.1,
+            "tracking_lin_vel": 1.0,      # 線形速度追従
+            "tracking_ang_vel": 0.2,      # 角速度追従
+            "lin_vel_z": -1.0,            # Z方向速度ペナルティ
+            "base_height": -50.0,         # ベース高さペナルティ
+            "action_rate": -0.005,       # アクション変化率ペナルティ
+            "similar_to_default": -0.1,  # デフォルト姿勢からの乖離ペナルティ
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
+        "lin_vel_x_range": [0.5, 0.5],  # 前進速度コマンド（最大0.8m/秒だが、訓練時は0.5m/秒）
+        "lin_vel_y_range": [0, 0],      # 横方向速度コマンド
+        "ang_vel_range": [0, 0],         # 角速度コマンド
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg

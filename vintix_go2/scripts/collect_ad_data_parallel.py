@@ -267,14 +267,14 @@ def main():
     
     print("Creating parallel environments...")
     if args.robot_type == "go2":
-        env = Go2Env(
-            num_envs=args.num_envs,
-            env_cfg=env_cfg,
-            obs_cfg=obs_cfg,
-            reward_cfg=reward_cfg,
-            command_cfg=command_cfg,
-            show_viewer=False
-        )
+    env = Go2Env(
+        num_envs=args.num_envs,
+        env_cfg=env_cfg,
+        obs_cfg=obs_cfg,
+        reward_cfg=reward_cfg,
+        command_cfg=command_cfg,
+        show_viewer=False
+    )
     elif args.robot_type == "minicheetah":
         env = MiniCheetahEnv(
             num_envs=args.num_envs,

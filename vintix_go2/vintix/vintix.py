@@ -38,9 +38,10 @@ class Vintix(nn.Module):
         task2group = {}
         group_metadata = {}
         for tn, info in self.metadata.items():
-            task2group[tn] = info["group_name"]
-            if info["group_name"] not in group_metadata:
-                group_metadata[info["group_name"]] = info
+            group_name = info.get("group_name", "quadruped_locomotion")
+            task2group[tn] = group_name
+            if group_name not in group_metadata:
+                group_metadata[group_name] = info
 
         self.encoder = IndividualTaskEncoderNew(
             task2group=task2group,
