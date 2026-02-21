@@ -86,10 +86,14 @@ vintix_go2/results/
 *.pem
 
 # Embedded git repositories (track separately or as submodules)
-Genesis/
 ad-eps/
+# Genesis を親リポジトリで追跡するため .git を退避したバックアップ
+Genesis/.git.bak/
+# Genesis 内の埋め込みリポジトリ
+Genesis/genesis/assets/urdf/spotmicro/temp_repo2/
 bullet3/
 laikago_ros/
 mini_cheetah_urdf/
 vintix/
 
+Genesis/.git.bak/
