@@ -10,7 +10,7 @@ def gs_rand_float(lower, upper, shape, device):
     return (upper - lower) * torch.rand(size=shape, device=device) + lower
 
 
-class MiniCheetahEnv:
+class A1Env:
     def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False,
                  domain_randomization=False, mass_range=(0.9, 1.1)):
         self.num_envs = num_envs
@@ -66,15 +66,7 @@ class MiniCheetahEnv:
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file=str(
-                    Path(__file__).resolve().parents[2]
-                    / "genesis"
-                    / "assets"
-                    / "urdf"
-                    / "mini_cheetah"
-                    / "urdf"
-                    / "mini_cheetah.urdf"
-                ),
+                file=str(Path(__file__).resolve().parents[2] / "genesis" / "assets" / "urdf" / "a1" / "urdf" / "a1.urdf"),
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
@@ -298,12 +290,12 @@ class MiniCheetahEnv:
     def _save_original_physics(self):
         """Save original physics parameters"""
         try:
-            # Get original mass of base link
-            base_link = self.robot.get_link("base")
+            # Get original mass of base link (UnitreeA1 uses 'trunk' as base link name)
+            base_link = self.robot.get_link("trunk")
             self.original_mass = base_link.get_mass()
         except Exception as e:
             print(f"Warning: Could not get original mass: {e}")
-            self.original_mass = 6.921  # Default value (Laikago base mass)
+            self.original_mass = 6.0  # Default value (UnitreeA1 trunk mass from URDF)
     
     def _randomize_physics(self):
         """Randomize physics parameters and apply them"""
@@ -319,8 +311,8 @@ class MiniCheetahEnv:
         self.current_mass_scale = mass_scale
         
         try:
-            # Randomize base mass
-            base_link = self.robot.get_link("base")
+            # Randomize base mass (UnitreeA1 uses 'trunk' as base link name)
+            base_link = self.robot.get_link("trunk")
             new_mass = self.original_mass * self.current_mass_scale
             base_link.set_mass(new_mass)
         except Exception as e:
@@ -340,51 +332,3 @@ class MiniCheetahEnv:
         """Dynamically change randomization ranges"""
         if mass_range is not None:
             self.mass_range = mass_range
-    
-    # ------------ domain randomization methods ------------
-    def _save_original_physics(self):
-        """Save original physics parameters"""
-        try:
-            # Get original mass of base link
-            base_link = self.robot.get_link("base")
-            self.original_mass = base_link.get_mass()
-        except Exception as e:
-            print(f"Warning: Could not get original mass: {e}")
-            self.original_mass = 6.921  # Default value (MiniCheetah base mass)
-    
-    def _randomize_physics(self):
-        """Randomize physics parameters and apply them"""
-        if not self.domain_randomization:
-            return
-            
-        # Save original mass if not saved yet
-        if self.original_mass is None:
-            self._save_original_physics()
-            
-        # Randomize mass
-        mass_scale = random.uniform(*self.mass_range)
-        self.current_mass_scale = mass_scale
-        
-        try:
-            # Randomize base mass
-            base_link = self.robot.get_link("base")
-            new_mass = self.original_mass * self.current_mass_scale
-            base_link.set_mass(new_mass)
-        except Exception as e:
-            print(f"Warning: Could not randomize physics: {e}")
-    
-    def get_randomization_info(self):
-        """Get current randomization information"""
-        if not self.domain_randomization:
-            return None
-            
-        return {
-            'mass_scale': self.current_mass_scale,
-            'mass_range': self.mass_range
-        }
-    
-    def set_randomization_ranges(self, mass_range=None):
-        """Dynamically change randomization ranges"""
-        if mass_range is not None:
-            self.mass_range = mass_range
-

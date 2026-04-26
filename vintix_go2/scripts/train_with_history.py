@@ -1,35 +1,75 @@
 #!/usr/bin/env python3
 """
-Train PPO (Genesis locomotion) while recording the actual training trajectory.
+Train PPO (Genesis locomotion) while recording the training trajectory for Vintix / AD-style use.
 
-This script is based on Genesis/examples/locomotion/train.py but extends the
-runner so that every environment step used during PPO training is written to an
-HDF5 file. The resulting dataset mirrors Algorithm Distillation data, except it
-captures the genuine learning trajectory (no synthetic epsilon interpolation).
+記録形式は ``collect_ad_data_parallel`` / Vintix 用の **Collect 互換 per-env HDF5** のみ
+（``trajectories_env_XXXX.h5`` と ``<dirname>.json``）。中間の env_id 混在ファイルは出力しない。
 
-Usage example:
+各ファイルのキー: ``proprio_observation``（長さ transitions+1）, ``action``, ``reward``, ``step_num``。
+proprio は全観測から末尾 num_actions 次元（直前関節指令）を除いたベクトル。
 
+チェックポイント (model_*.pt, cfgs.pkl, TensorBoard) は Genesis/logs/<exp_name>/。
+軌跡のデフォルト保存先: ``vintix_go2/data/ppo_history/``（直下に ``trajectories_env_*.h5`` 等を置く。
+``--run_all_cross_ft`` のときのみ上書き防止のため ``data/ppo_history/<source>_to_<target>/`` を明示指定）。
+
+Usage:
+
+    cd /workspace/vintix_go2 && \\
     PYTHONPATH=/workspace/vintix_go2:/workspace/Genesis/examples/locomotion \\
     python scripts/train_with_history.py \\
         -e go2-walking-history \\
         -r go2 \\
-        --num_envs 1024 \\
-        --max_iterations 301 \\
-        --record_output data/go2_trajectories/go2_ppo_history
+        -B 4096 \\
+        --max_iterations 301
+
+クロスロボット FT（例: Go1 専門家 → Go2）::
+
+    python scripts/train_with_history.py -r go2 --source_robot go1 --max_iterations 301
+
+→ 履歴は ``data/ppo_history/``（または ``--record_output``）に保存。
+
+12 通りまとめて実行（各 301 イテレーション）::
+
+    python scripts/train_with_history.py --run_all_cross_ft
+
+``--record_output`` に相対パスを渡す場合は **vintix_go2 ディレクトリを基準**に解決される（カレントディレクトリに依存しない）。
+Docker で root 実行後にホストユーザーがファイルを扱いやすくするには ``--relax_output_permissions`` または
+環境変数 ``VINTIX_RELAX_OUTPUT_PERMISSIONS=1`` を指定する。
 """
 
+from __future__ import annotations
+
 import argparse
+import glob
+import json
 import os
 import pickle
 import shutil
+import subprocess
+import sys
 from collections import deque
+from dataclasses import dataclass
 from importlib import metadata
 from pathlib import Path
-from typing import Optional
+from typing import Dict, List, Optional
 
 import h5py
 import numpy as np
 import torch
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_VINTIX_ROOT = _SCRIPT_DIR.parent
+_LOCOMOTION_ROOT = _VINTIX_ROOT.parent / "Genesis" / "examples" / "locomotion"
+sys.path.insert(0, str(_LOCOMOTION_ROOT))
+sys.path.insert(0, str(_VINTIX_ROOT))
+
+def canon_robot_type(s: str) -> str:
+    if not s:
+        return s
+    t = s.strip().lower()
+    if t in ("a1", "unitreea1"):
+        return "a1"
+    return t
 
 try:
     try:
@@ -45,535 +85,326 @@ from rsl_rl.runners import OnPolicyRunner
 
 import genesis as gs  # type: ignore
 
+from env import ANYmalCEnv  # type: ignore
+from env import Go1Env  # type: ignore
 from env import Go2Env  # type: ignore
 from env import LaikagoEnv  # type: ignore
 from env import MiniCheetahEnv  # type: ignore
+from env import A1Env  # type: ignore
+from spotmicro_env import SpotMicroEnv  # type: ignore
+
+from train import (  # noqa: E402  (import after sys.path)
+    get_anymalc_cfgs,
+    get_go1_cfgs,
+    get_go2_cfgs,
+    get_laikago_cfgs,
+    get_minicheetah_cfgs,
+    get_spotmicro_cfgs,
+    get_train_cfg,
+    get_unitreea1_cfgs,
+)
 
 
-# -----------------------------------------------------------------------------
-# PPO config helpers (copied from Genesis/examples/locomotion/train.py)
-# -----------------------------------------------------------------------------
-
-def get_train_cfg(exp_name, max_iterations, seed=1):
-    train_cfg_dict = {
-        "algorithm": {
-            "class_name": "PPO",
-            "clip_param": 0.2,
-            "desired_kl": 0.01,
-            "entropy_coef": 0.01,
-            "gamma": 0.99,
-            "lam": 0.95,
-            "learning_rate": 0.001,
-            "max_grad_norm": 1.0,
-            "num_learning_epochs": 5,
-            "num_mini_batches": 4,
-            "schedule": "adaptive",
-            "use_clipped_value_loss": True,
-            "value_loss_coef": 1.0,
-        },
-        "init_member_classes": {},
-        "policy": {
-            "activation": "elu",
-            "actor_hidden_dims": [512, 256, 128],
-            "critic_hidden_dims": [512, 256, 128],
-            "init_noise_std": 1.0,
-            "class_name": "ActorCritic",
-        },
-        "runner": {
-            "checkpoint": -1,
-            "experiment_name": exp_name,
-            "load_run": -1,
-            "log_interval": 1,
-            "max_iterations": max_iterations,
-            "record_interval": -1,
-            "resume": False,
-            "resume_path": None,
-            "run_name": "",
-        },
-        "runner_class_name": "OnPolicyRunner",
-        "num_steps_per_env": 24,
-        "save_interval": 10,
-        "empirical_normalization": None,
-        "seed": seed,
-    }
-
-    return train_cfg_dict
+def genesis_repo_root() -> Path:
+    return _LOCOMOTION_ROOT.parent.parent
 
 
-def get_go2_cfgs():
-    env_cfg = {
-        "num_actions": 12,
-        "default_joint_angles": {
-            "FL_hip_joint": 0.0,
-            "FR_hip_joint": 0.0,
-            "RL_hip_joint": 0.0,
-            "RR_hip_joint": 0.0,
-            "FL_thigh_joint": 0.8,
-            "FR_thigh_joint": 0.8,
-            "RL_thigh_joint": 1.0,
-            "RR_thigh_joint": 1.0,
-            "FL_calf_joint": -1.5,
-            "FR_calf_joint": -1.5,
-            "RL_calf_joint": -1.5,
-            "RR_calf_joint": -1.5,
-        },
-        "joint_names": [
-            "FR_hip_joint",
-            "FR_thigh_joint",
-            "FR_calf_joint",
-            "FL_hip_joint",
-            "FL_thigh_joint",
-            "FL_calf_joint",
-            "RR_hip_joint",
-            "RR_thigh_joint",
-            "RR_calf_joint",
-            "RL_hip_joint",
-            "RL_thigh_joint",
-            "RL_calf_joint",
-        ],
-        "kp": 20.0,
-        "kd": 0.5,
-        "termination_if_roll_greater_than": 10,
-        "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.42],
-        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,
-        "simulate_action_latency": True,
-        "clip_actions": 100.0,
-    }
-    obs_cfg = {
-        "num_obs": 45,
-        "obs_scales": {
-            "lin_vel": 2.0,
-            "ang_vel": 0.25,
-            "dof_pos": 1.0,
-            "dof_vel": 0.05,
-        },
-    }
-    reward_cfg = {
-        "tracking_sigma": 0.25,
-        "base_height_target": 0.3,
-        "feet_height_target": 0.075,
-        "reward_scales": {
-            "tracking_lin_vel": 1.0,
-            "tracking_ang_vel": 0.2,
-            "lin_vel_z": -1.0,
-            "base_height": -50.0,
-            "action_rate": -0.005,
-            "similar_to_default": -0.1,
-        },
-    }
-    command_cfg = {
-        "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
-    }
-
-    return env_cfg, obs_cfg, reward_cfg, command_cfg
+def trajectory_dataset_slug(source_robot: Optional[str], robot_type: str) -> str:
+    """データセットディレクトリ名: ``<RobotA>_to_<RobotB>``（小文字ロボット id）。"""
+    src = source_robot if source_robot is not None else robot_type
+    return f"{src}_to_{robot_type}"
 
 
-def get_minicheetah_cfgs():
-    env_cfg = {
-        "num_actions": 12,
-        "default_joint_angles": {
-            "torso_to_abduct_fl_j": 0.0,
-            "torso_to_abduct_fr_j": 0.0,
-            "torso_to_abduct_hr_j": 0.0,
-            "torso_to_abduct_hl_j": 0.0,
-            "abduct_fl_to_thigh_fl_j": -0.8,
-            "abduct_fr_to_thigh_fr_j": -0.8,
-            "abduct_hr_to_thigh_hr_j": -0.8,
-            "abduct_hl_to_thigh_hl_j": -0.8,
-            "thigh_fl_to_knee_fl_j": 1.5,
-            "thigh_fr_to_knee_fr_j": 1.5,
-            "thigh_hr_to_knee_hr_j": 1.5,
-            "thigh_hl_to_knee_hl_j": 1.5,
-        },
-        "joint_names": [
-            "torso_to_abduct_fr_j",
-            "abduct_fr_to_thigh_fr_j",
-            "thigh_fr_to_knee_fr_j",
-            "torso_to_abduct_fl_j",
-            "abduct_fl_to_thigh_fl_j",
-            "thigh_fl_to_knee_fl_j",
-            "torso_to_abduct_hr_j",
-            "abduct_hr_to_thigh_hr_j",
-            "thigh_hr_to_knee_hr_j",
-            "torso_to_abduct_hl_j",
-            "abduct_hl_to_thigh_hl_j",
-            "thigh_hl_to_knee_hl_j",
-        ],
-        "kp": 20.0,
-        "kd": 0.5,
-        "termination_if_roll_greater_than": 10,
-        "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.45],
-        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,
-        "simulate_action_latency": True,
-        "clip_actions": 100.0,
-    }
-    obs_cfg = {
-        "num_obs": 45,
-        "obs_scales": {
-            "lin_vel": 2.0,
-            "ang_vel": 0.25,
-            "dof_pos": 1.0,
-            "dof_vel": 0.05,
-        },
-    }
-    reward_cfg = {
-        "tracking_sigma": 0.25,
-        "base_height_target": 0.3,
-        "feet_height_target": 0.075,
-        "reward_scales": {
-            "tracking_lin_vel": 1.0,
-            "tracking_ang_vel": 0.2,
-            "lin_vel_z": -1.0,
-            "base_height": -50.0,
-            "action_rate": -0.005,
-            "similar_to_default": -0.1,
-        },
-    }
-    command_cfg = {
-        "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
-    }
-
-    return env_cfg, obs_cfg, reward_cfg, command_cfg
+# クロスロボット FT: 各ロボットの専門家チェックポイント（Genesis/logs/<run>/model_300.pt）
+SOURCE_EXPERT_LOGDIRS = {
+    "go1": "go1-walking",
+    "go2": "go2-walking",
+    "minicheetah": "minicheetah-walking",
+    "a1": "a1-walking",
+}
+DEFAULT_EXPERT_CKPT = "model_300.pt"
+CROSS_FT_ROBOTS = ("go1", "go2", "minicheetah", "a1")
 
 
-def get_laikago_cfgs():
+def default_pretrained_for_source_robot(source_robot: str) -> Path:
+    if source_robot not in SOURCE_EXPERT_LOGDIRS:
+        raise ValueError(
+            f"source_robot must be one of {list(SOURCE_EXPERT_LOGDIRS.keys())}, got {source_robot!r}"
+        )
+    return genesis_repo_root() / "logs" / SOURCE_EXPERT_LOGDIRS[source_robot] / DEFAULT_EXPERT_CKPT
+
+
+def resolve_trajectory_output_dir(record_arg: Optional[str], slug: str) -> Path:
+    """履歴保存ディレクトリを決定する。
+
+    - 未指定: ``vintix_go2/data/ppo_history/``（``slug`` は互換のため受け取るが既定では未使用）
+    - 相対パス: **vintix_go2 リポジトリルート**からの相対（CWD に依存しない）
+    - 絶対パス: そのまま解決
     """
-    Laikago専用の設定（URDFと物理的特性に基づく）
-    Laikagoの仕様:
-    - 高さ: 60cm（立ち姿勢）
-    - 重量: 約22kg
-    - ベース質量: 13.715kg（URDFから）
-    - 最大歩行速度: 0.8m/秒
-    """
-    env_cfg = {
-        "num_actions": 12,
-        # joint/link names (URDFから確認済み)
-        "default_joint_angles": {  # [rad] - Laikagoの適切なスタンディング姿勢
-            # Front Right leg (FR) - 1st
-            "FR_hip_motor_2_chassis_joint": 0.0,
-            "FR_upper_leg_2_hip_motor_joint": -0.8,  # 約-46度（前脚はやや低め）
-            "FR_lower_leg_2_upper_leg_joint": 1.5,   # 約86度（膝を適度に曲げる）
-            # Front Left leg (FL) - 2nd
-            "FL_hip_motor_2_chassis_joint": 0.0,
-            "FL_upper_leg_2_hip_motor_joint": -0.8,
-            "FL_lower_leg_2_upper_leg_joint": 1.5,
-            # Rear Right leg (RR) - 3rd
-            "RR_hip_motor_2_chassis_joint": 0.0,
-            "RR_upper_leg_2_hip_motor_joint": -0.8,
-            "RR_lower_leg_2_upper_leg_joint": 1.5,
-            # Rear Left leg (RL) - 4th
-            "RL_hip_motor_2_chassis_joint": 0.0,
-            "RL_upper_leg_2_hip_motor_joint": -0.8,
-            "RL_lower_leg_2_upper_leg_joint": 1.5
-        },
-        "joint_names": [
-            # Front Right leg (FR) - 1st
-            "FR_hip_motor_2_chassis_joint",
-            "FR_upper_leg_2_hip_motor_joint", 
-            "FR_lower_leg_2_upper_leg_joint",
-            # Front Left leg (FL) - 2nd
-            "FL_hip_motor_2_chassis_joint",
-            "FL_upper_leg_2_hip_motor_joint",
-            "FL_lower_leg_2_upper_leg_joint", 
-            # Rear Right leg (RR) - 3rd
-            "RR_hip_motor_2_chassis_joint",
-            "RR_upper_leg_2_hip_motor_joint",
-            "RR_lower_leg_2_upper_leg_joint",
-            # Rear Left leg (RL) - 4th
-            "RL_hip_motor_2_chassis_joint", 
-            "RL_upper_leg_2_hip_motor_joint",
-            "RL_lower_leg_2_upper_leg_joint"
-        ],
-        # PD control parameters (Laikagoに適した値)
-        "kp": 20.0,  # 位置ゲイン
-        "kd": 0.5,   # 速度ゲイン
-        # termination conditions
-        "termination_if_roll_greater_than": 10,   # degree
-        "termination_if_pitch_greater_than": 10,  # degree
-        # base pose (Laikagoの立ち姿勢高さ60cmを考慮、初期高さを50cmに設定)
-        "base_init_pos": [0.0, 0.0, 0.50],  # Laikagoのスタンディング高さ（50cm）
-        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
-        "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,  # アクションスケール
-        "simulate_action_latency": True,
-        "clip_actions": 100.0,
-    }
-    obs_cfg = {
-        "num_obs": 45,  # 3(ang_vel) + 3(gravity) + 3(commands) + 12(dof_pos) + 12(dof_vel) + 12(actions)
-        "obs_scales": {
-            "lin_vel": 2.0,
-            "ang_vel": 0.25,
-            "dof_pos": 1.0,
-            "dof_vel": 0.05,
-        },
-    }
-    reward_cfg = {
-        "tracking_sigma": 0.25,
-        "base_height_target": 0.50,  # Laikagoの目標ベース高さ（50cm）- 立ち姿勢60cmを考慮
-        "feet_height_target": 0.095,  # 足の目標高さ
-        "reward_scales": {
-            "tracking_lin_vel": 1.0,      # 線形速度追従
-            "tracking_ang_vel": 0.2,      # 角速度追従
-            "lin_vel_z": -1.0,            # Z方向速度ペナルティ
-            "base_height": -50.0,         # ベース高さペナルティ
-            "action_rate": -0.005,       # アクション変化率ペナルティ
-            "similar_to_default": -0.1,  # デフォルト姿勢からの乖離ペナルティ
-        },
-    }
-    command_cfg = {
-        "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],  # 前進速度コマンド（最大0.8m/秒だが、訓練時は0.5m/秒）
-        "lin_vel_y_range": [0, 0],      # 横方向速度コマンド
-        "ang_vel_range": [0, 0],         # 角速度コマンド
-    }
+    if record_arg is None:
+        return (_VINTIX_ROOT / "data" / "ppo_history").resolve()
+    p = Path(record_arg).expanduser()
+    if p.is_absolute():
+        return p.resolve()
+    return (_VINTIX_ROOT / p).resolve()
 
-    return env_cfg, obs_cfg, reward_cfg, command_cfg
+
+def _chmod_relaxed(path: Path, *, is_dir: bool) -> None:
+    """Docker(root) 実行後もホストユーザーが読み書きしやすいよう権限を緩める（任意）。"""
+    try:
+        path.chmod(0o775 if is_dir else 0o664)
+    except OSError:
+        pass
 
 
 # -----------------------------------------------------------------------------
-# History recorder
+# Per-env HDF5 writer (Collect-compatible, same layout as former convert_ppo_history_to_env_files)
 # -----------------------------------------------------------------------------
+
+
+def _sorted_h5_group_names(f: h5py.File) -> List[str]:
+    return sorted(f.keys(), key=lambda x: int(x.split("-")[0]))
+
+
+@dataclass
+class _PerEnvWriter:
+    """One env_id → one ``trajectories_env_XXXX.h5`` in Collect layout."""
+
+    output_dir: Path
+    env_id: int
+    group_size: int = 50000
+
+    def __post_init__(self) -> None:
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.path = self.output_dir / f"trajectories_env_{self.env_id:04d}.h5"
+        self.h5 = h5py.File(self.path, "w")
+        self.obs_seq: List[np.ndarray] = []
+        self.actions: List[np.ndarray] = []
+        self.rewards: List[float] = []
+        self.steps: List[int] = []
+        self._pending_action: Optional[np.ndarray] = None
+        self._pending_reward: Optional[float] = None
+        self._pending_step: Optional[int] = None
+        self.global_written = 0
+
+    def ingest_row(self, obs: np.ndarray, action: np.ndarray, reward: float, step_num: int) -> None:
+        obs = obs.astype(np.float32, copy=False)
+        action = action.astype(np.float32, copy=False)
+        reward_f = float(reward)
+        step_i = int(step_num)
+
+        if not self.obs_seq:
+            self.obs_seq.append(obs)
+            self._pending_action = action
+            self._pending_reward = reward_f
+            self._pending_step = step_i
+            return
+
+        self.obs_seq.append(obs)
+        self.actions.append(self._pending_action)  # type: ignore[arg-type]
+        self.rewards.append(self._pending_reward)  # type: ignore[arg-type]
+        self.steps.append(self._pending_step)  # type: ignore[arg-type]
+
+        self._pending_action = action
+        self._pending_reward = reward_f
+        self._pending_step = step_i
+
+        if len(self.actions) >= self.group_size:
+            self.flush(finalize_pending=False)
+
+    def flush(self, *, finalize_pending: bool) -> None:
+        if finalize_pending and self._pending_action is not None and self.obs_seq:
+            self.obs_seq.append(self.obs_seq[-1])
+            self.actions.append(self._pending_action)
+            self.rewards.append(self._pending_reward if self._pending_reward is not None else 0.0)
+            self.steps.append(self._pending_step if self._pending_step is not None else 0)
+            self._pending_action = None
+            self._pending_reward = None
+            self._pending_step = None
+
+        if not self.actions:
+            return
+
+        chunk_size = min(len(self.actions), self.group_size)
+        obs_chunk = np.stack(self.obs_seq[: chunk_size + 1], axis=0).astype(np.float32, copy=False)
+        act_chunk = np.stack(self.actions[:chunk_size], axis=0).astype(np.float32, copy=False)
+        rew_chunk = np.asarray(self.rewards[:chunk_size], dtype=np.float32)
+        step_chunk = np.asarray(self.steps[:chunk_size], dtype=np.int32)
+
+        start = self.global_written
+        end = start + chunk_size - 1
+        g = self.h5.create_group(f"{start}-{end}")
+        g.create_dataset("proprio_observation", data=obs_chunk)
+        g.create_dataset("action", data=act_chunk)
+        g.create_dataset("reward", data=rew_chunk)
+        g.create_dataset("step_num", data=step_chunk)
+
+        del self.obs_seq[:chunk_size]
+        del self.actions[:chunk_size]
+        del self.rewards[:chunk_size]
+        del self.steps[:chunk_size]
+        self.global_written += chunk_size
+        self.h5.flush()
+
+    def close(self) -> None:
+        self.flush(finalize_pending=True)
+        self.h5.close()
+
+
+def _write_vintix_root_metadata(output_dir: Path) -> None:
+    """``<dirname>.json`` for ``MultiTaskMapDataset`` (task_name == directory name)."""
+    h5_files = sorted(output_dir.glob("trajectories_env_*.h5"))
+    first: Optional[Path] = None
+    for p in h5_files:
+        with h5py.File(p, "r") as f:
+            gnames = _sorted_h5_group_names(f)
+            if gnames:
+                first = p
+                break
+    if first is None:
+        raise FileNotFoundError(f"No non-empty trajectories_env_*.h5 under {output_dir}")
+    task_name = output_dir.name
+    with h5py.File(first, "r") as f:
+        gnames = _sorted_h5_group_names(f)
+        g = f[gnames[0]]
+        obs = np.asarray(g["proprio_observation"], dtype=np.float32)
+        act = np.asarray(g["action"], dtype=np.float32)
+    if obs.ndim < 2:
+        raise ValueError(f"Unexpected proprio_observation shape {obs.shape} in {first}")
+    obs_dim = int(obs.shape[-1])
+    action_dim = int(act.shape[-1]) if act.ndim >= 2 else int(act.size)
+    meta = {
+        "task_name": task_name,
+        "observation_shape": {"proprio": [obs_dim]},
+        "action_dim": action_dim,
+        "action_type": "continuous",
+        "algorithm_distillation": True,
+    }
+    out_path = output_dir / f"{task_name}.json"
+    with open(out_path, "w", encoding="utf-8") as fp:
+        json.dump(meta, fp, indent=2)
+    print(f"✅ Wrote Vintix root metadata: {out_path}")
+
+
+# -----------------------------------------------------------------------------
+# History recorder (proprio = full obs minus last num_actions, same as Collect)
+# -----------------------------------------------------------------------------
+
 
 class TrainingHistoryRecorder:
-    """Collect and save PPO training rollouts as HDF5 groups."""
+    """Stream PPO rollouts directly into Collect-style ``trajectories_env_XXXX.h5`` files."""
 
     def __init__(
         self,
         output_dir: Path,
         num_envs: int,
-        obs_dim: int,
+        full_obs_dim: int,
+        num_actions: int,
         action_dim: int,
         group_size: int = 50000,
+        relax_output_permissions: bool = False,
     ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.relax_output_permissions = relax_output_permissions
+        if self.relax_output_permissions:
+            _chmod_relaxed(self.output_dir, is_dir=True)
         self.group_size = group_size
-        self.obs_dim = obs_dim
+        self.full_obs_dim = full_obs_dim
+        self.num_actions = num_actions
+        self.proprio_dim = full_obs_dim - num_actions
+        if self.proprio_dim <= 0:
+            raise ValueError(f"Invalid proprio_dim={self.proprio_dim} (full={full_obs_dim}, na={num_actions})")
+
         self.action_dim = action_dim
         self.num_envs = num_envs
 
-        self.h5_path = self.output_dir / "trajectories_0000.h5"
-        self.h5_file = h5py.File(self.h5_path, "w")
-
-        self.buffer_obs = []
-        self.buffer_actions = []
-        self.buffer_rewards = []
-        self.buffer_steps = []
-        self.buffer_env_ids = []
-        self.buffer_episode_ids = []
-        self.buffer_iterations = []
-        self.buffer_size = 0
+        self.writers: Dict[int, _PerEnvWriter] = {}
 
         self.step_counters = np.zeros(self.num_envs, dtype=np.int32)
         self.episode_ids = np.zeros(self.num_envs, dtype=np.int32)
         self.episode_reward_running = np.zeros(self.num_envs, dtype=np.float64)
 
-        self.episode_lengths = []
-        self.episode_rewards = []
-
-        self.total_transitions_written = 0
         self.total_transitions_seen = 0
         self.max_iteration = -1
 
-        self.obs_sum = np.zeros(self.obs_dim, dtype=np.float64)
-        self.obs_sq_sum = np.zeros(self.obs_dim, dtype=np.float64)
-        self.action_sum = np.zeros(self.action_dim, dtype=np.float64)
-        self.action_sq_sum = np.zeros(self.action_dim, dtype=np.float64)
-        self.reward_sum = 0.0
-        self.reward_sq_sum = 0.0
-
         self.closed = False
 
+    def _get_writer(self, env_id: int) -> _PerEnvWriter:
+        if env_id not in self.writers:
+            self.writers[env_id] = _PerEnvWriter(
+                output_dir=self.output_dir,
+                env_id=env_id,
+                group_size=self.group_size,
+            )
+        return self.writers[env_id]
+
     def record_batch(self, iteration: int, obs: np.ndarray, actions: np.ndarray, rewards: np.ndarray, dones: np.ndarray):
-        """Record one PPO rollout step for all envs."""
+        """Record one PPO rollout step for all envs (same row order as former interleaved dumps)."""
         if self.closed:
             raise RuntimeError("Recorder is already closed.")
 
-        # Ensure shapes: obs/actions -> (num_envs, dim), rewards/dones -> (num_envs, 1) or (num_envs,)
         rewards = rewards.reshape(-1, 1)
         dones = dones.reshape(-1, 1)
 
         if obs.shape[0] != self.num_envs:
             raise ValueError(f"Expected {self.num_envs} envs, got {obs.shape[0]}")
+        if obs.shape[-1] != self.full_obs_dim:
+            raise ValueError(f"Expected full obs dim {self.full_obs_dim}, got {obs.shape[-1]}")
 
+        proprio = obs[..., : self.proprio_dim].astype(np.float32)
         step_nums = self.step_counters.copy()
-        episode_ids = self.episode_ids.copy()
-        env_ids = np.arange(self.num_envs, dtype=np.int32)
-        iter_array = np.full((self.num_envs, 1), iteration, dtype=np.int32)
 
-        # Update running sums for stats
-        self.obs_sum += obs.sum(axis=0)
-        self.obs_sq_sum += np.square(obs).sum(axis=0)
-        self.action_sum += actions.sum(axis=0)
-        self.action_sq_sum += np.square(actions).sum(axis=0)
         reward_scalar = rewards.astype(np.float64).flatten()
-        self.reward_sum += reward_scalar.sum()
-        self.reward_sq_sum += np.square(reward_scalar).sum()
-
-        # Episode bookkeeping
         self.episode_reward_running += reward_scalar
 
-        self.buffer_obs.append(obs.astype(np.float32))
-        self.buffer_actions.append(actions.astype(np.float32))
-        self.buffer_rewards.append(rewards.astype(np.float32))
-        self.buffer_steps.append(step_nums.astype(np.int32))
-        self.buffer_env_ids.append(env_ids.astype(np.int32))
-        self.buffer_episode_ids.append(episode_ids.astype(np.int32))
-        self.buffer_iterations.append(iter_array.astype(np.int32))
+        for env_i in range(self.num_envs):
+            w = self._get_writer(env_i)
+            w.ingest_row(
+                proprio[env_i],
+                actions[env_i].astype(np.float32, copy=False),
+                float(rewards[env_i, 0]),
+                int(step_nums[env_i]),
+            )
 
-        self.buffer_size += obs.shape[0]
-        self.total_transitions_seen += obs.shape[0]
+        self.total_transitions_seen += self.num_envs
         self.max_iteration = max(self.max_iteration, iteration)
 
-        # Increment step counters AFTER storing current step
         self.step_counters += 1
 
-        # Handle done environments
         done_indices = np.where(dones.squeeze(-1) > 0.0)[0]
         if done_indices.size > 0:
             for idx in done_indices:
-                self.episode_lengths.append(int(self.step_counters[idx]))
-                self.episode_rewards.append(float(self.episode_reward_running[idx]))
                 self.step_counters[idx] = 0
                 self.episode_reward_running[idx] = 0.0
                 self.episode_ids[idx] += 1
 
-        if self.buffer_size >= self.group_size:
-            self._flush_buffer()
-
-    def _flush_buffer(self):
-        if self.buffer_size == 0:
-            return
-
-        obs = np.concatenate(self.buffer_obs, axis=0)
-        acts = np.concatenate(self.buffer_actions, axis=0)
-        rews = np.concatenate(self.buffer_rewards, axis=0)
-        steps = np.concatenate(self.buffer_steps, axis=0)
-        env_ids = np.concatenate(self.buffer_env_ids, axis=0)
-        episode_ids = np.concatenate(self.buffer_episode_ids, axis=0)
-        iterations = np.concatenate(self.buffer_iterations, axis=0)
-
-        idx = 0
-        total = obs.shape[0]
-        while idx < total:
-            chunk_end = min(idx + self.group_size, total)
-            start_idx = self.total_transitions_written
-            end_idx = start_idx + (chunk_end - idx) - 1
-            group_name = f"{start_idx}-{end_idx}"
-            group = self.h5_file.create_group(group_name)
-            group.create_dataset("proprio_observation", data=obs[idx:chunk_end], compression="gzip")
-            group.create_dataset("action", data=acts[idx:chunk_end], compression="gzip")
-            group.create_dataset("reward", data=rews[idx:chunk_end], compression="gzip")
-            group.create_dataset("step_num", data=steps[idx:chunk_end], compression="gzip")
-            group.create_dataset("env_id", data=env_ids[idx:chunk_end], compression="gzip")
-            group.create_dataset("episode_id", data=episode_ids[idx:chunk_end], compression="gzip")
-            group.create_dataset("iteration", data=iterations[idx:chunk_end], compression="gzip")
-
-            self.total_transitions_written += chunk_end - idx
-            idx = chunk_end
-
-        # Reset buffers with leftover data (should be zero after loop)
-        leftover = obs[idx:]
-        if leftover.size:
-            self.buffer_obs = [obs[idx:]]
-            self.buffer_actions = [acts[idx:]]
-            self.buffer_rewards = [rews[idx:]]
-            self.buffer_steps = [steps[idx:]]
-            self.buffer_env_ids = [env_ids[idx:]]
-            self.buffer_episode_ids = [episode_ids[idx:]]
-            self.buffer_iterations = [iterations[idx:]]
-            self.buffer_size = leftover.shape[0]
-        else:
-            self.buffer_obs = []
-            self.buffer_actions = []
-            self.buffer_rewards = []
-            self.buffer_steps = []
-            self.buffer_env_ids = []
-            self.buffer_episode_ids = []
-            self.buffer_iterations = []
-            self.buffer_size = 0
-
-        self.h5_file.flush()
-
     def finalize(self):
         if self.closed:
             return
-        # Flush buffers
-        self._flush_buffer()
-        # Close HDF5
-        self.h5_file.close()
+        for w in self.writers.values():
+            w.close()
         self.closed = True
 
-        # Compute statistics
-        n = max(self.total_transitions_written, 1)
-        obs_mean = (self.obs_sum / n).tolist()
-        obs_var = (self.obs_sq_sum / n) - np.square(self.obs_sum / n)
-        obs_std = np.sqrt(np.maximum(obs_var, 1e-12)).tolist()
+        _write_vintix_root_metadata(self.output_dir)
+        print(
+            f"✅ Per-env trajectory HDF5: {self.output_dir} "
+            f"({len(self.writers)} env files, {self.total_transitions_seen} transitions logged)"
+        )
 
-        action_mean = (self.action_sum / n).tolist()
-        action_var = (self.action_sq_sum / n) - np.square(self.action_sum / n)
-        action_std = np.sqrt(np.maximum(action_var, 1e-12)).tolist()
-
-        reward_mean = float(self.reward_sum / n)
-        reward_var = float(self.reward_sq_sum / n - (self.reward_sum / n) ** 2)
-        reward_std = float(np.sqrt(max(reward_var, 1e-12)))
-
-        episode_lengths = np.array(self.episode_lengths, dtype=np.float64)
-        episode_rewards = np.array(self.episode_rewards, dtype=np.float64)
-
-        metadata = {
-            "task_name": "go2_walking_ad",
-            "group_name": "go2_locomotion",
-            "observation_shape": {"proprio": [self.obs_dim]},
-            "action_dim": self.action_dim,
-            "action_type": "continuous",
-            "reward_scale": 1.0,
-            "algorithm_distillation": False,
-            "num_envs": self.num_envs,
-            "num_trajectories": int(len(episode_lengths)),
-            "total_transitions": int(self.total_transitions_written),
-            "max_iteration": int(self.max_iteration),
-            "obs_mean": obs_mean,
-            "obs_std": obs_std,
-            "acs_mean": action_mean,
-            "acs_std": action_std,
-            "reward_mean": reward_mean,
-            "reward_std": reward_std,
-            "reward_min": float(episode_rewards.min() if episode_rewards.size else 0.0),
-            "reward_max": float(episode_rewards.max() if episode_rewards.size else 0.0),
-            "episode_length_mean": float(episode_lengths.mean() if episode_lengths.size else 0.0),
-            "episode_length_std": float(episode_lengths.std() if episode_lengths.size else 0.0),
-        }
-
-        meta_path_pickle = self.output_dir / f"{self.output_dir.name}.pkl"
-        with meta_path_pickle.open("wb") as f_pickle:
-            pickle.dump(metadata, f_pickle)
-
-        import json
-
-        meta_path_json = self.output_dir / f"{self.output_dir.name}.json"
-        with meta_path_json.open("w") as f_json:
-            json.dump(metadata, f_json, indent=2)
+        if self.relax_output_permissions:
+            for fp in self.output_dir.glob("trajectories_env_*.h5"):
+                if fp.exists():
+                    _chmod_relaxed(fp, is_dir=False)
+            meta_json = self.output_dir / f"{self.output_dir.name}.json"
+            if meta_json.exists():
+                _chmod_relaxed(meta_json, is_dir=False)
 
 
 # -----------------------------------------------------------------------------
 # Custom runner that records history
 # -----------------------------------------------------------------------------
+
 
 class OnPolicyRunnerWithHistory(OnPolicyRunner):
     def __init__(
@@ -590,8 +421,6 @@ class OnPolicyRunnerWithHistory(OnPolicyRunner):
     def learn(self, num_learning_iterations: int, init_at_random_ep_len: bool = False):  # noqa: C901
         recorder = self.history_recorder
         try:
-            # The body below is copied from OnPolicyRunner.learn with hooks inserted
-
             if self.log_dir is not None and self.writer is None:
                 self.logger_type = self.cfg.get("logger", "tensorboard").lower()
                 if self.logger_type == "neptune":
@@ -756,24 +585,141 @@ class OnPolicyRunnerWithHistory(OnPolicyRunner):
 # Main
 # -----------------------------------------------------------------------------
 
-def main():
-    parser = argparse.ArgumentParser(description="Train PPO and record training trajectory.")
-    parser.add_argument("-e", "--exp_name", type=str, default="go2-walking")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago"], default="go2")
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Train PPO and record training trajectory (Collect-compatible proprio).")
+    parser.add_argument(
+        "-e",
+        "--exp_name",
+        type=str,
+        default=None,
+        help="Experiment name (Genesis/logs/<exp_name>). Default: go2-walking, or ft_<src>_to_<tgt>_history if --source_robot is set.",
+    )
+    parser.add_argument(
+        "-r",
+        "--robot_type",
+        type=str,
+        choices=["go2", "minicheetah", "laikago", "a1", "anymalc", "go1", "spotmicro"],
+        default="go2",
+        help="Target robot type to train (fine-tuning destination)",
+    )
+    parser.add_argument(
+        "--source_robot",
+        type=str,
+        choices=list(SOURCE_EXPERT_LOGDIRS.keys()),
+        default=None,
+        help="Expert source robot: load Genesis/logs/<expert_run>/model_300.pt as init (overrides need --pretrained_path only if you want a custom file).",
+    )
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
     parser.add_argument("--max_iterations", type=int, default=301)
-    parser.add_argument("--pretrained_path", type=str, default=None)
-    parser.add_argument("--domain_randomization", action="store_true", default=False)
-    parser.add_argument("--mass_range_min", type=float, default=0.9)
-    parser.add_argument("--mass_range_max", type=float, default=1.1)
-    parser.add_argument("--seed", type=int, default=1)
-    parser.add_argument("--record_output", type=str, required=True, help="Output directory for recorded trajectories.")
-    parser.add_argument("--group_size", type=int, default=50000, help="Transitions per HDF5 group.")
-    args = parser.parse_args()
+    parser.add_argument(
+        "--pretrained_path",
+        type=str,
+        default=None,
+        help="Explicit checkpoint for fine-tuning (if set, overrides --source_robot default)",
+    )
+    parser.add_argument("--domain_randomization", action="store_true", default=False, help="Enable domain randomization")
+    parser.add_argument("--mass_range_min", type=float, default=0.9, help="Minimum mass scale for domain randomization")
+    parser.add_argument("--mass_range_max", type=float, default=1.1, help="Maximum mass scale for domain randomization")
+    parser.add_argument("--seed", type=int, default=1, help="Random seed for reproducibility")
+    parser.add_argument(
+        "--record_output",
+        type=str,
+        default=None,
+        help="Directory for per-env HDF5 (default: <vintix_go2>/data/ppo_history). "
+        "Relative paths are resolved from the vintix_go2 repository root (not CWD).",
+    )
+    parser.add_argument("--group_size", type=int, default=50000, help="Transitions per HDF5 flush chunk")
+    parser.add_argument(
+        "--relax_output_permissions",
+        action="store_true",
+        help="chmod 775/664 on trajectory dir and files so host user can read/write after Docker (root). "
+        "Also enabled if env VINTIX_RELAX_OUTPUT_PERMISSIONS=1.",
+    )
+    parser.add_argument(
+        "--run_all_cross_ft",
+        action="store_true",
+        help="Run all 12 cross-robot fine-tunings (go1,go2,minicheetah,a1) × 301 iterations each, sequential subprocesses.",
+    )
+    return parser
+
+
+def run_all_cross_ft_matrix(args: argparse.Namespace) -> None:
+    """4×3 通り: 同一ロボット以外のソース→ターゲット。"""
+    script = Path(__file__).resolve()
+    env = os.environ.copy()
+    extra = f"{_VINTIX_ROOT}:{_LOCOMOTION_ROOT}"
+    env["PYTHONPATH"] = f"{extra}:{env['PYTHONPATH']}" if env.get("PYTHONPATH") else extra
+
+    pairs = [(s, t) for s in CROSS_FT_ROBOTS for t in CROSS_FT_ROBOTS if s != t]
+    print(f"Running {len(pairs)} cross-robot fine-tuning jobs (301 iterations each)...\n")
+
+    for src, tgt in pairs:
+        exp = f"ft_{src}_to_{tgt}_history"
+        rec = f"data/ppo_history/{src}_to_{tgt}"
+        cmd = [
+            sys.executable,
+            str(script),
+            "-r",
+            tgt,
+            "--source_robot",
+            src,
+            "-e",
+            exp,
+            "--record_output",
+            rec,
+            "--max_iterations",
+            "301",
+            "-B",
+            str(args.num_envs),
+            "--group_size",
+            str(args.group_size),
+            "--seed",
+            str(args.seed),
+        ]
+        if args.relax_output_permissions:
+            cmd.append("--relax_output_permissions")
+        if args.domain_randomization:
+            cmd.append("--domain_randomization")
+            cmd += ["--mass_range_min", str(args.mass_range_min), "--mass_range_max", str(args.mass_range_max)]
+
+        print("=" * 80)
+        print(" ", " ".join(cmd))
+        print("=" * 80)
+        subprocess.run(cmd, check=True, cwd=str(_VINTIX_ROOT), env=env)
+
+    print(f"\nCompleted {len(pairs)} jobs.")
+
+
+def run_training_job(args: argparse.Namespace) -> None:
+    if args.source_robot is not None and args.source_robot == args.robot_type:
+        raise ValueError("--source_robot と -r（学習先ロボット）は別のロボットにしてください。")
+
+    exp_name = args.exp_name
+    if exp_name is None:
+        exp_name = f"ft_{args.source_robot}_to_{args.robot_type}_history" if args.source_robot else "go2-walking"
+
+    pretrained_path = args.pretrained_path
+    if pretrained_path is None and args.source_robot is not None:
+        pp = default_pretrained_for_source_robot(args.source_robot)
+        if not pp.is_file():
+            raise FileNotFoundError(f"Source expert checkpoint not found: {pp}")
+        pretrained_path = str(pp)
+        print(f"Using default expert for --source_robot {args.source_robot}: {pretrained_path}")
+
+    slug = trajectory_dataset_slug(args.source_robot, args.robot_type)
+    record_arg = args.record_output
+    record_output = resolve_trajectory_output_dir(record_arg, slug)
+    relax_perm = args.relax_output_permissions or os.environ.get("VINTIX_RELAX_OUTPUT_PERMISSIONS", "").strip() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     gs.init(logging_level="warning", precision="64")
 
-    log_dir = Path("logs") / args.exp_name
+    genesis_root = genesis_repo_root()
+    log_dir = os.path.join(str(genesis_root), "logs", exp_name)
 
     if args.robot_type == "go2":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_go2_cfgs()
@@ -781,6 +727,14 @@ def main():
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_minicheetah_cfgs()
     elif args.robot_type == "laikago":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_laikago_cfgs()
+    elif args.robot_type == "a1":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
+    elif args.robot_type == "anymalc":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalc_cfgs()
+    elif args.robot_type == "go1":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
+    elif args.robot_type == "spotmicro":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_spotmicro_cfgs()
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
 
@@ -788,15 +742,39 @@ def main():
         "domain_randomization": args.domain_randomization,
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
+    train_cfg = get_train_cfg(exp_name, args.max_iterations, seed=args.seed)
 
-    train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
+    resume_existing = (
+        pretrained_path is None and os.path.exists(log_dir) and os.path.exists(os.path.join(log_dir, "cfgs.pkl"))
+    )
+    use_pretrained_in_same_dir = (
+        pretrained_path is not None and os.path.exists(log_dir) and os.path.exists(os.path.join(log_dir, "cfgs.pkl"))
+    )
 
-    if log_dir.exists():
-        shutil.rmtree(log_dir)
-    log_dir.mkdir(parents=True, exist_ok=True)
+    if not resume_existing and not use_pretrained_in_same_dir:
+        if os.path.exists(log_dir):
+            shutil.rmtree(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
+        pickle.dump(
+            [env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg],
+            open(os.path.join(log_dir, "cfgs.pkl"), "wb"),
+        )
+        if relax_perm:
+            try:
+                Path(log_dir).chmod(0o775)
+                Path(os.path.join(log_dir, "cfgs.pkl")).chmod(0o664)
+            except OSError:
+                pass
+    elif resume_existing or use_pretrained_in_same_dir:
+        if use_pretrained_in_same_dir:
+            print(f"Continuing training in existing log directory: {log_dir}")
+        else:
+            print(f"Resuming training from existing log directory: {log_dir}")
+        env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(os.path.join(log_dir, "cfgs.pkl"), "rb"))
+        train_cfg["runner"]["max_iterations"] = args.max_iterations
 
-    with open(log_dir / "cfgs.pkl", "wb") as f:
-        pickle.dump([env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg], f)
+    full_obs_dim = obs_cfg["num_obs"]
+    num_actions = env_cfg["num_actions"]
 
     if args.robot_type == "go2":
         env = Go2Env(
@@ -818,7 +796,7 @@ def main():
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"],
         )
-    else:
+    elif args.robot_type == "laikago":
         env = LaikagoEnv(
             num_envs=args.num_envs,
             env_cfg=env_cfg,
@@ -828,25 +806,108 @@ def main():
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"],
         )
+    elif args.robot_type == "a1":
+        env = A1Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"],
+        )
+    elif args.robot_type == "anymalc":
+        env = ANYmalCEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"],
+        )
+    elif args.robot_type == "go1":
+        env = Go1Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"],
+        )
+    elif args.robot_type == "spotmicro":
+        env = SpotMicroEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"],
+        )
+    else:
+        raise ValueError(f"Unknown robot type: {args.robot_type}")
+
+    if dr_cfg["domain_randomization"]:
+        print(f"ドメインランダマイゼーション有効: 質量 {dr_cfg['mass_range'][0]:.2f} - {dr_cfg['mass_range'][1]:.2f}")
+    else:
+        print("ドメインランダマイゼーション無効")
 
     recorder = TrainingHistoryRecorder(
-        output_dir=Path(args.record_output),
+        output_dir=record_output,
         num_envs=env.num_envs,
-        obs_dim=obs_cfg["num_obs"],
+        full_obs_dim=full_obs_dim,
+        num_actions=num_actions,
         action_dim=env_cfg["num_actions"],
         group_size=args.group_size,
+        relax_output_permissions=relax_perm,
     )
 
-    runner = OnPolicyRunnerWithHistory(env, train_cfg, str(log_dir), device=gs.device, recorder=recorder)
+    print(f"PPO checkpoints & TensorBoard: {log_dir}")
+    print(f"Trajectory data (Collect-style per-env HDF5): {record_output.resolve()}")
 
-    if args.pretrained_path and os.path.exists(args.pretrained_path):
-        print(f"Fine-tuning: loading {args.pretrained_path}")
-        runner.load(args.pretrained_path)
+    runner = OnPolicyRunnerWithHistory(env, train_cfg, log_dir, device=gs.device, recorder=recorder)
+
+    if pretrained_path:
+        if os.path.exists(pretrained_path):
+            print(f"Fine-tuning: loading {pretrained_path}")
+            runner.load(pretrained_path)
+        else:
+            print(f"Warning: pretrained model not found at {pretrained_path}")
+    elif resume_existing:
+        checkpoints = glob.glob(os.path.join(log_dir, "model_*.pt"))
+        if checkpoints:
+            latest_checkpoint = max(checkpoints, key=lambda x: int(os.path.basename(x).split("_")[1].split(".")[0]))
+            print(f"Resuming from checkpoint: {latest_checkpoint}")
+            runner.load(latest_checkpoint)
+        else:
+            print("No checkpoint found, starting from scratch...")
 
     runner.learn(num_learning_iterations=args.max_iterations, init_at_random_ep_len=True)
+
+    if relax_perm:
+        ld = Path(log_dir)
+        try:
+            ld.chmod(0o775)
+        except OSError:
+            pass
+        for pattern in ("model_*.pt", "events.*", "cfgs.pkl"):
+            for fp in ld.glob(pattern):
+                _chmod_relaxed(fp, is_dir=False)
+
+
+def main() -> None:
+    parser = _build_parser()
+    args = parser.parse_args()
+    args.robot_type = canon_robot_type(args.robot_type)
+    if args.source_robot is not None:
+        args.source_robot = canon_robot_type(args.source_robot)
+    if args.run_all_cross_ft:
+        run_all_cross_ft_matrix(args)
+        return
+    run_training_job(args)
 
 
 if __name__ == "__main__":
     main()
-
-

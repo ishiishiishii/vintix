@@ -1,0 +1,53 @@
+# Genesis + Vintix (monorepo): GPU, X11, TensorBoard, W&B.
+# This file is the single source of truth: `docker compose up -d` applies all of the
+# settings below (GPU, shm, mounts, env, ports). Match HOST_UID/HOST_GID to the host
+# at build time (see .env.example) so files under ./ stay owned by your user.
+#
+# Persistent container (no --rm; survives until you stop it):
+#   cp .env.example .env   # optional: set HOST_UID / HOST_GID
+#   docker compose build   # when Dockerfile or UIDs change
+#   xhost +local:docker
+#   docker compose up -d
+# Enter a bash shell anytime:
+#   docker compose exec genesis bash
+# Stop (container is removed only if you pass -v to down, or rm explicitly):
+#   docker compose stop
+#
+# TensorBoard (inside the container; open http://localhost:16006 on the host):
+#   tensorboard --logdir /workspace/vintix_go2/logs --host 0.0.0.0 --port 6006
+# W&B: set WANDB_API_KEY in .env.
+
+services:
+  genesis:
+    image: genesis:dev
+    container_name: genesis_exp
+    # Keep the container alive; use `docker compose exec genesis bash` for work.
+    command: ["sleep", "infinity"]
+    restart: unless-stopped
+    build:
+      context: ./Genesis/docker
+      dockerfile: Dockerfile
+      args:
+        HOST_UID: ${HOST_UID:-1000}
+        HOST_GID: ${HOST_GID:-1000}
+        CONTAINER_USER: ${CONTAINER_USER:-kawa37}
+    stdin_open: true
+    tty: true
+    shm_size: "8gb"
+    gpus: all
+    # Host ports chosen to avoid clashes with an existing TensorBoard/Jupyter on 6006/8888.
+    ports:
+      - "16006:6006"
+      - "18888:8888"
+    environment:
+      DISPLAY: ${DISPLAY}
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      WANDB_API_KEY: ${WANDB_API_KEY:-}
+      WANDB_ENTITY: ${WANDB_ENTITY:-}
+      WANDB_PROJECT: ${WANDB_PROJECT:-}
+      TERM: xterm-256color
+    volumes:
+      - .:/workspace
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - /dev/dri:/dev/dri

@@ -111,4 +111,20 @@ COPY 10_nvidia.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 COPY nvidia_icd.json /usr/share/vulkan/icd.d/nvidia_icd.json
 COPY nvidia_layers.json /etc/vulkan/implicit_layer.d/nvidia_layers.json
 
-ENTRYPOINT ["/bin/bash"]
+# Non-root login: Linux user name kawa37, UID/GID must match the host (e.g. kawa37 on the host)
+# so bind-mounted files under /workspace stay owned by the same numeric ids.
+# Build: --build-arg HOST_UID=$(id -u) --build-arg HOST_GID=$(id -g)
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+ARG CONTAINER_USER=kawa37
+RUN groupadd --gid "${HOST_GID}" "${CONTAINER_USER}" \
+    && useradd --uid "${HOST_UID}" --gid "${HOST_GID}" -m -s /bin/bash "${CONTAINER_USER}" \
+    && chown -R "${CONTAINER_USER}:${CONTAINER_USER}" /opt/conda /workspace
+
+USER ${CONTAINER_USER}
+WORKDIR /workspace
+ENV HOME=/home/${CONTAINER_USER}
+
+# Use CMD (not ENTRYPOINT) so `docker compose run genesis <command>` runs <command>
+# instead of `/bin/bash <command>` (which breaks non-interactive use).
+CMD ["/bin/bash"]

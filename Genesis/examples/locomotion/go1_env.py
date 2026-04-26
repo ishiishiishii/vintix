@@ -2,6 +2,7 @@ import torch
 import math
 import random
 import genesis as gs
+from pathlib import Path
 from genesis.utils.geom import quat_to_xyz, transform_by_quat, inv_quat, transform_quat_by_quat
 
 
@@ -65,7 +66,15 @@ class Go1Env:
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="/workspace/Genesis/genesis/assets/urdf/go1/urdf/go1.urdf",
+                file=str(
+                    Path(__file__).resolve().parents[2]
+                    / "genesis"
+                    / "assets"
+                    / "urdf"
+                    / "go1"
+                    / "urdf"
+                    / "go1.urdf"
+                ),
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),

@@ -14,7 +14,7 @@ go2_walking_ad:
   episode_sparsity: 1
   # episode_range: [0.0, 1.0]  # Use all episodes (default)
 
-unitreea1_walking_ad:
+a1_walking_ad:
   type: "default"
   path: "a1_trajectories"  # data/a1_trajectories (AD data)
   group: "quadruped_locomotion"  # 統一されたグループ名

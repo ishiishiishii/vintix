@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from copy import copy
@@ -6,6 +7,31 @@ from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 import h5py
 import numpy as np
 from torch.utils.data import Dataset, IterableDataset
+
+
+def normalize_vintix_task_name(task_name: str) -> str:
+    """Canonical task keys for Vintix (legacy AD metadata used a different A1 key)."""
+    if task_name == "unitreea1_walking_ad":
+        return "a1_walking_ad"
+    return task_name
+
+
+def resolve_sidecar_metadata_json(ds_path: str) -> str:
+    """Resolve per-dataset metadata JSON.
+
+    Prefer ``<basename(ds_path)>.json`` (single-file layouts). If missing, use the
+    first ``trajectories_env_*.json`` (parallel AD from ``collect_ad_data_parallel``).
+    """
+    sidecar = os.path.join(ds_path, os.path.basename(ds_path) + ".json")
+    if os.path.isfile(sidecar):
+        return sidecar
+    matches = sorted(glob.glob(os.path.join(ds_path, "trajectories_env_*.json")))
+    if not matches:
+        raise FileNotFoundError(
+            f"No dataset metadata json found in {ds_path!r} "
+            f"(expected {sidecar!r} or trajectories_env_*.json)."
+        )
+    return matches[0]
 
 
 def left(name: str):
@@ -70,12 +96,13 @@ class FoundationMapDataset(Dataset):
         ]
         if preload:
             self.__preload()
-        self.metadata_path = os.path.join(
-            self.ds_path,
-            os.path.basename(self.ds_path) + '.json'
-        )
+        self.metadata_path = resolve_sidecar_metadata_json(self.ds_path)
         with open(self.metadata_path, 'r') as f:
             self.metadata = json.load(f)
+        if isinstance(self.metadata, dict) and "task_name" in self.metadata:
+            self.metadata["task_name"] = normalize_vintix_task_name(
+                str(self.metadata["task_name"])
+            )
 
         self.keys = [
             sorted(
@@ -353,12 +380,13 @@ class FoundationRandomMapDataset(Dataset):
         ]
         if preload:
             self.__preload()
-        self.metadata_path = os.path.join(
-            self.ds_path,
-            os.path.basename(self.ds_path) + '.json'
-        )
+        self.metadata_path = resolve_sidecar_metadata_json(self.ds_path)
         with open(self.metadata_path, 'r') as f:
             self.metadata = json.load(f)
+        if isinstance(self.metadata, dict) and "task_name" in self.metadata:
+            self.metadata["task_name"] = normalize_vintix_task_name(
+                str(self.metadata["task_name"])
+            )
 
         self.keys = [
             sorted(

@@ -1,0 +1,32 @@
+# Finerandom クロスロボ AD（``data/finerandom/<robot>_trajectories/`` に各ターゲット分をフラット配置）。
+#
+# ``all_onegroup_config.yaml`` と同様に **group はすべて統一**（quadruped_locomotion）。
+# 各ディレクトリの ``<robot>_trajectories.json`` がメタデータ（``task_name`` は ``*_walking_ad``）。
+
+go1_walking_ad:
+  type: "default"
+  path: "finerandom/go1_trajectories"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+go2_walking_ad:
+  type: "default"
+  path: "finerandom/go2_trajectories"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+a1_walking_ad:
+  type: "default"
+  path: "finerandom/a1_trajectories"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+minicheetah_walking_ad:
+  type: "default"
+  path: "finerandom/minicheetah_trajectories"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1

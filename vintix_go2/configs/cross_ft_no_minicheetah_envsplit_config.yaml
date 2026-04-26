@@ -1,0 +1,54 @@
+# Cross-robot fine-tuning PPO history (env-split), excluding minicheetah.
+#
+# This config is for `scripts/train_vintix.py`.
+#
+# Datasets are produced directly by `scripts/train_with_history.py` as
+# Collect-compatible per-env files under ``data/ppo/<RobotA>_to_<RobotB>/``:
+#   trajectories_env_0000.h5, trajectories_env_0001.h5, ...
+# with keys: proprio_observation, action, reward, step_num
+#
+# We intentionally exclude any runs that involve minicheetah.
+
+# Keys are arbitrary labels; paths are relative to train_vintix ``data_dir`` (usually ``data``).
+# Each directory's ``<dirname>.json`` must declare task_name equal to the folder basename.
+ft_go1_to_go2_env:
+  type: "default"
+  path: "ppo/go1_to_go2"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go2_to_go1_env:
+  type: "default"
+  path: "ppo/go2_to_go1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go1_to_a1_env:
+  type: "default"
+  path: "ppo/go1_to_a1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_a1_to_go1_env:
+  type: "default"
+  path: "ppo/a1_to_go1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go2_to_a1_env:
+  type: "default"
+  path: "ppo/go2_to_a1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_a1_to_go2_env:
+  type: "default"
+  path: "ppo/a1_to_go2"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1

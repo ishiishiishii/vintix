@@ -5,6 +5,7 @@
 各環境が独立してデータを収集し、各環境1つのファイルに保存
 """
 import argparse
+import copy
 import json
 import math
 import sys
@@ -34,20 +35,148 @@ from rsl_rl.runners import OnPolicyRunner
 import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
-from env import LaikagoEnv
+from env import Go1Env
+from env import A1Env
+
+
+def default_expert_ckpt_for_robot(robot: str) -> Path:
+    """Return a default expert checkpoint path for a given robot."""
+    robot = robot.lower()
+    genesis_root = Path(__file__).parents[2] / "Genesis"
+    logs = genesis_root / "logs"
+
+    mapping = {
+        # Common experts used in this repo (adjust if your logdirs differ).
+        "go1": logs / "go1-walking" / "model_300.pt",
+        "go2": logs / "go2-walking" / "model_300.pt",
+        "minicheetah": logs / "minicheetah-walking" / "model_300.pt",
+        "a1": logs / "a1-walking" / "model_300.pt",
+    }
+    if robot not in mapping:
+        raise ValueError(
+            f"Unknown robot '{robot}'. "
+            f"Supported: {sorted(mapping.keys())}. "
+            f"Or pass an explicit model path."
+        )
+    return mapping[robot]
+
+
+def _slug_robot(robot: str) -> str:
+    return robot.strip().lower()
+
+
+def format_auto_output_dir(*, target_robot: str, source_robot: str | None, bootstrap_enabled: bool) -> str:
+    """Auto-format output_dir for this run (used only when enabled by flag)."""
+    t = _slug_robot(target_robot)
+    base = f"data/{t}_trajectories"
+    if not bootstrap_enabled:
+        return f"{base}/{t}_ad_parallel"
+    if source_robot is None:
+        return f"{base}/{t}_ad_parallel_bootstrap"
+    s = _slug_robot(source_robot)
+    return f"{base}/{t}_ad_parallel_bootstrap/ft_{s}_to_{t}"
+
+
+def format_finetune_layout_output_dir(
+    layout_parent: str, *, source_robot: str, target_robot: str
+) -> str:
+    """Cross-run output directory.
+
+    - Default: ``data/<layout_parent>/<source>_to_<target>/`` (e.g. ``data/finetune3M/go1_to_go2``).
+    - ``layout_parent == "finerandom"``: ``data/finerandom/<target>_trajectories/`` (flat per target;
+      use distinct ``trajectories_env_<source>_to_<target>_*.`` filenames — see ``PerEnvADDataCollector``).
+    """
+    s = _slug_robot(source_robot)
+    t = _slug_robot(target_robot)
+    parent = layout_parent.strip().strip("/").replace("..", "")
+    if not parent:
+        raise ValueError("finetune_layout_parent must be non-empty when set")
+    if parent.lower() == "finerandom":
+        return f"data/finerandom/{t}_trajectories"
+    return f"data/{parent}/{s}_to_{t}"
+
+
+def cross_collection_outputs_complete(
+    output_dir: str | Path,
+    *,
+    num_envs: int,
+    target_steps_per_env: int,
+    pair_slug: str | None = None,
+) -> bool:
+    """Best-effort check whether a prior cross-run finished for all parallel env files."""
+    out = Path(output_dir)
+    if not out.is_dir():
+        return False
+    for env_idx in range(int(num_envs)):
+        if pair_slug:
+            stem = f"trajectories_env_{pair_slug}_{env_idx:04d}"
+        else:
+            stem = f"trajectories_env_{env_idx:04d}"
+        meta_path = out / f"{stem}.json"
+        h5_path = out / f"{stem}.h5"
+        if not meta_path.is_file() or not h5_path.is_file():
+            return False
+        if h5_path.stat().st_size <= 0:
+            return False
+        try:
+            meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+            return False
+        total_transitions = meta.get("total_transitions")
+        if not isinstance(total_transitions, int):
+            return False
+        if total_transitions < int(target_steps_per_env):
+            return False
+    return True
+
+
+def scheduled_epsilon(
+    env_total_steps: torch.Tensor,
+    threshold_steps: torch.Tensor | None,
+    *,
+    p: float,
+    threshold_valid: bool,
+) -> torch.Tensor:
+    """Piecewise schedule used for mixing.
+
+    Let ``N_s`` be ``target_steps_per_env``, ``f`` be ``noise_free_fraction``,
+    ``T = (1 - f) * N_s``, and ``n_s`` be per-env collected steps ``env_total_steps``.
+
+    Equivalently (with ``r = n_s / ((1 - f) N_s)``), the intended schedule is
+
+        ε(n_s) = ( 1 - ( n_s / ((1 - f) N_s) )^p )^(1/p),
+
+    evaluated with ``r = clamp(n_s / T, 0, 1)`` and ``T = (1-f) N_s`` so ``n_s > T`` gives ``ε = 0``.
+    """
+    if not threshold_valid or threshold_steps is None:
+        return torch.zeros_like(env_total_steps)
+    ratios = torch.clamp(env_total_steps / threshold_steps, 0.0, 1.0)
+    ratio_term = torch.pow(ratios, p)
+    return torch.pow(torch.clamp(1.0 - ratio_term, 0.0), 1.0 / p)
 
 
 class PerEnvADDataCollector:
     """各環境ごとのADデータ収集器（各環境1つのファイル）"""
     
-    def __init__(self, output_dir, env_idx, group_size=50000, robot_type="go2"):
+    def __init__(
+        self,
+        output_dir,
+        env_idx,
+        group_size=50000,
+        robot_type="go2",
+        pair_slug: str | None = None,
+    ):
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.env_idx = env_idx
         self.group_size = group_size
         self.robot_type = robot_type
-        
-        filename = self.output_dir / f"trajectories_env_{env_idx:04d}.h5"
+
+        if pair_slug:
+            stem = f"trajectories_env_{pair_slug}_{env_idx:04d}"
+        else:
+            stem = f"trajectories_env_{env_idx:04d}"
+        filename = self.output_dir / f"{stem}.h5"
         self.h5_file = h5py.File(filename, 'w')
         self.filename = filename
         
@@ -184,9 +313,12 @@ class PerEnvADDataCollector:
         if self.robot_type == "minicheetah":
             task_name = "minicheetah_walking_ad"
             group_name = "minicheetah_locomotion"
-        elif self.robot_type == "laikago":
-            task_name = "laikago_walking_ad"
-            group_name = "laikago_locomotion"
+        elif self.robot_type == "go1":
+            task_name = "go1_walking_ad"
+            group_name = "go1_locomotion"
+        elif self.robot_type == "a1":
+            task_name = "a1_walking_ad"
+            group_name = "quadruped_locomotion"
         else:  # go2
             task_name = "go2_walking_ad"
             group_name = "go2_locomotion"
@@ -211,33 +343,230 @@ class PerEnvADDataCollector:
             "total_transitions": int(self.total_transitions),
         }
         
-        metadata_path = self.output_dir / f"trajectories_env_{self.env_idx:04d}.json"
+        metadata_path = self.filename.with_suffix(".json")
         with open(metadata_path, 'w') as f:
             json.dump(metadata, f, indent=2)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Collect AD data with parallel environments")
-    parser.add_argument("--model_path", type=str, required=True,
-                        help="Path to trained PPO model")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago"],
-                        default="go2", help="Robot type")
-    parser.add_argument("--output_dir", type=str, default="data/go2_trajectories/go2_ad_parallel",
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        required=False,
+        default=None,
+        help=(
+            "Path to trained PPO model (target expert). "
+            "Required for single-run mode. Not required when using --run_all_cross."
+        ),
+    )
+    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "go1", "a1", "minicheetah"],
+                        default="go2", help="Robot type (A1 は ``a1``)")
+    default_output_dir = "data/go2_trajectories/go2_ad_parallel"
+    parser.add_argument("--output_dir", type=str, default=default_output_dir,
                         help="Output directory for AD data")
     parser.add_argument("--target_steps_per_env", type=int, default=1_000_000,
                         help="Total trajectory steps to collect per environment")
     parser.add_argument("--num_envs", type=int, default=10,
                         help="Number of parallel environments (trajectories)")
-    parser.add_argument("--max_perf", type=float, default=1.0,
-                        help="Maximum performance level (0.0=random, 1.0=expert)")
     parser.add_argument("--noise_free_fraction", type=float, default=0.05,
                         help="Fraction f of trajectory where epsilon=0 (final f*N_s steps are expert-only, default=0.05)")
     parser.add_argument("--max_steps", type=int, default=1000,
                         help="Maximum steps per episode")
-    parser.add_argument("--decay_power", type=float, default=0.5,
-                        help="Power parameter p for epsilon decay (lower -> quicker drop)")
+    parser.add_argument("--decay_power", type=float, default=0.6,
+                        help="Power p in ε = (1 - r^p)^(1/p) with r = n_s / ((1-f) N_s) (default 0.6)")
+
+    # Optional: replace the "random action" component with a pretrained policy.
+    # This is a *non-breaking* extension: if not provided, behavior stays identical.
+    parser.add_argument(
+        "--bootstrap_model_path",
+        type=str,
+        default=None,
+        help=(
+            "Optional. If set, use this PPO policy as the ε-side action instead of uniform random. "
+            "Mixture becomes: action = ε * bootstrap_policy + (1-ε) * expert_policy."
+        ),
+    )
+    parser.add_argument(
+        "--source_robot",
+        type=str,
+        default=None,
+        help=(
+            "Optional shorthand for --bootstrap_model_path. Example: --source_robot go1. "
+            "Used only when --bootstrap_model_path is not set."
+        ),
+    )
+    parser.add_argument(
+        "--bootstrap_noise_std",
+        type=float,
+        default=0.0,
+        help="Optional Gaussian noise std added to bootstrap-policy actions (default=0.0).",
+    )
+    parser.add_argument(
+        "--finerandom",
+        action="store_true",
+        help=(
+            "Finetuning-style 3-way action mix (requires source expert / bootstrap policy). "
+            "Uses the same ε schedule as the usual ε-side: "
+            "action = (1-ε)*target_expert + (ε/2)*source_expert + (ε/2)*uniform_random. "
+            "Early: half source + half random; late: target expert dominates."
+        ),
+    )
+    parser.add_argument(
+        "--auto_output_dir",
+        action="store_true",
+        help=(
+            "If set (and you did not manually override --output_dir), automatically format output_dir. "
+            "When bootstrap is enabled and --source_robot is set, it becomes "
+            "`data/<target>_trajectories/<target>_ad_parallel_bootstrap/ft_<source>_to_<target>`."
+        ),
+    )
+    parser.add_argument(
+        "--finetune_layout_parent",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help=(
+            "Optional. If set, bootstrap cross runs save under `data/<NAME>/<source>_to_<target>/` "
+            "(e.g. NAME=finetune3M → `data/finetune3M/go1_to_go2`). "
+            "NAME=finerandom → `data/finerandom/<target>_trajectories/` with prefixed filenames per pair. "
+            "Omit to keep the existing auto output layout (`--auto_output_dir`)."
+        ),
+    )
+    parser.add_argument(
+        "--run_all_cross",
+        action="store_true",
+        help=(
+            "Run all cross-robot combinations among {go1, go2, a1, minicheetah} in one command. "
+            "Each run collects AD data for the target expert while bootstrapping from the source expert."
+        ),
+    )
+    parser.add_argument(
+        "--cross_robots",
+        type=str,
+        default="go1,go2,a1,minicheetah",
+        help="Comma-separated robots used when --run_all_cross is set.",
+    )
+    parser.add_argument(
+        "--run_all_cross_skip_existing",
+        action="store_true",
+        help=(
+            "When using --run_all_cross, skip a (source, target) pair if outputs already look complete "
+            "(all trajectories_env_*.json report total_transitions >= --target_steps_per_env). "
+            "Requires per-pair output dirs (use --finetune_layout_parent and/or --auto_output_dir)."
+        ),
+    )
     
     args = parser.parse_args()
+    args.robot_type = args.robot_type.strip().lower()
+    if args.source_robot is not None:
+        args.source_robot = args.source_robot.strip().lower()
+
+    if args.finerandom and not args.run_all_cross:
+        if args.bootstrap_model_path is None and args.source_robot is None:
+            raise SystemExit("--finerandom requires --source_robot or --bootstrap_model_path")
+
+    if args.run_all_cross:
+        robots = [_slug_robot(r) for r in args.cross_robots.split(",") if r.strip()]
+        robots = list(dict.fromkeys(robots))
+        if len(robots) < 2:
+            raise ValueError("--run_all_cross requires at least 2 robots in --cross_robots")
+
+        from subprocess import run as _run
+
+        script_path = Path(__file__).resolve()
+        common = [
+            sys.executable,
+            str(script_path),
+            "--target_steps_per_env",
+            str(args.target_steps_per_env),
+            "--num_envs",
+            str(args.num_envs),
+            "--noise_free_fraction",
+            str(args.noise_free_fraction),
+            "--max_steps",
+            str(args.max_steps),
+            "--decay_power",
+            str(args.decay_power),
+        ]
+        if args.bootstrap_noise_std > 0:
+            common += ["--bootstrap_noise_std", str(args.bootstrap_noise_std)]
+        if args.finerandom:
+            common += ["--finerandom"]
+        auto_output_flag = args.finetune_layout_parent is None and args.output_dir == default_output_dir
+        if auto_output_flag:
+            common += ["--auto_output_dir"]
+
+        print("=" * 80)
+        print("RUN ALL CROSS (bootstrap-policy AD collection)")
+        print("robots:", robots)
+        if args.finetune_layout_parent:
+            lp = args.finetune_layout_parent.strip().lower()
+            if lp == "finerandom":
+                print(
+                    "finetune_layout_parent: finerandom -> data/finerandom/<target>_trajectories/ "
+                    "(files: trajectories_env_<source>_to_<target>_NNNN.*)"
+                )
+            else:
+                print("finetune_layout_parent:", args.finetune_layout_parent, "-> data/<NAME>/<source>_to_<target>/")
+        print("=" * 80)
+        for source in robots:
+            for target in robots:
+                if source == target:
+                    continue
+                model_path = default_expert_ckpt_for_robot(target)
+                cmd = (
+                    common
+                    + ["--model_path", str(model_path)]
+                    + ["-r", target]
+                    + ["--source_robot", source]
+                )
+                if args.finetune_layout_parent:
+                    out_dir = format_finetune_layout_output_dir(
+                        args.finetune_layout_parent, source_robot=source, target_robot=target
+                    )
+                    cmd += ["--output_dir", out_dir]
+                elif auto_output_flag:
+                    out_dir = format_auto_output_dir(
+                        target_robot=target,
+                        source_robot=source,
+                        bootstrap_enabled=True,
+                    )
+                else:
+                    out_dir = None
+
+                if args.run_all_cross_skip_existing:
+                    if out_dir is None:
+                        raise SystemExit(
+                            "--run_all_cross_skip_existing requires per-pair output directories "
+                            "(set --finetune_layout_parent, or keep default --output_dir so "
+                            "--auto_output_dir is enabled for cross runs)."
+                        )
+                    pair_slug = f"{_slug_robot(source)}_to_{_slug_robot(target)}"
+                    use_slug = (
+                        args.finetune_layout_parent is not None
+                        and args.finetune_layout_parent.strip().lower() == "finerandom"
+                    )
+                    if cross_collection_outputs_complete(
+                        out_dir,
+                        num_envs=int(args.num_envs),
+                        target_steps_per_env=int(args.target_steps_per_env),
+                        pair_slug=pair_slug if use_slug else None,
+                    ):
+                        print("\n" + "-" * 80)
+                        print(f"SKIP ft_{source}_to_{target} (existing outputs look complete): {out_dir}")
+                        print("-" * 80, flush=True)
+                        continue
+                print("\n" + "-" * 80)
+                print(f"COLLECT ft_{source}_to_{target}")
+                print("CMD", " ".join(cmd))
+                print("-" * 80, flush=True)
+                _run(cmd, check=True)
+        print("\nALL DONE", flush=True)
+        return
+
+    if args.model_path is None:
+        raise SystemExit("--model_path is required unless you specify --run_all_cross.")
     
     print("="*80)
     print("Parallel Algorithm Distillation Data Collection")
@@ -246,10 +575,35 @@ def main():
     print(f"Robot: {args.robot_type}")
     print(f"Parallel environments: {args.num_envs}")
     print(f"Target steps per env: {args.target_steps_per_env}")
-    print(f"Max performance: {args.max_perf}")
     print(f"Max steps per episode: {args.max_steps}")
     print(f"Decay power (p): {args.decay_power}")
+
+    bootstrap_enabled = (args.bootstrap_model_path is not None) or (args.source_robot is not None)
+    if args.output_dir == default_output_dir:
+        if args.finetune_layout_parent and args.source_robot is not None:
+            args.output_dir = format_finetune_layout_output_dir(
+                args.finetune_layout_parent,
+                source_robot=args.source_robot,
+                target_robot=args.robot_type,
+            )
+        elif args.auto_output_dir:
+            args.output_dir = format_auto_output_dir(
+                target_robot=args.robot_type,
+                source_robot=args.source_robot,
+                bootstrap_enabled=bootstrap_enabled,
+            )
+
     print(f"Output: {args.output_dir}")
+    if bootstrap_enabled:
+        print("Bootstrap: policy (replacing 'random' component)")
+        if args.bootstrap_model_path is not None:
+            print(f"  bootstrap_model_path: {args.bootstrap_model_path}")
+        else:
+            print(f"  source_robot: {args.source_robot} (using default expert ckpt)")
+        if args.bootstrap_noise_std > 0:
+            print(f"  bootstrap_noise_std: {args.bootstrap_noise_std}")
+    else:
+        print("Bootstrap: uniform random (default)")
     print("="*80 + "\n")
     
     gs.init(logging_level="warning", precision="64")
@@ -267,25 +621,34 @@ def main():
     
     print("Creating parallel environments...")
     if args.robot_type == "go2":
-    env = Go2Env(
-        num_envs=args.num_envs,
-        env_cfg=env_cfg,
-        obs_cfg=obs_cfg,
-        reward_cfg=reward_cfg,
-        command_cfg=command_cfg,
-        show_viewer=False
-    )
-    elif args.robot_type == "minicheetah":
-        env = MiniCheetahEnv(
+        env = Go2Env(
             num_envs=args.num_envs,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
             reward_cfg=reward_cfg,
             command_cfg=command_cfg,
-            show_viewer=False
+            show_viewer=False,
         )
-    elif args.robot_type == "laikago":
-        env = LaikagoEnv(
+    elif args.robot_type == "go1":
+        env = Go1Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False,
+        )
+    elif args.robot_type == "a1":
+        env = A1Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False,
+        )
+    elif args.robot_type == "minicheetah":
+        env = MiniCheetahEnv(
             num_envs=args.num_envs,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
@@ -297,19 +660,73 @@ def main():
         raise ValueError(f"Unknown robot type: {args.robot_type}")
     print(f"✓ Created {args.num_envs} parallel {args.robot_type} environments")
     
-    runner = OnPolicyRunner(env, train_cfg, str(model_dir), device=gs.device)
+    # rsl_rl の OnPolicyRunner は train_cfg を破壊的に書き換える（例: policy 内の class_name を pop）。
+    # これは「別チェックポイントが別クラス名だから」ではなく、同じ設定でも1回目の初期化で辞書が壊れるため。
+    # 対策は「別ファイルの cfg を必須にする」ではなく、Runner ごとに deepcopy して渡すこと。
+    runner = OnPolicyRunner(env, copy.deepcopy(train_cfg), str(model_dir), device=gs.device)
     runner.load(args.model_path)
     policy = runner.get_inference_policy(device=gs.device)
     print(f"✓ Loaded model from {args.model_path}\n")
+
+    bootstrap_policy = None
+    if args.bootstrap_model_path is None and args.source_robot is not None:
+        args.bootstrap_model_path = str(default_expert_ckpt_for_robot(args.source_robot))
+    if args.bootstrap_model_path is not None:
+        bootstrap_path = Path(args.bootstrap_model_path)
+        if not bootstrap_path.exists():
+            raise FileNotFoundError(f"bootstrap_model_path not found: {bootstrap_path}")
+        bootstrap_dir = bootstrap_path.parent
+        bootstrap_runner = OnPolicyRunner(
+            env, copy.deepcopy(train_cfg), str(bootstrap_dir), device=gs.device
+        )
+        bootstrap_runner.load(str(bootstrap_path))
+        bootstrap_policy = bootstrap_runner.get_inference_policy(device=gs.device)
+        print(f"✓ Loaded bootstrap policy from {bootstrap_path}\n")
+
+    if args.finerandom and bootstrap_policy is None:
+        raise SystemExit("--finerandom requires a loaded bootstrap (source expert) policy")
+
+    # ε側の行動源（ログ・説明用）。実装は下のループで random / bootstrap を切替。
+    if args.finerandom:
+        mix_side_log = "finerandom_3way"
+        mix_side_human = (
+            "(1-ε)*target_expert + (ε/2)*source_expert + (ε/2)*uniform; ε=same schedule as ε-side"
+        )
+    elif bootstrap_policy is None:
+        mix_side_log = "uniform_random"
+        mix_side_human = "uniform random in normalized action space"
+    else:
+        mix_side_log = "bootstrap_policy"
+        mix_side_human = (
+            "bootstrap policy (pretrained PPO; --source_robot or --bootstrap_model_path)"
+        )
     
-    collectors = [PerEnvADDataCollector(args.output_dir, env_idx, robot_type=args.robot_type) 
-                  for env_idx in range(args.num_envs)]
+    pair_slug = None
+    if (
+        args.finetune_layout_parent is not None
+        and args.finetune_layout_parent.strip().lower() == "finerandom"
+        and args.source_robot is not None
+    ):
+        pair_slug = f"{_slug_robot(args.source_robot)}_to_{_slug_robot(args.robot_type)}"
+    collectors = [
+        PerEnvADDataCollector(
+            args.output_dir,
+            env_idx,
+            robot_type=args.robot_type,
+            pair_slug=pair_slug,
+        )
+        for env_idx in range(args.num_envs)
+    ]
     
     base_seed = 42
     env_generators = [torch.Generator(device=gs.device) for _ in range(args.num_envs)]
     for env_idx, gen in enumerate(env_generators):
         gen.manual_seed(base_seed + env_idx)
-    print(f"✓ Set independent random seeds for action generation (base_seed={base_seed}, env_seeds={base_seed}..{base_seed + args.num_envs - 1})")
+    print(
+        f"✓ RNG seeds (base_seed={base_seed}, per-env {base_seed}..{base_seed + args.num_envs - 1}): "
+        f"used for ε-side={mix_side_log} "
+        f"({'joint-uniform sampling' if bootstrap_policy is None and not args.finerandom else 'optional Gaussian noise on bootstrap actions'})"
+    )
     
     default_joint_angles = torch.tensor([
         0.0,   # FR_hip
@@ -371,7 +788,14 @@ def main():
         print("  ε is 0 from the start (noise-free trajectory)")
     else:
         print(f"  ε becomes 0 for each env after step: {int(threshold_steps_tensor.item()):,}")
-    print(f"  Method: action = ε * random + (1-ε) * expert")
+    print(f"  ε-side (mixture A): {mix_side_human}")
+    print(f"  expert-side (mixture B): target PPO (--model_path)")
+    if args.finerandom:
+        print(
+            "  Method (--finerandom): action = (1-ε)*target_expert + (ε/2)*source_expert + (ε/2)*uniform_random"
+        )
+    else:
+        print(f"  Method: action = ε * ({mix_side_log}) + (1-ε) * expert")
     print(f"  Each environment saves to: trajectories_env_XXXX.h5")
     print()
     
@@ -391,30 +815,65 @@ def main():
     
     env_episode_data = [[] for _ in range(args.num_envs)]
     
-    pbar = tqdm(total=args.num_envs, desc="Collecting AD trajectories")
+    pbar_desc = f"AD collect ({mix_side_log}→expert)" if not args.finerandom else "AD collect (finerandom 3-way)"
+    pbar = tqdm(total=args.num_envs, desc=pbar_desc)
     
     with torch.no_grad():
         while bool(env_active.any().item()):
-            if not threshold_valid:
-                eps_values = torch.zeros(args.num_envs, device=gs.device)
-            else:
-                ratios = torch.clamp(env_total_steps / threshold_steps_tensor, 0.0, 1.0)
-                ratio_term = torch.pow(ratios, p)
-                eps_values = torch.pow(torch.clamp(1.0 - ratio_term, 0.0), 1.0 / p)
+            eps_values = scheduled_epsilon(
+                env_total_steps,
+                threshold_steps_tensor,
+                p=p,
+                threshold_valid=threshold_valid,
+            )
             eps_values = torch.where(env_active, eps_values, torch.zeros_like(eps_values))
 
             expert_actions = policy(obs)
-            
-            random_actions = torch.zeros_like(expert_actions)
-            for env_idx in range(args.num_envs):
-                random_actions[env_idx] = action_limits[:, 0] + torch.rand(
-                    expert_actions[env_idx].shape,
-                    device=gs.device,
-                    generator=env_generators[env_idx]
-                ) * (action_limits[:, 1] - action_limits[:, 0])
-            
             eps_expanded = eps_values.unsqueeze(1)
-            actions = eps_expanded * random_actions + (1.0 - eps_expanded) * expert_actions
+
+            if args.finerandom:
+                rand_uniform = torch.zeros_like(expert_actions)
+                for env_idx in range(args.num_envs):
+                    rand_uniform[env_idx] = action_limits[:, 0] + torch.rand(
+                        expert_actions[env_idx].shape,
+                        device=gs.device,
+                        generator=env_generators[env_idx],
+                    ) * (action_limits[:, 1] - action_limits[:, 0])
+                source_actions = bootstrap_policy(obs)
+                if args.bootstrap_noise_std > 0:
+                    noise = torch.zeros_like(source_actions)
+                    for env_idx in range(args.num_envs):
+                        noise[env_idx] = torch.randn(
+                            source_actions[env_idx].shape,
+                            device=gs.device,
+                            generator=env_generators[env_idx],
+                        ) * float(args.bootstrap_noise_std)
+                    source_actions = source_actions + noise
+                g = 1.0 - eps_expanded
+                half = eps_expanded * 0.5
+                actions = g * expert_actions + half * source_actions + half * rand_uniform
+            elif bootstrap_policy is None:
+                random_actions = torch.zeros_like(expert_actions)
+                for env_idx in range(args.num_envs):
+                    random_actions[env_idx] = action_limits[:, 0] + torch.rand(
+                        expert_actions[env_idx].shape,
+                        device=gs.device,
+                        generator=env_generators[env_idx],
+                    ) * (action_limits[:, 1] - action_limits[:, 0])
+                actions = eps_expanded * random_actions + (1.0 - eps_expanded) * expert_actions
+            else:
+                # Use a pretrained policy as the ε-side action.
+                random_actions = bootstrap_policy(obs)
+                if args.bootstrap_noise_std > 0:
+                    noise = torch.zeros_like(random_actions)
+                    for env_idx in range(args.num_envs):
+                        noise[env_idx] = torch.randn(
+                            random_actions[env_idx].shape,
+                            device=gs.device,
+                            generator=env_generators[env_idx],
+                        ) * float(args.bootstrap_noise_std)
+                    random_actions = random_actions + noise
+                actions = eps_expanded * random_actions + (1.0 - eps_expanded) * expert_actions
             actions = torch.clamp(actions, action_limits[:, 0], action_limits[:, 1])
             
             obs_without_actions = obs[:, :-12]
@@ -517,12 +976,12 @@ def main():
         print(f"  Reward std: {np.std(episode_rewards_list):.4f}")
         print(f"  Min reward: {np.min(episode_rewards_list):.4f}")
         print(f"  Max reward: {np.max(episode_rewards_list):.4f}")
-    if not threshold_valid:
-        final_eps_values = torch.zeros(args.num_envs, device=gs.device)
-    else:
-        final_ratios = torch.clamp(env_total_steps / threshold_steps_tensor, 0.0, 1.0)
-        final_ratio_term = torch.pow(final_ratios, p)
-        final_eps_values = torch.pow(torch.clamp(1.0 - final_ratio_term, 0.0), 1.0 / p)
+    final_eps_values = scheduled_epsilon(
+        env_total_steps,
+        threshold_steps_tensor,
+        p=p,
+        threshold_valid=threshold_valid,
+    )
     print(f"\nFinal ε range: [{float(final_eps_values.min().cpu()):.4f}, {float(final_eps_values.max().cpu()):.4f}]")
     print(f"Final steps (sum/env): {int(env_total_steps.sum().cpu()):,}")
     print(f"\nOutput files:")
@@ -537,20 +996,19 @@ if __name__ == "__main__":
 
 
 """
-使用例:
+使用例（カレントは ``vintix_go2/``、``--decay_power`` は既定 0.6 で省略可）:
 
-# 10環境、各環境 1,000,000 ステップ
-python scripts/collect_ad_data_parallel.py \
-    --model_path /workspace/Genesis/logs/go2-walking/model_300.pt \
-    --output_dir data/go2_trajectories/go2_ad_parallel \
-    --target_steps_per_env 1000000 \
-    --num_envs 10 \
-    --max_perf 1.0 \
-    --decay_power 0.4
+# 全ペア（go1, go2, a1, minicheetah）× 10 環境 × 各 30 万ステップ、finerandom 3 成分。
+# 学習用の配置は ``data/finerandom/<target>_trajectories/`` にターゲットごとにフラット集約（H5/JSON 名にソースペア接頭辞）。
+python scripts/collect_ad_data_parallel.py --run_all_cross \\
+    --target_steps_per_env 300000 --num_envs 10 \\
+    --finetune_layout_parent finerandom --finerandom
 
-# 各環境のデータは独立したファイルに保存される:
-#   - trajectories_env_0000.h5
-#   - trajectories_env_0001.h5
-#   - ...
-#   - trajectories_env_0009.h5
+# 単発: ターゲット go2 + ソース go1、自動出力パス:
+python scripts/collect_ad_data_parallel.py \\
+    --model_path /path/to/Genesis/logs/go2-walking/model_300.pt -r go2 \\
+    --source_robot go1 --auto_output_dir
+
+# finerandom レイアウト: ``data/finerandom/<target>_trajectories/trajectories_env_<src>_to_<tgt>_0000.*``
+# それ以外: 各環境 ``trajectories_env_0000.h5`` … と対応 json。
 """

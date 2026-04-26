@@ -1,7 +1,8 @@
 import datetime
 import json
 import os
-from dataclasses import asdict, dataclass
+import sys
+from dataclasses import asdict, dataclass, fields
 from typing import List, Optional, Tuple
 
 import pyrallis
@@ -21,6 +22,32 @@ from vintix.training.utils.train_utils import (compute_stats,
                                                initialize_model, train_loop)
 from vintix.nn.individual_task_head import AcsDecoder
 from pathlib import Path
+
+def canon_robot_type(s: str) -> str:
+    if not s:
+        return s
+    t = s.strip().lower()
+    if t in ("a1", "unitreea1"):
+        return "a1"
+    return t
+
+def _robot_to_task_name(robot_type: str) -> str:
+    r = canon_robot_type(robot_type)
+    if r == "a1":
+        return "a1_walking_ad"
+    return f"{r}_walking_ad"
+
+
+def _infer_target_robot_from_dataset_name(name: str) -> str | None:
+    n = name.strip()
+    if n.endswith("_env"):
+        n = n[: -len("_env")]
+    if n.startswith("ft_"):
+        n = n[len("ft_") :]
+    if "_to_" not in n:
+        return None
+    _src, tgt = n.split("_to_", 1)
+    return canon_robot_type(tgt)
 
 
 class RandomSampledDataset:
@@ -115,6 +142,8 @@ class TrainConfig:
     save_every: int = 1
     save_every_steps: int = 1000
     save_dir: str = "models/vintix_go2"
+    # False のとき ``save_dir`` がそのままエポックフォルダの親（``name`` は付けない。W&B 用の ``name`` のみ）。
+    save_use_name_subdir: bool = True
     stats_path: str = "vintix/stats.json"
     load_ckpt: Optional[str] = None
     start_epoch: int = 0
@@ -122,6 +151,8 @@ class TrainConfig:
 
     # Dataset config
     dataset_config_paths: List[str] = None
+    # If set, load this YAML first then overlay fields from this config (same keys as TrainConfig).
+    base_config_path: Optional[str] = None
 
     # wandb config
     project: str = "Vintix_Go2"
@@ -140,12 +171,36 @@ class TrainConfig:
     finetune_freeze_encoder: bool = True
 
     def __post_init__(self):
-        if self.dataset_config_paths is None:
-            self.dataset_config_paths = ["configs/go2_dataset_config.yaml"]
-        
-        # 相対パスを絶対パスに変換（スクリプトの親ディレクトリ（vintix_go2）を基準）
         script_dir = os.path.dirname(os.path.abspath(__file__))
         parent_dir = os.path.dirname(script_dir)  # vintix_go2ディレクトリ
+
+        if self.base_config_path is not None:
+            bp = self.base_config_path
+            if not os.path.isabs(bp):
+                bp = os.path.join(parent_dir, bp)
+            base_oc = OmegaConf.load(bp)
+            overlay = {
+                k: getattr(self, k)
+                for k in _BASE_CONFIG_OVERLAY_KEYS
+                if hasattr(self, k)
+            }
+            merged = OmegaConf.merge(base_oc, OmegaConf.create(overlay))
+            merged_dict = OmegaConf.to_container(merged, resolve=True)
+            for f in fields(TrainConfig):
+                if f.name == "base_config_path":
+                    object.__setattr__(self, "base_config_path", None)
+                    continue
+                if f.name not in merged_dict:
+                    continue
+                val = merged_dict[f.name]
+                if f.name == "betas" and isinstance(val, list):
+                    val = tuple(val)
+                setattr(self, f.name, val)
+
+        if self.dataset_config_paths is None:
+            self.dataset_config_paths = ["configs/go2_dataset_config.yaml"]
+
+        # 相対パスを絶対パスに変換（スクリプトの親ディレクトリ（vintix_go2）を基準）
         
         # data_dirを絶対パスに変換
         if not os.path.isabs(self.data_dir):
@@ -159,8 +214,12 @@ class TrainConfig:
         stats_dir = os.path.dirname(self.stats_path)
         os.makedirs(stats_dir, exist_ok=True)
         
-        # 保存ディレクトリにモデル名を含める
-        self.save_dir = os.path.join(self.save_dir, self.name)
+        # チェックポイント親: save_dir のみ、または save_dir/name（既定）
+        if self.save_use_name_subdir:
+            _sd = os.path.normpath(self.save_dir)
+            _nm = (self.name or "").strip().rstrip(os.sep)
+            if _nm and os.path.basename(_sd) != _nm:
+                self.save_dir = os.path.join(self.save_dir, self.name)
         
         self.dataset_config = {}
         for dcp in self.dataset_config_paths:
@@ -171,20 +230,28 @@ class TrainConfig:
             self.dataset_config = {**self.dataset_config, **dc}
         self.dataset_names = {
             v.path: v.group
-                for k, v in self.dataset_config.items() if v.type == "default"
+            for k, v in self.dataset_config.items()
+            if getattr(v, "type", None) == "default"
         }
         self.reward_scales = [
             v.reward_scale
-                for v in self.dataset_config.values() if v.type == "default"
+            for v in self.dataset_config.values()
+            if getattr(v, "type", None) == "default"
         ]
         self.episode_sparsity = [
             v.episode_sparsity
-                for v in self.dataset_config.values() if v.type == "default"
+            for v in self.dataset_config.values()
+            if getattr(v, "type", None) == "default"
         ]
+        self.task_reward_config = {
+            k: float(v.reward_scale)
+            for k, v in self.dataset_config.items()
+            if getattr(v, "type", None) == "task_only"
+        }
         # episode_rangeを読み込む（オプション）
         self.episode_range = []
         for v in self.dataset_config.values():
-            if v.type == "default":
+            if getattr(v, "type", None) == "default":
                 if hasattr(v, 'episode_range') and v.episode_range is not None:
                     # OmegaConf ListConfigをlist/tupleに変換
                     try:
@@ -201,12 +268,131 @@ class TrainConfig:
 
 HALF_DTYPES = {"bf16": torch.bfloat16, "fp16": torch.float16}
 
+# When ``base_config_path`` is set, only these keys are taken from the overlay YAML;
+# everything else comes from the base file (avoids dataclass defaults clobbering the base).
+# Only keys meant to be overridden by small "delta" YAMLs (e.g. finerandom).
+# Do not include ``epochs`` / ``batch_size`` / etc.: those would be taken from
+# TrainConfig dataclass defaults after pyrallis parse and would clobber ``base_config_path``.
+_BASE_CONFIG_OVERLAY_KEYS = frozenset(
+    {
+        "data_dir",
+        "dataset_config_paths",
+        "stats_path",
+        "project",
+        "group",
+        "name",
+    }
+)
+
+
+def _strip_config_path_arg(argv: list[str]) -> list[str]:
+    out: list[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--config_path":
+            i += 2
+            continue
+        if a.startswith("--config_path="):
+            i += 1
+            continue
+        out.append(a)
+        i += 1
+    return out
+
+
+def _is_vintix_dataset_spec_yaml(path: str) -> bool:
+    try:
+        oc = OmegaConf.load(path)
+    except Exception:
+        return False
+    d = OmegaConf.to_container(oc, resolve=True)
+    if not isinstance(d, dict) or not d:
+        return False
+    train_fields = {f.name for f in fields(TrainConfig)}
+    if train_fields.intersection(d.keys()):
+        return False
+    for v in d.values():
+        if not isinstance(v, dict):
+            return False
+        if "path" not in v or "type" not in v:
+            return False
+    return True
+
+
+def _dataset_yaml_path_values(path: str) -> list[str]:
+    try:
+        oc = OmegaConf.load(path)
+        d = OmegaConf.to_container(oc, resolve=True)
+        if not isinstance(d, dict):
+            return []
+        out: list[str] = []
+        for v in d.values():
+            if isinstance(v, dict) and "path" in v:
+                out.append(str(v["path"]))
+        return out
+    except Exception:
+        return []
+
+
+def _default_data_dir_for_dataset_yaml(path: str) -> Optional[str]:
+    try:
+        oc = OmegaConf.load(path)
+    except Exception:
+        return None
+    d = OmegaConf.to_container(oc, resolve=True)
+    paths = [v["path"] for v in d.values() if isinstance(v, dict) and "path" in v]
+    if not paths:
+        return None
+    if any(str(p).startswith("finerandom/") for p in paths):
+        return "data"
+    if any(str(p).startswith("go2_trajectories/") for p in paths):
+        return "data/go2_trajectories"
+    return "data"
+
+
+def _apply_argv_if_config_path_is_dataset_spec_only() -> None:
+    """When ``--config_path`` is a dataset YAML (task blocks, not ``TrainConfig``), feed it
+    via ``--dataset_config_paths`` so pyrallis can still build ``TrainConfig`` from defaults
+    and the rest of the CLI."""
+    argv = sys.argv[1:]
+    cfg_path: Optional[str] = None
+    for i, a in enumerate(argv):
+        if a == "--config_path" and i + 1 < len(argv):
+            cfg_path = argv[i + 1]
+            break
+        if a.startswith("--config_path="):
+            cfg_path = a.split("=", 1)[1]
+            break
+    if not cfg_path:
+        return
+    abs_path = cfg_path if os.path.isabs(cfg_path) else os.path.join(os.getcwd(), cfg_path)
+    if not os.path.isfile(abs_path) or not _is_vintix_dataset_spec_yaml(abs_path):
+        return
+    stripped = _strip_config_path_arg(sys.argv[1:])
+    extra: list[str] = ["--dataset_config_paths", json.dumps([cfg_path])]
+    has_data_dir = any(x == "--data_dir" or x.startswith("--data_dir=") for x in stripped)
+    if not has_data_dir:
+        dd = _default_data_dir_for_dataset_yaml(abs_path)
+        if dd:
+            extra.extend(["--data_dir", dd])
+    has_save_dir = any(x == "--save_dir" or x.startswith("--save_dir=") for x in stripped)
+    has_save_sub = any(
+        x == "--save_use_name_subdir" or x.startswith("--save_use_name_subdir=") for x in stripped
+    )
+    if not has_save_dir and not has_save_sub and any(
+        p.startswith("finerandom/") for p in _dataset_yaml_path_values(abs_path)
+    ):
+        # models/finerandom/finrandom のような無駄な一段を避け、エポックは models/finerandom/ 直下へ
+        extra.extend(["--save_dir", "models/finerandom", "--save_use_name_subdir", "false"])
+    sys.argv = [sys.argv[0]] + extra + stripped
+
+
 _ROBOT_TASK_DEFAULT = {
     "go1": "go1_walking_ad",
     "go2": "go2_walking_ad",
     "minicheetah": "minicheetah_walking_ad",
-    "unitreea1": "unitreea1_walking_ad",
-    "a1": "unitreea1_walking_ad",
+    "a1": "a1_walking_ad",
 }
 
 
@@ -237,7 +423,9 @@ def _prepare_decoder_only_finetune(
     if not config.finetune_robot and not config.finetune_task_name:
         raise ValueError("Specify finetune_robot (e.g. minicheetah) or finetune_task_name (e.g. minicheetah_walking_ad).")
 
-    task_name = config.finetune_task_name or _ROBOT_TASK_DEFAULT.get(config.finetune_robot)
+    task_name = config.finetune_task_name
+    if not task_name and config.finetune_robot:
+        task_name = _ROBOT_TASK_DEFAULT.get(canon_robot_type(config.finetune_robot))
     if not task_name:
         raise ValueError(f"Could not infer finetune_task_name for finetune_robot={config.finetune_robot!r}.")
 
@@ -266,8 +454,9 @@ def _prepare_decoder_only_finetune(
                 f"Available stats keys: {available_keys[:10]} ..."
             )
         
-        group_name = config.dataset_config.get(task_name, {}).get("group", "quadruped_locomotion")
-        rew_scale = config.dataset_config.get(task_name, {}).get("reward_scale", 1.0)
+        task_cfg = getattr(config, "task_config", None) or config.dataset_config
+        group_name = task_cfg.get(task_name, {}).get("group", "quadruped_locomotion")
+        rew_scale = task_cfg.get(task_name, {}).get("reward_scale", 1.0)
         
         # タスクを追加（stats全体を渡す。add_taskは内部でstats[task_name]にアクセス）
         model.add_task(
@@ -346,9 +535,8 @@ def train(config: TrainConfig):
 
     stats = {}
     if config.local_rank == 0:
-        config.save_dir = os.path.join(config.save_dir, config.name)
-        if not os.path.exists(config.save_dir):
-            os.makedirs(config.save_dir)
+        # NOTE: TrainConfig.__post_init__ already appends `name` to save_dir.
+        os.makedirs(config.save_dir, exist_ok=True)
 
         _ = wandb.init(
             project=config.project,
@@ -371,13 +559,13 @@ def train(config: TrainConfig):
                 stats = json.load(f)
 
     print("PREPARING DATASET")
+    # MultiTaskMapDataset in vintix/vintix does not accept episode_range; config.episode_range is unused here.
     dataset = MultiTaskMapDataset(
         data_dir=config.data_dir,
         datasets_info=config.dataset_names,
         trajectory_len=config.context_len,
         trajectory_sparsity=config.trajectory_sparsity,
         ep_sparsity=config.episode_sparsity,
-        episode_range=config.episode_range if config.episode_range else None,
         preload=config.preload,
     )
     
@@ -534,5 +722,6 @@ def train(config: TrainConfig):
 
 
 if __name__ == '__main__':
+    _apply_argv_if_config_path_is_dataset_spec_only()
     train()
 

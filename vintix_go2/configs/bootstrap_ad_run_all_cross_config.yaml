@@ -1,0 +1,95 @@
+# Bootstrap AD datasets produced by:
+#   scripts/collect_ad_data_parallel.py --run_all_cross --auto_output_dir ...
+#
+# NOTE:
+# - Keys should match each dataset's metadata "task_name".
+# - For these bootstrap directories, we generate <dirname>.json with task_name=<dirname>,
+#   so keys below match directory names (ft_*).
+#
+# Used by:
+#   configs/train_bootstrap_ad_run_all_cross_e2.yaml
+
+ft_go1_to_go2:
+  type: "default"
+  path: "go2_trajectories/go2_ad_parallel_bootstrap/ft_go1_to_go2"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_a1_to_go2:
+  type: "default"
+  path: "go2_trajectories/go2_ad_parallel_bootstrap/ft_a1_to_go2"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_minicheetah_to_go2:
+  type: "default"
+  path: "go2_trajectories/go2_ad_parallel_bootstrap/ft_minicheetah_to_go2"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go2_to_go1:
+  type: "default"
+  path: "go1_trajectories/go1_ad_parallel_bootstrap/ft_go2_to_go1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_a1_to_go1:
+  type: "default"
+  path: "go1_trajectories/go1_ad_parallel_bootstrap/ft_a1_to_go1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_minicheetah_to_go1:
+  type: "default"
+  path: "go1_trajectories/go1_ad_parallel_bootstrap/ft_minicheetah_to_go1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go1_to_a1:
+  type: "default"
+  path: "a1_trajectories/a1_ad_parallel_bootstrap/ft_go1_to_a1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go2_to_a1:
+  type: "default"
+  path: "a1_trajectories/a1_ad_parallel_bootstrap/ft_go2_to_a1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_minicheetah_to_a1:
+  type: "default"
+  path: "a1_trajectories/a1_ad_parallel_bootstrap/ft_minicheetah_to_a1"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go1_to_minicheetah:
+  type: "default"
+  path: "minicheetah_trajectories/minicheetah_ad_parallel_bootstrap/ft_go1_to_minicheetah"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_go2_to_minicheetah:
+  type: "default"
+  path: "minicheetah_trajectories/minicheetah_ad_parallel_bootstrap/ft_go2_to_minicheetah"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+
+ft_a1_to_minicheetah:
+  type: "default"
+  path: "minicheetah_trajectories/minicheetah_ad_parallel_bootstrap/ft_a1_to_minicheetah"
+  group: "quadruped_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1
+

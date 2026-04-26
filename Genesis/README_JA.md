@@ -95,21 +95,37 @@ pip install -e ".[dev]"
 DockerからGenesisを利用する場合は、まずDockerイメージをビルドします：
 
 ```bash
-docker build -t genesis -f docker/Dockerfile docker
+docker build -t genesis -f docker/Dockerfile docker \
+  --build-arg HOST_UID=$(id -u) --build-arg HOST_GID=$(id -g) --build-arg CONTAINER_USER=kawa37
 ```
 
-その後、Dockerイメージ内で例を実行できます（`/workspace/examples`にマウント）：
+イメージ内では **root には入らず**、ログイン名 `kawa37` の非 root ユーザーのみで動作します（`CONTAINER_USER` で変更可）。`HOST_UID` / `HOST_GID` はホストの `id -u` / `id -g` に合わせてください（`/workspace` をマウントしたときの生成物の所有者がホストの kawa37 と一致します）。ホストの UID/GID が変わったら再ビルドしてください。
+
+その後、Dockerイメージ内で例を実行できます（`/workspace` にマウント）：
 
 ```bash
-xhost +local:root # コンテナがディスプレイにアクセスできるようにする
+xhost +local:docker # コンテナユーザーがディスプレイにアクセスできるようにする
 
-docker run --gpus all --rm -it \
+docker run --gpus all --shm-size=8g --rm -it \
 -e DISPLAY=$DISPLAY \
+-e NVIDIA_VISIBLE_DEVICES=all \
+-e NVIDIA_DRIVER_CAPABILITIES=all \
+-p 6006:6006 -p 8888:8888 \
 -v /dev/dri:/dev/dri \
 -v /tmp/.X11-unix/:/tmp/.X11-unix \
 -v $PWD:/workspace \
 genesis
 ```
+
+TensorBoard の例（コンテナ内）:
+
+```bash
+tensorboard --logdir /path/to/logs --host 0.0.0.0 --port 6006
+```
+
+ホストのブラウザで `http://localhost:6006` を開きます。Weights & Biases を使う場合は `WANDB_API_KEY` などを環境変数で渡してください。
+
+親ディレクトリで Genesis 以外のコードもまとめてマウントする場合は、リポジトリ直下の `docker-compose.yml` を使う方法もあります（`.env.example` を `.env` にコピーして `HOST_UID` / `HOST_GID` と必要なら `CONTAINER_USER` を調整し、`docker compose build` → `docker compose run --rm genesis`）。
 
 ## ドキュメント
 

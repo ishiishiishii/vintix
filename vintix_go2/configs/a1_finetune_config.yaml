@@ -1,9 +1,7 @@
-# UnitreeA1追加訓練用設定ファイル
-# 
-# UnitreeA1タスクのみを含むデータセット設定
-# Transformerパラメータを凍結して、UnitreeA1用のデコーダーのみを訓練
+# A1 追加訓練用データセット設定（単一タスク）
+# Transformer を凍結し、A1 用デコーダのみ訓練する想定
 
-unitreea1_walking_ad:
+a1_walking_ad:
   type: "default"
   path: "a1_trajectories"  # data/a1_trajectories (AD data)
   group: "quadruped_locomotion"  # 既存のグループ名を使用

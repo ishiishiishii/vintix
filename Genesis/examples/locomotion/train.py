@@ -20,7 +20,7 @@ import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
-from env import UnitreeA1Env
+from env import A1Env
 from env import ANYmalCEnv
 from spotmicro_env import SpotMicroEnv
 from env import Go1Env
@@ -587,7 +587,7 @@ def get_anymalc_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.3,   # Go2と同じ
+        "base_height_target": 0.48,
         "feet_height_target": 0.075,  # Go2と同じ
         "reward_scales": {
             "tracking_lin_vel": 1.0,
@@ -600,9 +600,9 @@ def get_anymalc_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.9, 0.9],  # 前進速度コマンド（0.9 m/sに変更）
-        "lin_vel_y_range": [0, 0],      # 横方向速度コマンド
-        "ang_vel_range": [0, 0],         # 角速度コマンド
+        "lin_vel_x_range": [0.7, 0.7],
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
@@ -662,7 +662,6 @@ def get_spotmicro_cfgs():
         # termination conditions (Go2と同じ)
         "termination_if_roll_greater_than": 10,  # degree
         "termination_if_pitch_greater_than": 10,
-        "termination_if_base_height_below": 0.08,  # ベース高さが8cm以下になったら転倒とみなす（目標高さ15.5cmの約半分）
         # base pose (SpotMicroの実際のスタンディング高さに基づく)
         "base_init_pos": [0.0, 0.0, 0.25],  # 初期高さ（25cm）
         "base_init_quat": [0.0, 0.0, 0.0, 1.0],  # Z軸周りに180度回転（前後を入れ替える）
@@ -674,7 +673,7 @@ def get_spotmicro_cfgs():
     }
     obs_cfg = {
         "num_obs": 45,
-        "obs_scales": {
+        "obs_scales": {  # Go2と同じ
             "lin_vel": 2.0,
             "ang_vel": 0.25,
             "dof_pos": 1.0,
@@ -683,20 +682,20 @@ def get_spotmicro_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.2,  # 目標ベース高さ（20cm）
-        "feet_height_target": 0.041,  # 足の目標高さ（4.1cm）- Go2の7.5cm × 0.551、比率0.179を維持
-        "reward_scales": {
-            "tracking_lin_vel": 10.0,
+        "base_height_target": 0.17,  # 目標ベース高さ（17cm）
+        "feet_height_target": 0.075,  # Go2と同じ
+        "reward_scales": {  # Go2と同じ
+            "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
             "base_height": -50.0,
             "action_rate": -0.005,
-            "similar_to_default": -0.5,
+            "similar_to_default": -0.1,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.4, 0.4],  # SpotMicroの目標線形速度（40cm/s）
+        "lin_vel_x_range": [0.2, 0.2],  # SpotMicroの目標線形速度（20cm/s）
         "lin_vel_y_range": [0, 0],
         "ang_vel_range": [0, 0],
     }
@@ -728,7 +727,10 @@ def main():
 
     gs.init(logging_level="warning",precision="64") #precision="64"を加えた
 
-    log_dir = f"../../logs/{args.exp_name}"
+    # 実行場所に依存せず常に Genesis/logs/<exp_name> に出力
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    _genesis_root = os.path.abspath(os.path.join(_script_dir, os.pardir, os.pardir))
+    log_dir = os.path.join(_genesis_root, "logs", args.exp_name)
     # ロボットタイプに応じて設定関数を選択
     if args.robot_type == "go2":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_go2_cfgs()
@@ -797,7 +799,7 @@ def main():
             mass_range=dr_cfg["mass_range"]
         )
     elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+        env = A1Env(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]

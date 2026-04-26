@@ -5,7 +5,7 @@ PPO専門家ポリシーの動作を動画として保存するスクリプト
 save_vintix.pyをベースに、PPO専門家ポリシー評価用に変更
 
 Usage:
-    python scripts/save_expert.py -r go2 -r go1 -r minicheetah -r unitreea1 --parallel --num_envs 10 --max_steps 1000
+    python scripts/save_expert.py -r go2 -r go1 -r minicheetah -r a1 --parallel --num_envs 10 --max_steps 1000
 """
 import argparse
 import copy
@@ -24,6 +24,16 @@ matplotlib.use('Agg')  # Non-interactive backend
 # Genesis locomotion環境のインポート用
 GENESIS_LOCOMOTION_PATH = str(Path(__file__).parents[2] / "Genesis" / "examples" / "locomotion")
 sys.path.insert(0, GENESIS_LOCOMOTION_PATH)
+_VINTIX_GO2_ROOT = str(Path(__file__).resolve().parent.parent)
+sys.path.insert(0, _VINTIX_GO2_ROOT)
+
+def canon_robot_type(s: str) -> str:
+    if not s:
+        return s
+    t = s.strip().lower()
+    if t in ("a1", "unitreea1"):
+        return "a1"
+    return t
 
 # rsl_rl バージョンチェック
 try:
@@ -41,7 +51,7 @@ from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
 from env import Go1Env
-from env import UnitreeA1Env
+from env import A1Env
 
 # PPOモデル用のインポート
 from rsl_rl.runners import OnPolicyRunner
@@ -54,11 +64,11 @@ def get_default_expert_model_path(robot_type: str):
     if robot_type == "go2":
         return genesis_root / "logs" / "go2-walking" / "model_300.pt"
     elif robot_type == "minicheetah":
-        return genesis_root / "logs" / "minicheetah-walking2" / "model_2990.pt"
+        return genesis_root / "logs" / "minicheetah-walking" / "model_2990.pt"
     elif robot_type == "go1":
         return genesis_root / "logs" / "go1-walking" / "model_2000.pt"
-    elif robot_type == "unitreea1":
-        return genesis_root / "logs" / "unitreea1-walking" / "model_350.pt"
+    elif robot_type == "a1":
+        return genesis_root / "logs" / "a1-walking" / "model_350.pt"
     else:
         raise ValueError(f"Unknown robot type: {robot_type}")
 
@@ -133,8 +143,8 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
             command_cfg=command_cfg,
             show_viewer=False,
         )
-    elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+    elif args.robot_type == "a1":
+        env = A1Env(
             num_envs=NUM_ENVS,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
@@ -164,13 +174,13 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
         if robot_type == "go2":
             return "go2-walking"
         elif robot_type == "minicheetah":
-            return "minicheetah-walking2"
+            return "minicheetah-walking"
         elif robot_type == "laikago":
             return "laikago-walking"
         elif robot_type == "go1":
             return "go1-walking"
-        elif robot_type == "unitreea1":
-            return "unitreea1-walking"
+        elif robot_type == "a1":
+            return "a1-walking"
         else:
             return "go2-walking"  # デフォルト
     
@@ -591,8 +601,8 @@ def _run_single_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg,
             command_cfg=command_cfg,
             show_viewer=False,
         )
-    elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+    elif args.robot_type == "a1":
+        env = A1Env(
             num_envs=1,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
@@ -622,13 +632,13 @@ def _run_single_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg,
         if robot_type == "go2":
             return "go2-walking"
         elif robot_type == "minicheetah":
-            return "minicheetah-walking2"
+            return "minicheetah-walking"
         elif robot_type == "laikago":
             return "laikago-walking"
         elif robot_type == "go1":
             return "go1-walking"
-        elif robot_type == "unitreea1":
-            return "unitreea1-walking"
+        elif robot_type == "a1":
+            return "a1-walking"
         else:
             return "go2-walking"  # デフォルト
     
@@ -778,8 +788,8 @@ def _run_single_environment_recording(args, env_cfg, obs_cfg, reward_cfg, comman
             command_cfg=command_cfg,
             show_viewer=False,
         )
-    elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+    elif args.robot_type == "a1":
+        env = A1Env(
             num_envs=1,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
@@ -806,13 +816,13 @@ def _run_single_environment_recording(args, env_cfg, obs_cfg, reward_cfg, comman
         if robot_type == "go2":
             return "go2-walking"
         elif robot_type == "minicheetah":
-            return "minicheetah-walking2"
+            return "minicheetah-walking"
         elif robot_type == "laikago":
             return "laikago-walking"
         elif robot_type == "go1":
             return "go1-walking"
-        elif robot_type == "unitreea1":
-            return "unitreea1-walking"
+        elif robot_type == "a1":
+            return "a1-walking"
         else:
             return "go2-walking"  # デフォルト
     
@@ -983,9 +993,9 @@ def main():
     parser = argparse.ArgumentParser(description="Save PPO expert policy behavior as video")
     parser.add_argument("-e", "--exp_name", type=str, default="go2-walking",
                         help="Experiment name (for loading env config)")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago", "go1", "unitreea1"], 
+    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago", "go1", "a1"],
                         default=None, action="append", help="Robot type (can be specified multiple times for multiple robots)")
-    parser.add_argument("--expert_model_type", type=str, choices=["go2", "minicheetah", "laikago", "go1", "unitreea1"], default=None,
+    parser.add_argument("--expert_model_type", type=str, choices=["go2", "minicheetah", "laikago", "go1", "a1"], default=None,
                         help="Expert model robot type (for zero-shot evaluation, e.g., use go2 model for go1 evaluation)")
     parser.add_argument("--expert_model_path", type=str, default=None,
                         help="Path to expert model file (if not specified, uses default based on expert_model_type or robot_type)")
@@ -1002,6 +1012,8 @@ def main():
     parser.add_argument("--num_envs", type=int, default=100,
                         help="Number of parallel environments (default: 100)")
     args = parser.parse_args()
+    if args.expert_model_type is not None:
+        args.expert_model_type = canon_robot_type(args.expert_model_type)
     
     # robot_typeが指定されていない場合、デフォルト値を設定
     if args.robot_type is None:
@@ -1015,9 +1027,10 @@ def main():
     seen = set()
     unique_robot_types = []
     for robot_type in args.robot_type:
-        if robot_type not in seen:
-            seen.add(robot_type)
-            unique_robot_types.append(robot_type)
+        c = canon_robot_type(robot_type)
+        if c not in seen:
+            seen.add(c)
+            unique_robot_types.append(c)
     robot_types = unique_robot_types
     
     # robot_typeからexp_nameへのマッピング関数
@@ -1025,13 +1038,13 @@ def main():
         if robot_type == "go2":
             return "go2-walking"
         elif robot_type == "minicheetah":
-            return "minicheetah-walking2"
+            return "minicheetah-walking"
         elif robot_type == "laikago":
             return "laikago-walking"
         elif robot_type == "go1":
             return "go1-walking"
-        elif robot_type == "unitreea1":
-            return "unitreea1-walking"
+        elif robot_type == "a1":
+            return "a1-walking"
         else:
             return "go2-walking"  # デフォルト
     
@@ -1121,7 +1134,7 @@ def main():
                 env_cfg, obs_cfg, reward_cfg, command_cfg = get_laikago_cfgs()
             elif robot_type == "go1":
                 env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
-            elif robot_type == "unitreea1":
+            elif robot_type == "a1":
                 env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
             else:
                 raise ValueError(f"Unknown robot type: {robot_type}")

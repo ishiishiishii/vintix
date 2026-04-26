@@ -15,6 +15,10 @@ from torch import nn, optim
 from tqdm import tqdm
 
 
+from vintix.data.torch_dataloaders import (
+    normalize_vintix_task_name,
+    resolve_sidecar_metadata_json,
+)
 from vintix.nn.individual_task_head import multitask_action_loss
 from vintix.vintix import Vintix
 from vintix.nn.nn import RMSNorm
@@ -103,8 +107,14 @@ def initialize_model(config: dataclass,
         scales = json.load(f)
     model = Vintix()
     if config.load_ckpt is None:
+        # Prefer task-level config when present (robot-only task naming).
+        task_cfg = getattr(config, "task_config", None) or config.dataset_config
+        task_reward = getattr(config, "task_reward_config", None) or {}
         for tn in ds_metadata.keys():
-            rew_scale = config.dataset_config[tn]["reward_scale"]
+            if tn in task_reward:
+                rew_scale = task_reward[tn]
+            else:
+                rew_scale = task_cfg[tn]["reward_scale"]
             ds_metadata[tn]["reward_scale"] = rew_scale
             for key in scales[tn].keys():
                 ds_metadata[tn][key] = scales[tn][key]
@@ -296,42 +306,54 @@ def train_loop(config: dataclass,
         sample_batch_start = time.time()
 
 
-def compute_stats(data_dir: str,
-                  ds_names: List[str]
-                  ) -> Dict[str, Any]:
-    stats = {}
+def compute_stats(
+    data_dir: str,
+    ds_names: List[str],
+) -> Dict[str, Any]:
+    """Compute obs/acs normalization statistics per ``task_name`` in dataset metadata."""
+    per_task_obs: Dict[str, List[np.ndarray]] = defaultdict(list)
+    per_task_acs: Dict[str, List[np.ndarray]] = defaultdict(list)
+
     for ds in list(ds_names.keys()):
         ds_path = os.path.join(data_dir, ds)
         files = [i for i in os.listdir(ds_path) if i.endswith(".h5")]
         files.sort()
-        metadata_path = os.path.join(
-            ds_path,
-            os.path.basename(ds_path)+'.json')
-        with open(metadata_path, 'r') as f:
+        metadata_path = resolve_sidecar_metadata_json(ds_path)
+        with open(metadata_path, "r") as f:
             metadata = json.load(f)
-        task_name = metadata["task_name"]
+        task_name = normalize_vintix_task_name(str(metadata["task_name"]))
         print(task_name)
-        obses = []
-        acses = []
+
+        obses: List[np.ndarray] = []
+        acses: List[np.ndarray] = []
         for file in tqdm(files):
             f_path = os.path.join(ds_path, file)
-            h5 = h5py.File(f_path, 'r')
-            keys = sorted(list(h5.keys()), key=lambda x: int(x.split('-')[0]))
+            h5 = h5py.File(f_path, "r")
+            keys = sorted(list(h5.keys()), key=lambda x: int(x.split("-")[0]))
             for key in keys:
                 group = h5.get(key)
                 obs = np.array(group.get("proprio_observation"))
                 acs = np.array(group.get("action"))
                 obses.append(obs)
                 acses.append(acs)
-        obses = np.vstack(obses)
-        acses = np.vstack(acses)
+
+        if obses:
+            per_task_obs[task_name].append(np.vstack(obses))
+        if acses:
+            per_task_acs[task_name].append(np.vstack(acses))
+
+    stats: Dict[str, Any] = {}
+    for task_name in per_task_obs.keys():
+        obses = np.vstack(per_task_obs[task_name])
+        acses = np.vstack(per_task_acs[task_name])
         obs_mean = obses.mean(axis=0)
         obs_std = obses.std(axis=0, ddof=1)
         acs_mean = acses.mean(axis=0)
         acs_std = acses.std(axis=0, ddof=1)
-        stats[task_name] = {}
-        stats[task_name]["obs_mean"] = obs_mean.tolist()
-        stats[task_name]["obs_std"] = obs_std.tolist()
-        stats[task_name]["acs_mean"] = acs_mean.tolist()
-        stats[task_name]["acs_std"] = acs_std.tolist()
+        stats[task_name] = {
+            "obs_mean": obs_mean.tolist(),
+            "obs_std": obs_std.tolist(),
+            "acs_mean": acs_mean.tolist(),
+            "acs_std": acs_std.tolist(),
+        }
     return stats

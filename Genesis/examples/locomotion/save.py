@@ -21,7 +21,7 @@ import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
-from env import UnitreeA1Env
+from env import A1Env
 from env import ANYmalCEnv
 from spotmicro_env import SpotMicroEnv
 
@@ -36,8 +36,11 @@ def main():
 
     gs.init()
 
-    log_dir = f"../../logs/{args.exp_name}"
-    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(f"../../logs/{args.exp_name}/cfgs.pkl", "rb"))
+    # 実行場所に依存せず常に Genesis/logs/<exp_name>
+    _script_dir = os.path.dirname(os.path.abspath(__file__))
+    _genesis_root = os.path.abspath(os.path.join(_script_dir, os.pardir, os.pardir))
+    log_dir = os.path.join(_genesis_root, "logs", args.exp_name)
+    env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg = pickle.load(open(os.path.join(log_dir, "cfgs.pkl"), "rb"))
     reward_cfg["reward_scales"] = {}
 
     if args.robot_type == "go2":
@@ -68,7 +71,7 @@ def main():
             show_viewer=True,
         )
     elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+        env = A1Env(
             num_envs=1,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,
@@ -111,7 +114,7 @@ def main():
             obs, rews, dones, infos = env.step(actions)
             env.cam.render()
 
-    # モデルのディレクトリに保存（log_dir内に保存）
+    # モデルのディレクトリに保存
     filename = os.path.join(log_dir, f"{args.exp_name}_model_{args.ckpt}.mp4")
     
     print(f"Log directory: {os.path.abspath(log_dir)}")

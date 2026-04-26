@@ -1,0 +1,63 @@
+# Train Vintix on bootstrap AD histories (run_all_cross outputs).
+#
+# Run (inside docker):
+#   export PYTHONPATH=/workspace/vintix:/workspace/vintix_go2
+#   python scripts/train_vintix.py --config_path configs/train_bootstrap_ad_run_all_cross_e2.yaml
+
+# dataloader config
+data_dir: "data"
+context_len: 1024
+trajectory_sparsity: 16
+preload: False
+last_frac: null
+
+# model config
+action_emb_dim: 127
+observation_emb_dim: 127
+reward_emb_dim: 2
+hidden_dim: 256
+transformer_depth: 3
+transformer_heads: 4
+attn_dropout: 0.1
+residual_dropout: 0.1
+normalize_qk: True
+bias: True
+parallel_residual: False
+shared_attention_norm: False
+norm_class: "LayerNorm"
+mlp_class: "GptNeoxMLP"
+intermediate_size: 128
+inner_ep_pos_enc: False
+norm_acs: False
+norm_obs: True
+
+# optimizer config
+optimizer: "Adam"
+lr: 0.0003
+betas: [0.9, 0.99]
+weight_decay: 0.1
+precision: "bf16"
+clip_grad: 1.0
+grad_accum_steps: 1
+warmup_ratio: 0.01
+
+# training config
+epochs: 2
+batch_size: 4
+save_every: 1
+save_every_steps: 1000
+save_dir: "models/vintix_go2"
+stats_path: "vintix/stats_bootstrap_ad_run_all_cross.json"
+load_ckpt: null
+start_epoch: 0
+seed: 5
+
+# Dataset config
+dataset_config_paths:
+  - "configs/bootstrap_ad_run_all_cross_config.yaml"
+
+# wandb config
+project: "Vintix_CrossFT"
+group: "bootstrap_ad_run_all_cross"
+name: "bootstrap_ad_run_all_cross_e2"
+

@@ -21,7 +21,7 @@ import genesis as gs
 from env import Go2Env
 from env import MiniCheetahEnv
 from env import LaikagoEnv
-from env import UnitreeA1Env
+from env import A1Env
 from env import ANYmalCEnv
 from spotmicro_env import SpotMicroEnv
 from env import Go1Env
@@ -98,7 +98,7 @@ def main():
             show_viewer=True,
         )
     elif args.robot_type == "unitreea1":
-        env = UnitreeA1Env(
+        env = A1Env(
             num_envs=1,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,

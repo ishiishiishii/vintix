@@ -98,26 +98,43 @@ pip install -e ".[dev]"
 If you want to use Genesis from Docker, you can first build the Docker image as:
 
 ```bash
-docker build -t genesis -f docker/Dockerfile docker
+docker build -t genesis -f docker/Dockerfile docker \
+  --build-arg HOST_UID=$(id -u) --build-arg HOST_GID=$(id -g) --build-arg CONTAINER_USER=kawa37
 ```
 
-Then you can run the examples inside the docker image (mounted to `/workspace/examples`):
+The image runs only as non-root user `kawa37` (override with `CONTAINER_USER`); `HOST_UID` / `HOST_GID` must match your host user so files under a bind-mounted `/workspace` are owned correctly. Rebuild if your host UID/GID change.
+
+Then you can run the examples inside the docker image (mounted to `/workspace`):
 
 ```bash
-xhost +local:root # Allow the container to access the display
+xhost +local:docker # Allow the container user to access the display (use +local:root only if you still run as root)
 
-docker run --gpus all --rm -it \
+docker run --gpus all --shm-size=8g --rm -it \
 -e DISPLAY=$DISPLAY \
+-e NVIDIA_VISIBLE_DEVICES=all \
+-e NVIDIA_DRIVER_CAPABILITIES=all \
+-p 6006:6006 -p 8888:8888 \
 -v /dev/dri:/dev/dri \
 -v /tmp/.X11-unix/:/tmp/.X11-unix \
 -v $PWD:/workspace \
 genesis
 ```
 
+TensorBoard example (inside the container):
+
+```bash
+tensorboard --logdir /path/to/logs --host 0.0.0.0 --port 6006
+```
+
+Then open `http://localhost:6006` on the host. For Weights & Biases, pass `WANDB_API_KEY` (and optional `WANDB_ENTITY` / `WANDB_PROJECT`) into the container environment.
+
+If you use this repository as a monorepo (Genesis + other code at the parent of `Genesis/`), you can instead use the root `docker-compose.yml`: copy `.env.example` to `.env`, set `HOST_UID` / `HOST_GID` (and optionally `CONTAINER_USER`) to match your host, then `docker compose build` and `docker compose run --rm genesis`.
+
 ### AMD users
 AMD users can use Genesis using the `docker/Dockerfile.amdgpu` file, which is built by running:
 ```
-docker build -t genesis-amd -f docker/Dockerfile.amdgpu docker
+docker build -t genesis-amd -f docker/Dockerfile.amdgpu docker \
+  --build-arg HOST_UID=$(id -u) --build-arg HOST_GID=$(id -g) --build-arg CONTAINER_USER=kawa37
 ```
 
 and can then be used by running:
