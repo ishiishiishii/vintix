@@ -91,9 +91,19 @@ vintix_go2/results/
 !vintix_go2/experience_decoder_ft_data_fraction_20260517/results.csv
 !vintix_go2/experience_decoder_ft_data_fraction_20260517/graphs/
 !vintix_go2/experience_decoder_ft_data_fraction_20260517/graphs/**
+!vintix_go2/experience_decoder_ft_data_fraction_20260517/readable_comparisons/
+!vintix_go2/experience_decoder_ft_data_fraction_20260517/readable_comparisons/**
 vintix_go2/experience_decoder_ft_data_fraction_20260517/checkpoints/
 vintix_go2/experience_decoder_ft_data_fraction_20260517/run.log
 # eval/*_mean_reward.txt is small and not matched by *.csv; episode CSVs stay ignored
+
+# PPO cross-robot FT baseline: summaries + plots only
+!vintix_go2/ppo_cross_robot_ft_20260517/EXPERIMENT.md
+!vintix_go2/ppo_cross_robot_ft_20260517/results.csv
+!vintix_go2/ppo_cross_robot_ft_20260517/summary.json
+!vintix_go2/ppo_cross_robot_ft_20260517/experiment_config.json
+!vintix_go2/ppo_cross_robot_ft_20260517/graphs/
+!vintix_go2/ppo_cross_robot_ft_20260517/graphs/**
 
 # Embedded git repositories (track separately or as submodules)
 ad-eps/

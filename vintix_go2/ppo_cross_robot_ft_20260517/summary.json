@@ -1,0 +1,16 @@
+{
+  "status": "completed",
+  "n_ok": 120,
+  "n_total": 120,
+  "results_csv": "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/results.csv",
+  "graphs": [
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_go1_mean_reward_vs_iteration.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_go1_mean_reward_vs_env_steps.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_go2_mean_reward_vs_iteration.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_go2_mean_reward_vs_env_steps.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_a1_mean_reward_vs_iteration.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_a1_mean_reward_vs_env_steps.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_minicheetah_mean_reward_vs_iteration.png",
+    "/workspace/vintix_go2/ppo_cross_robot_ft_20260517/graphs/source_minicheetah_mean_reward_vs_env_steps.png"
+  ]
+}

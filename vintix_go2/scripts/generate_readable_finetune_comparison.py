@@ -74,6 +74,16 @@ DEFAULT_COMPARISONS: list[tuple[str, Path, Path, str, str]] = [
 NORM_EPISODES_CSV = "{prefix}_10envs_10episodes_norm_from_training_episodes.csv"
 FINETUNE_EPISODES_CSV = "{prefix}_10envs_10episodes_episodes.csv"
 
+# experience_decoder_ft_data_fraction_* experiment layout
+EXP_MODEL_SPECS: list[tuple[str, str, str]] = [
+    ("go1_without", "go1", "go1"),
+    ("go2_without", "go2", "go2"),
+    ("a1_without", "a1", "a1"),
+    ("minicheetah_without", "minicheetah", "minicheetah"),
+]
+EXP_BASE_SUBDIR = "p00"
+EXP_FINETUNE_SUBDIR = "p10"
+
 
 def resolve_norm_from_training_csv(result_dir: Path, csv_prefix: str) -> Path | None:
     path = Path(result_dir) / NORM_EPISODES_CSV.format(prefix=csv_prefix)
@@ -82,6 +92,11 @@ def resolve_norm_from_training_csv(result_dir: Path, csv_prefix: str) -> Path | 
 
 def resolve_finetune_episodes_csv(result_dir: Path, csv_prefix: str) -> Path | None:
     path = Path(result_dir) / FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)
+    return path if path.is_file() else None
+
+
+def resolve_experiment_episodes_csv(eval_dir: Path, csv_prefix: str) -> Path | None:
+    path = eval_dir / FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)
     return path if path.is_file() else None
 
 
@@ -177,14 +192,26 @@ def run_comparison(
     target_robot: str,
     csv_prefix: str,
     output_dir: Path,
+    *,
+    use_norm_from_training_base: bool = True,
+    label_without: str = "Without finetune",
+    label_finetune: str = "Decoder finetune",
 ) -> Path | None:
-    base_csv = resolve_norm_from_training_csv(base_dir, csv_prefix)
+    if use_norm_from_training_base:
+        base_csv = resolve_norm_from_training_csv(base_dir, csv_prefix)
+        if base_csv is None:
+            print(
+                f"⚠ [{model_label}] skip: not found {NORM_EPISODES_CSV.format(prefix=csv_prefix)} in {base_dir}"
+            )
+            return None
+    else:
+        base_csv = resolve_finetune_episodes_csv(base_dir, csv_prefix)
+        if base_csv is None:
+            print(
+                f"⚠ [{model_label}] skip: not found {FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)} in {base_dir}"
+            )
+            return None
     finetune_csv = resolve_finetune_episodes_csv(finetune_dir, csv_prefix)
-    if base_csv is None:
-        print(
-            f"⚠ [{model_label}] skip: not found {NORM_EPISODES_CSV.format(prefix=csv_prefix)} in {base_dir}"
-        )
-        return None
     if finetune_csv is None:
         print(
             f"⚠ [{model_label}] skip: not found {FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)} in {finetune_dir}"
@@ -193,8 +220,47 @@ def run_comparison(
 
     out_path = output_dir / model_label / f"{csv_prefix}_without_vs_finetune_readable.png"
     print(f"[{model_label}] {target_robot}: {base_csv.name} vs {finetune_csv.name}")
-    saved = save_comparison_graph(base_csv=base_csv, finetune_csv=finetune_csv, out_path=out_path)
+    saved = save_comparison_graph(
+        base_csv=base_csv,
+        finetune_csv=finetune_csv,
+        out_path=out_path,
+        label_without=label_without,
+        label_finetune=label_finetune,
+    )
     print(f"  Saved: {saved}")
+    return saved
+
+
+def run_experiment_comparisons(
+    exp_root: Path,
+    output_dir: Path | None,
+    selected: set[str] | None,
+) -> int:
+    """0% (no FT) vs 10% decoder FT from ``experience_decoder_ft_data_fraction_*`` eval CSVs."""
+    exp_root = exp_root.resolve()
+    eval_root = exp_root / "eval"
+    if not eval_root.is_dir():
+        raise FileNotFoundError(f"Missing eval directory: {eval_root}")
+
+    out_root = output_dir.resolve() if output_dir else exp_root / "readable_comparisons"
+    saved = 0
+    for model_key, _eval_robot, csv_prefix in EXP_MODEL_SPECS:
+        if selected is not None and model_key not in selected:
+            continue
+        base_eval = eval_root / model_key / EXP_BASE_SUBDIR
+        finetune_eval = eval_root / model_key / EXP_FINETUNE_SUBDIR
+        if run_comparison(
+            model_key,
+            base_eval,
+            finetune_eval,
+            _eval_robot,
+            csv_prefix,
+            out_root,
+            use_norm_from_training_base=False,
+            label_without="Without finetune (0% data)",
+            label_finetune="Decoder finetune (10% data)",
+        ):
+            saved += 1
     return saved
 
 
@@ -215,18 +281,36 @@ def main() -> None:
         default=None,
         help="Comma-separated subset: go1_without,go2_without,a1_without,minicheetah_without",
     )
+    parser.add_argument(
+        "--exp-root",
+        type=str,
+        default=None,
+        help=(
+            "Use eval CSVs from a decoder FT data-fraction experiment "
+            "(p00=no FT vs p10=10%% FT). Output defaults to <exp-root>/readable_comparisons."
+        ),
+    )
     args = parser.parse_args()
 
     vintix_root = Path(__file__).resolve().parent.parent
+    selected = None
+    if args.models:
+        selected = {m.strip() for m in args.models.split(",") if m.strip()}
+
+    if args.exp_root:
+        exp_root = Path(args.exp_root)
+        if not exp_root.is_absolute():
+            exp_root = vintix_root / exp_root
+        out_root = Path(args.output_dir) if args.output_dir else exp_root / "readable_comparisons"
+        saved = run_experiment_comparisons(exp_root, out_root, selected)
+        print(f"\nDone. Wrote {saved} comparison PNG(s) under {out_root}")
+        return
+
     out_root = (
         Path(args.output_dir)
         if args.output_dir
         else Path(__file__).resolve().parent / "readable_eval_graphs" / "comparisons"
     )
-
-    selected = None
-    if args.models:
-        selected = {m.strip() for m in args.models.split(",") if m.strip()}
 
     saved = 0
     for model_label, base_rel, finetune_rel, target_robot, csv_prefix in DEFAULT_COMPARISONS:

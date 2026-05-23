@@ -1,0 +1,33 @@
+{
+  "description": "Cross-robot PPO fine-tuning from model_300.pt experts (10 seeds per pair)",
+  "robots": [
+    "go1",
+    "go2",
+    "a1",
+    "minicheetah"
+  ],
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "max_iteration": 300,
+  "num_envs": 4096,
+  "num_steps_per_env": 24,
+  "domain_randomization": false,
+  "expert_checkpoints": {
+    "go1": "/workspace/Genesis/logs/go1-walking/model_300.pt",
+    "go2": "/workspace/Genesis/logs/go2-walking/model_300.pt",
+    "a1": "/workspace/Genesis/logs/a1-walking/model_300.pt",
+    "minicheetah": "/workspace/Genesis/logs/minicheetah-walking/model_300.pt"
+  },
+  "reward_tag": "Train/mean_reward",
+  "train_script": "/workspace/Genesis/examples/locomotion/train.py"
+}
