@@ -18,7 +18,7 @@
 - 「未知ロボット」では事前学習 ckpt に当該タスクが無く、FT 時にタスク統計の追加とデコーダの学習が必要になる。
 - データ効率（少量 AD でどこまで性能が出るか）は実用・論文の両方で重要な論点である。
 - 本リポジトリでは過去に単一条件（例: 10% や 50%）のデコーダ FT を個別に行ってきたが、**同一プロトコルで 0%〜100% をスイープした系統的な比較**は本実験が初めてである。
-- 初回実行では `eval_vintix.py` の不具合（エピソード間リセット欠落など）により報酬が過小評価されたため、評価を **`save_vintix.py` に統一して全条件を再実行**した（無効結果は `experience_decoder_ft_data_fraction_20260517_backup_broken_eval_20260517` に退避）。
+- 初回実行の評価結果は無効だったため、**`save_vintix.py` で全条件を再実行**した（無効結果は `experience_decoder_ft_data_fraction_20260517_backup_broken_eval_20260517` に退避）。
 
 ---
 
@@ -80,7 +80,7 @@
 
 ### 3.4 評価
 
-- **スクリプト:** `scripts/save_vintix.py`（`eval_vintix.py` は使用しない）
+- **スクリプト:** `scripts/save_vintix.py`
 - **設定:** `--num_envs 10 --max_episodes 10`（並列 10 環境、各 10 エピソード）
 - **正規化:** FT 時に追加したタスク統計、または事前学習済みタスクの `metadata.json`（FT サブセット統計は使わない）
 - **結果コピー:** `eval/<model_key>/pXX/` に mean_reward.txt / episodes.csv 等を保存
@@ -204,7 +204,7 @@ experience_decoder_ft_data_fraction_20260517/
 
 - **Go1 / A1 の 0% 報酬（~15）** は、FT 後（~20）より低い。エピソード間のコンテキスト再利用や正規化の影響があり、絶対値の解釈は同一モデル内の **0% vs FT 後** の比較を優先すること。
 - **過去の単発実験**（例: `minicheetah_without_epoch0_0p5data_finetune` は `0000_epoch` 起点・1 epoch 相当の評価）とはプロトコルが異なるため、数値の直接比較は避けること。
-- 初回の `eval_vintix` 版結果は **`_backup_broken_eval_20260517`** にあり、本ディレクトリの `results.csv` が有効な結果である。
+- 無効だった初回結果は **`_backup_broken_eval_20260517`** にあり、本ディレクトリの `results.csv` が有効な結果である。
 
 ---
 
@@ -213,4 +213,4 @@ experience_decoder_ft_data_fraction_20260517/
 | 日付 | 内容 |
 |------|------|
 | 2026-05-17 | `save_vintix` 評価で全条件再実行完了。グラフ凡例をロボット名のみに簡略化。本 README 作成。 |
-| 2026-05-23 | 評価は `save_vintix.py` に統一。不具合のあった `eval_vintix.py` はリポジトリから削除。 |
+| 2026-05-23 | 評価は `save_vintix.py` に統一（リポジトリの公式評価スクリプト）。 |

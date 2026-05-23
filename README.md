@@ -48,14 +48,24 @@
      - 履歴データ（状態・行動・報酬の並び）を読み込み、学習用データセットを作ります。
      - Transformer が「過去の履歴」から「次の行動」を予測できるように学習します。
      - 複数ロボットを扱う場合は、共通部とロボット別の出力部（デコーダ）を分けて学習します。
-     - 学習した重みを `vintix_go2/models/...` 等に保存し、評価スクリプトで読み込みます。
+     - 学習した重みを `vintix_go2/models/...` 等に保存し、手順 4 の `save_vintix.py` で読み込みます。
 4. **評価（10 環境 × 10 エピソードで集計）**
-   - 実行: `vintix_go2/scripts/save_vintix.py`
+   - 実行: `vintix_go2/scripts/save_vintix.py`（Vintix チェックポイントの Genesis 並列評価）
    - 何をしているか:
      - 学習済み Vintix を Genesis の歩行環境に載せ、複数環境を同時に走らせます。
-     - 既定で **10並列環境 × 各10エピソード**を実行し、累積報酬を集計します。
-     - 結果を CSV やグラフとして保存し、ロボット間・条件間で比較できる形にします。
-     - 必要に応じて動画保存もでき、挙動が直感的に確認できます。
+     - 既定で **10 並列環境 × 各 10 エピソード**（各エピソード最大 1000 step）を実行し、累積報酬を集計します。
+     - 結果を CSV・要約テキスト・グラフとして保存し、ロボット間・条件間で比較できる形にします。
+     - 必要に応じて `--record` で動画保存もできます。
+   - 実行例（コンテナ内）:
+     ```bash
+     cd /workspace/vintix_go2
+     PYTHONPATH=/workspace/vintix_go2 python scripts/save_vintix.py \
+       --vintix_path models/go1_without/go1_without/0001_epoch \
+       -r go1 --num_envs 10 --max_episodes 10
+     ```
+   - デコーダのみ FT × データ量スイープ（0%〜100%）の一括実行:
+     `vintix_go2/scripts/run_decoder_ft_data_fraction_experiment.py`  
+     手順・結果の詳細は `vintix_go2/experience_decoder_ft_data_fraction_20260517/EXPERIMENT.md` を参照。
 
 ## 実行環境（最短で動かす）
 
