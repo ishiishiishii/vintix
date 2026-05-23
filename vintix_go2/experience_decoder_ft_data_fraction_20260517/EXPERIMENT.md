@@ -186,16 +186,16 @@ plot_graphs(exp, load_results_csv(exp / 'results.csv'))
 experience_decoder_ft_data_fraction_20260517/
 ├── EXPERIMENT.md          # 本ファイル
 ├── experiment_config.json
-├── results.csv
+├── results.csv            # Git 追跡（全条件の数値）
 ├── summary.json
-├── run.log
-├── checkpoints/           # FT 済み重み（10%〜100%）
+├── run.log                # 非追跡（大容量ログ）
+├── checkpoints/           # 非追跡（FT 済み重み）
 │   └── <model_key>/p10|p20|…|p100/
 │       ├── 0000_epoch/
 │       └── 0001_epoch/    # ← 評価に使用
-├── eval/                  # 評価結果のコピー
+├── eval/                  # *_mean_reward.txt のみ Git 追跡（CSV は非追跡）
 │   └── <model_key>/p00|p10|…/
-└── graphs/                # データ量 vs 報酬プロット
+└── graphs/                # Git 追跡（データ量 vs 報酬プロット）
 ```
 
 ---

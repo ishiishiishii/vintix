@@ -87,6 +87,14 @@ vintix_go2/results/
 *.pem
 .env
 
+# Experiment summaries (decoder FT data-fraction): results + plots only
+!vintix_go2/experience_decoder_ft_data_fraction_20260517/results.csv
+!vintix_go2/experience_decoder_ft_data_fraction_20260517/graphs/
+!vintix_go2/experience_decoder_ft_data_fraction_20260517/graphs/**
+vintix_go2/experience_decoder_ft_data_fraction_20260517/checkpoints/
+vintix_go2/experience_decoder_ft_data_fraction_20260517/run.log
+# eval/*_mean_reward.txt is small and not matched by *.csv; episode CSVs stay ignored
+
 # Embedded git repositories (track separately or as submodules)
 ad-eps/
 # Genesis 内の埋め込みリポジトリ

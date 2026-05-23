@@ -1,0 +1,9 @@
+Vintix Model Evaluation Summary
+============================================================
+Robot Type: go1
+Total Steps: 1000
+Number of Environments: 100
+
+Mean Reward per Step: 0.019940
+Std Reward per Step: 0.000904
+============================================================

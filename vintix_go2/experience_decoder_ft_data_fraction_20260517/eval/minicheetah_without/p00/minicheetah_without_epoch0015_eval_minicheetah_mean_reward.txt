@@ -1,0 +1,9 @@
+Vintix Model Evaluation Summary
+============================================================
+Robot Type: minicheetah
+Total Steps: 1000
+Number of Environments: 100
+
+Mean Reward per Step: -0.013319
+Std Reward per Step: 0.011069
+============================================================

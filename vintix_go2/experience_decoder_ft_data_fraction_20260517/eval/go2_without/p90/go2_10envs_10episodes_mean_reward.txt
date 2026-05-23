@@ -1,0 +1,43 @@
+Vintix Model Evaluation Summary
+============================================================
+Robot Type: go2
+Number of Environments: 10
+Evaluation Mode: Episode-based
+
+=== Actual Results (from collected data) ===
+Total Steps Executed: 100000
+Total Episodes Collected: 100
+
+Episodes per Environment:
+  Min: 10
+  Max: 10
+  Mean: 10.00
+  Per Environment: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+
+=== Step-based Statistics ===
+Mean Reward per Step: 0.021305
+Std Reward per Step: 0.000171
+
+=== Episode-based Statistics ===
+Mean Reward per Episode: 21.304784
+Std Reward per Episode: 0.078264
+Min Reward per Episode: 20.983102
+Max Reward per Episode: 21.372453
+
+Mean Episode Length (steps): 1000.00
+Std Episode Length (steps): 0.00
+Min Episode Length (steps): 1000
+Max Episode Length (steps): 1000
+
+=== Reward per Episode Number (across all environments) ===
+Episode   1: Mean=21.088238, Std=0.077317, N=10
+Episode   2: Mean=21.347444, Std=0.018920, N=10
+Episode   3: Mean=21.326651, Std=0.017774, N=10
+Episode   4: Mean=21.328253, Std=0.018684, N=10
+Episode   5: Mean=21.314890, Std=0.020372, N=10
+Episode   6: Mean=21.328961, Std=0.018458, N=10
+Episode   7: Mean=21.324084, Std=0.016821, N=10
+Episode   8: Mean=21.333331, Std=0.009739, N=10
+Episode   9: Mean=21.330764, Std=0.013604, N=10
+Episode  10: Mean=21.325227, Std=0.014989, N=10
+============================================================

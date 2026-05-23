@@ -1,0 +1,43 @@
+Vintix Model Evaluation Summary
+============================================================
+Robot Type: minicheetah
+Number of Environments: 10
+Evaluation Mode: Episode-based
+
+=== Actual Results (from collected data) ===
+Total Steps Executed: 100000
+Total Episodes Collected: 100
+
+Episodes per Environment:
+  Min: 10
+  Max: 10
+  Mean: 10.00
+  Per Environment: [10, 10, 10, 10, 10, 10, 10, 10, 10, 10]
+
+=== Step-based Statistics ===
+Mean Reward per Step: 0.020379
+Std Reward per Step: 0.000292
+
+=== Episode-based Statistics ===
+Mean Reward per Episode: 20.379275
+Std Reward per Episode: 0.176640
+Min Reward per Episode: 19.637839
+Max Reward per Episode: 20.473864
+
+Mean Episode Length (steps): 1000.00
+Std Episode Length (steps): 0.00
+Min Episode Length (steps): 1000
+Max Episode Length (steps): 1000
+
+=== Reward per Episode Number (across all environments) ===
+Episode   1: Mean=19.859859, Std=0.103445, N=10
+Episode   2: Mean=20.456966, Std=0.011910, N=10
+Episode   3: Mean=20.431531, Std=0.015738, N=10
+Episode   4: Mean=20.434406, Std=0.011826, N=10
+Episode   5: Mean=20.433424, Std=0.012394, N=10
+Episode   6: Mean=20.440868, Std=0.009143, N=10
+Episode   7: Mean=20.435071, Std=0.005829, N=10
+Episode   8: Mean=20.434062, Std=0.008707, N=10
+Episode   9: Mean=20.434310, Std=0.009045, N=10
+Episode  10: Mean=20.432251, Std=0.009123, N=10
+============================================================
