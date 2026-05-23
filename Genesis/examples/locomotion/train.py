@@ -27,6 +27,13 @@ from env import Go1Env
 
 
 
+def resolve_robot_type(robot_type: str) -> str:
+    """Normalize CLI robot id (e.g. ``a1`` -> ``unitreea1`` for env construction)."""
+    if robot_type == "a1":
+        return "unitreea1"
+    return robot_type
+
+
 def get_train_cfg(exp_name, max_iterations, seed=1):
     train_cfg_dict = {
         "algorithm": {
@@ -706,12 +713,24 @@ def get_spotmicro_cfgs():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="go2-walking")
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "minicheetah", "laikago", "unitreea1", "anymalc", "go1", "spotmicro"], 
-                        default="go2", help="Robot type to train")
+    parser.add_argument(
+        "-r",
+        "--robot_type",
+        type=str,
+        choices=["go2", "minicheetah", "laikago", "a1", "unitreea1", "anymalc", "go1", "spotmicro"],
+        default="go2",
+        help="Robot type to train (``a1`` is an alias for Unitree A1)",
+    )
     parser.add_argument("-B", "--num_envs", type=int, default=4096)
     parser.add_argument("--max_iterations", type=int, default=301)
     parser.add_argument("--pretrained_path", type=str, default=None,
                         help="Path to pretrained model for fine-tuning")
+    parser.add_argument(
+        "--log_dir",
+        type=str,
+        default=None,
+        help="Override log directory (default: Genesis/logs/<exp_name>)",
+    )
     
     # ドメインランダマイゼーション関連の引数
     parser.add_argument("--domain_randomization", action="store_true", default=False,
@@ -724,27 +743,31 @@ def main():
                         help="Random seed for reproducibility")
     
     args = parser.parse_args()
+    robot_type = resolve_robot_type(args.robot_type)
 
     gs.init(logging_level="warning",precision="64") #precision="64"を加えた
 
     # 実行場所に依存せず常に Genesis/logs/<exp_name> に出力
     _script_dir = os.path.dirname(os.path.abspath(__file__))
     _genesis_root = os.path.abspath(os.path.join(_script_dir, os.pardir, os.pardir))
-    log_dir = os.path.join(_genesis_root, "logs", args.exp_name)
+    if args.log_dir:
+        log_dir = os.path.abspath(args.log_dir)
+    else:
+        log_dir = os.path.join(_genesis_root, "logs", args.exp_name)
     # ロボットタイプに応じて設定関数を選択
-    if args.robot_type == "go2":
+    if robot_type == "go2":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_go2_cfgs()
-    elif args.robot_type == "minicheetah":
+    elif robot_type == "minicheetah":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_minicheetah_cfgs()
-    elif args.robot_type == "laikago":
+    elif robot_type == "laikago":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_laikago_cfgs()
-    elif args.robot_type == "unitreea1":
+    elif robot_type == "unitreea1":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
-    elif args.robot_type == "anymalc":
+    elif robot_type == "anymalc":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalc_cfgs()
-    elif args.robot_type == "go1":
+    elif robot_type == "go1":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
-    elif args.robot_type == "spotmicro":
+    elif robot_type == "spotmicro":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_spotmicro_cfgs()
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
@@ -754,7 +777,7 @@ def main():
         "domain_randomization": args.domain_randomization,
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
-    train_cfg = get_train_cfg(args.exp_name, args.max_iterations)
+    train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
 
     # 既存のログディレクトリがある場合、resumeする場合は削除しない
     # --pretrained_pathが指定されていて、同じディレクトリから続きを訓練する場合は削除しない
@@ -780,43 +803,43 @@ def main():
         train_cfg["runner"]["max_iterations"] = args.max_iterations
 
     # ロボットタイプに応じて環境を作成（ドメインランダマイゼーションパラメータを含む）
-    if args.robot_type == "go2":
+    if robot_type == "go2":
         env = Go2Env(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "minicheetah":
+    elif robot_type == "minicheetah":
         env = MiniCheetahEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "laikago":
+    elif robot_type == "laikago":
         env = LaikagoEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "unitreea1":
+    elif robot_type == "unitreea1":
         env = A1Env(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "anymalc":
+    elif robot_type == "anymalc":
         env = ANYmalCEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "go1":
+    elif robot_type == "go1":
         env = Go1Env(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
-    elif args.robot_type == "spotmicro":
+    elif robot_type == "spotmicro":
         env = SpotMicroEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
@@ -839,6 +862,10 @@ def main():
         if os.path.exists(args.pretrained_path):
             print(f"Fine-tuning mode: Loading pretrained model from {args.pretrained_path}")
             runner.load(args.pretrained_path)
+            # External expert checkpoint: reset iteration so learn() runs 0 .. max_iterations-1.
+            if not use_pretrained_in_same_dir:
+                runner.current_learning_iteration = 0
+                print("Reset learning iteration to 0 for cross-robot / external fine-tuning.")
         else:
             print(f"Warning: Pretrained model not found at {args.pretrained_path}")
             print("Starting training from scratch...")

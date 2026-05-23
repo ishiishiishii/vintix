@@ -1,0 +1,80 @@
+{
+  "train_hparams": {
+    "context_len": 2048,
+    "trajectory_sparsity": 128,
+    "lr": 0.0003,
+    "betas": [
+      0.9,
+      0.99
+    ],
+    "weight_decay": 0.1,
+    "precision": "bf16",
+    "grad_accum_steps": 8,
+    "warmup_ratio": 0.005,
+    "batch_size": 8,
+    "seed": 5,
+    "epochs": 2,
+    "save_every": 1,
+    "data_dir": "data",
+    "stats_path": "vintix/stats.json",
+    "project": "Vintix_Go2",
+    "group": "decoder_ft_data_fraction"
+  },
+  "data_fractions_pct": [
+    0,
+    10,
+    20,
+    30,
+    40,
+    50,
+    60,
+    70,
+    80,
+    90,
+    100
+  ],
+  "eval": {
+    "backend": "save_vintix.py",
+    "num_envs": 10,
+    "num_episodes": 10,
+    "max_steps_per_episode": 1000
+  },
+  "models": [
+    {
+      "key": "go1_without",
+      "base_ckpt": "/workspace/vintix_go2/models/go1_without/go1_without/0001_epoch",
+      "finetune_robot": "go1",
+      "eval_robot": "go1",
+      "dataset_config": "configs/go1_only_onegroup_config.yaml",
+      "display_label": "Go1 (from go1_without)",
+      "plot_color": "#1f77b4"
+    },
+    {
+      "key": "go2_without",
+      "base_ckpt": "/workspace/vintix_go2/models/go2_without/go2_without/0001_epoch",
+      "finetune_robot": "go2",
+      "eval_robot": "go2",
+      "dataset_config": "configs/go2_only_onegroup_config.yaml",
+      "display_label": "Go2 (from go2_without)",
+      "plot_color": "#ff7f0e"
+    },
+    {
+      "key": "a1_without",
+      "base_ckpt": "/workspace/vintix_go2/models/a1_without/a1_without/0001_epoch",
+      "finetune_robot": "a1",
+      "eval_robot": "a1",
+      "dataset_config": "configs/a1_finetune_config.yaml",
+      "display_label": "A1 (from a1_without)",
+      "plot_color": "#2ca02c"
+    },
+    {
+      "key": "minicheetah_without",
+      "base_ckpt": "/workspace/vintix_go2/models/minicheetah_without/minicheetah_without/0001_epoch",
+      "finetune_robot": "minicheetah",
+      "eval_robot": "minicheetah",
+      "dataset_config": "configs/minicheetah_only_onegroup_config.yaml",
+      "display_label": "Minicheetah (from minicheetah_without)",
+      "plot_color": "#d62728"
+    }
+  ]
+}
