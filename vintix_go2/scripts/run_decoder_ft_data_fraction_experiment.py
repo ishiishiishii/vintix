@@ -27,7 +27,18 @@ import numpy as np
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-from plot_style import Y_LABEL, Y_LIM, finetune_legend_label  # noqa: E402
+from plot_style import (  # noqa: E402
+    AXIS_LABEL_FONTSIZE,
+    AXIS_TICK_FONTSIZE,
+    FIGSIZE,
+    LEGEND_FONTSIZE,
+    LINE_WIDTH,
+    STD_FILL_ALPHA,
+    Y_LABEL,
+    Y_LIM,
+    finetune_legend_label,
+    shade_mean_std,
+)
 
 VINTIX_ROOT = SCRIPT_DIR.parent
 GENESIS_ROOT = VINTIX_ROOT.parent / "Genesis"
@@ -410,7 +421,7 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
         *,
         show_legend: bool,
     ) -> None:
-        fig, ax = plt.subplots(figsize=(14, 10))
+        fig, ax = plt.subplots(figsize=FIGSIZE)
         for spec, pts in series:
             if not pts:
                 continue
@@ -419,34 +430,24 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
             means = np.array([m for _, m, _ in pts], dtype=float)
             stds = np.array([s for _, _, s in pts], dtype=float)
             label = finetune_legend_label(spec.eval_robot) if show_legend else "_nolegend_"
-            # errorbar: per-point ±1 std over 100 eval episodes (discrete % axis)
-            ax.errorbar(
+            line, = ax.plot(
                 xs,
                 means,
-                yerr=stds,
-                fmt="o-",
+                linewidth=LINE_WIDTH,
                 color=spec.plot_color,
-                ecolor=spec.plot_color,
                 label=label,
-                linewidth=2.6,
-                markersize=8,
-                capsize=5,
-                capthick=1.8,
-                elinewidth=1.8,
             )
-            lower = np.maximum(means - stds, Y_LIM[0])
-            upper = np.minimum(means + stds, Y_LIM[1])
-            ax.fill_between(xs, lower, upper, alpha=0.12, color=spec.plot_color)
-        ax.set_xlabel("Training data used (%)", fontsize=FONT_SIZE_LABEL)
-        ax.set_ylabel(Y_LABEL, fontsize=FONT_SIZE_LABEL)
+            shade_mean_std(ax, xs, means, stds, color=spec.plot_color, alpha=STD_FILL_ALPHA)
+            if not show_legend:
+                line.set_label("_nolegend_")
+        ax.set_xlabel("Training data used (%)", fontsize=AXIS_LABEL_FONTSIZE)
+        ax.set_ylabel(Y_LABEL, fontsize=AXIS_LABEL_FONTSIZE)
         ax.set_xticks(DATA_FRACTIONS_PCT)
         ax.set_ylim(*Y_LIM)
-        ax.tick_params(axis="both", labelsize=FONT_SIZE_TICK)
+        ax.tick_params(axis="both", labelsize=AXIS_TICK_FONTSIZE)
         ax.grid(True, alpha=0.3)
         if show_legend:
-            handles, _labels = ax.get_legend_handles_labels()
-            if handles:
-                ax.legend(loc="lower right", fontsize=FONT_SIZE_LEGEND, framealpha=0.95)
+            ax.legend(loc="upper right", fontsize=LEGEND_FONTSIZE, framealpha=0.95)
         plt.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.12)
         fig.savefig(path, dpi=150, bbox_inches="tight")
         plt.close(fig)

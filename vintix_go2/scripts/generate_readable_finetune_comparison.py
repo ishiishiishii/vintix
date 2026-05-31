@@ -26,7 +26,16 @@ import numpy as np
 _SCRIPT_DIR = Path(__file__).resolve().parent
 if str(_SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(_SCRIPT_DIR))
-from plot_style import ROBOT_COLORS, Y_LABEL, Y_LIM, finetune_legend_label  # noqa: E402
+from plot_style import (  # noqa: E402
+    FIGSIZE,
+    LINE_WIDTH,
+    ROBOT_COLORS,
+    STD_FILL_ALPHA,
+    Y_LABEL,
+    Y_LIM,
+    finetune_legend_label,
+    shade_mean_std,
+)
 
 FONT_SIZE_LABEL = 34
 FONT_SIZE_TICK = 28
@@ -155,20 +164,20 @@ def save_comparison_graph(
         x_episodes = [ep + 1 for ep in episode_nums]
         series.append((x_episodes, means, stds, label, color, linestyle))
 
-    fig, ax = plt.subplots(1, 1, figsize=(14, 10))
+    fig, ax = plt.subplots(1, 1, figsize=FIGSIZE)
     for x_episodes, means, stds, label, color, linestyle in series:
         line_label = label if show_legend else "_nolegend_"
-        ax.plot(
+        line, = ax.plot(
             x_episodes,
             means,
-            linewidth=2.6,
+            linewidth=LINE_WIDTH,
             label=line_label,
             color=color,
             linestyle=linestyle,
         )
-        lower = np.maximum(np.array(means) - np.array(stds), Y_LIM[0])
-        upper = np.minimum(np.array(means) + np.array(stds), Y_LIM[1])
-        ax.fill_between(x_episodes, lower, upper, alpha=0.15, color=color)
+        shade_mean_std(ax, x_episodes, means, stds, color=color, alpha=STD_FILL_ALPHA)
+        if not show_legend:
+            line.set_label("_nolegend_")
 
     ax.set_xlabel("Episode Number", fontsize=FONT_SIZE_LABEL)
     ax.set_ylabel(Y_LABEL, fontsize=FONT_SIZE_LABEL)

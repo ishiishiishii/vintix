@@ -43,7 +43,7 @@
 
 ### グラフ
 
-`graphs/` 以下（縦軸 **-5〜28**、色は `ppo_leave_one_out_20260519` と同一: Go1=青, Go2=橙, A1=緑, MiniCheetah=赤）。各データ割合の点は **100 評価エピソードの平均 ±1 標準偏差**（エラーバー＋薄い帯）。Go2/A1 は FT 後 σ が **0.07〜0.13** と小さく帯がほぼ見えないが、Go1 の 10% 付近（σ≈7）などは幅が大きい。`results.csv` の `eval_result_dir` が `/workspace/...` のときはローカル `eval/<model>/pXX/` から σ を再計算する。
+`graphs/` 以下（体裁は `ppo_leave_one_out_20260519` の FT 曲線と同一: 縦軸 **-5〜28**、実線 `linewidth=2.6`、**±1σ は `fill_between`（α=0.15、Y 軸でクリップ）**、エラーバーなし）。色: Go1=青, Go2=橙, A1=緑, MiniCheetah=赤。各点の σ は **100 評価エピソード**の標準偏差（PPO 側は 10 seed 間）。`eval_result_dir` が `/workspace/...` のときは `eval/<model>/pXX/` から再計算。
 
 | ファイル | 用途 |
 |----------|------|
