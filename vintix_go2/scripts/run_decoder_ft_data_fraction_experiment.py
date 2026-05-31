@@ -218,6 +218,25 @@ def extract_mean_episode_reward(eval_dir: Path, robot: str, num_envs: int = NUM_
     return mean_val
 
 
+def resolve_eval_result_dir(exp_root: Path, row: dict) -> Path | None:
+    """``eval_result_dir`` from CSV may be a Docker ``/workspace/...`` path; map to local ``eval/``."""
+    raw = row.get("eval_result_dir", "")
+    if raw:
+        p = Path(raw)
+        if p.is_dir():
+            return p
+    mk = row.get("model_key")
+    pct_s = row.get("data_fraction_pct")
+    if mk and pct_s is not None:
+        try:
+            local = exp_root / "eval" / mk / pct_tag(int(pct_s))
+            if local.is_dir():
+                return local
+        except ValueError:
+            pass
+    return None
+
+
 def _subprocess_env() -> dict:
     env = {**os.environ, "WANDB_MODE": "disabled"}
     py_path = str(VINTIX_ROOT)
@@ -376,15 +395,10 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
             pct = int(r["data_fraction_pct"])
         except (KeyError, ValueError):
             continue
-        eval_dir = Path(r.get("eval_result_dir", ""))
-        if eval_dir.is_dir():
-            mean_val, std_val = extract_episode_reward_stats(eval_dir, spec.eval_robot)
-        else:
-            try:
-                mean_val = float(r["mean_cumulative_reward"])
-                std_val = float("nan")
-            except (KeyError, ValueError):
-                continue
+        eval_dir = resolve_eval_result_dir(exp_root, r)
+        if eval_dir is None:
+            continue
+        mean_val, std_val = extract_episode_reward_stats(eval_dir, spec.eval_robot)
         if np.isfinite(mean_val):
             if not np.isfinite(std_val):
                 std_val = 0.0
@@ -405,18 +419,24 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
             means = np.array([m for _, m, _ in pts], dtype=float)
             stds = np.array([s for _, _, s in pts], dtype=float)
             label = finetune_legend_label(spec.eval_robot) if show_legend else "_nolegend_"
-            ax.plot(
+            # errorbar: per-point ±1 std over 100 eval episodes (discrete % axis)
+            ax.errorbar(
                 xs,
                 means,
-                "o-",
+                yerr=stds,
+                fmt="o-",
                 color=spec.plot_color,
+                ecolor=spec.plot_color,
                 label=label,
                 linewidth=2.6,
                 markersize=8,
+                capsize=5,
+                capthick=1.8,
+                elinewidth=1.8,
             )
             lower = np.maximum(means - stds, Y_LIM[0])
             upper = np.minimum(means + stds, Y_LIM[1])
-            ax.fill_between(xs, lower, upper, alpha=0.15, color=spec.plot_color)
+            ax.fill_between(xs, lower, upper, alpha=0.12, color=spec.plot_color)
         ax.set_xlabel("Training data used (%)", fontsize=FONT_SIZE_LABEL)
         ax.set_ylabel(Y_LABEL, fontsize=FONT_SIZE_LABEL)
         ax.set_xticks(DATA_FRACTIONS_PCT)
