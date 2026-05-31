@@ -43,16 +43,12 @@
 
 ### グラフ
 
-`graphs/` 以下（体裁は `ppo_leave_one_out_20260519` の FT 曲線と同一: 縦軸 **-5〜28**、実線 `linewidth=2.6`、**±1σ は `fill_between`（α=0.15、Y 軸でクリップ）**、エラーバーなし）。色: Go1=青, Go2=橙, A1=緑, MiniCheetah=赤。各点の σ は **100 評価エピソード**の標準偏差（PPO 側は 10 seed 間）。`eval_result_dir` が `/workspace/...` のときは `eval/<model>/pXX/` から再計算。
+`graphs/` 以下（縦軸 **-5〜28**、色は `ppo_leave_one_out_20260519` と同一。各点は **100 評価エピソードの平均のみ**（σ 帯なし。AD 評価では序盤エピソードのばらつきが大きく、帯が誤解を招くため））:
 
 | ファイル | 用途 |
 |----------|------|
 | `all_models_data_fraction.png` | **論文用**。凡例 `Finetune Go1` など |
 | `all_models_data_fraction_poster.png` | **ポスター用**。凡例なし |
-| `<model_key>_data_fraction.png` | 論文用（1 ロボット） |
-| `<model_key>_data_fraction_poster.png` | ポスター用（1 ロボット） |
-
-`.pdf` も論文用・ポスター用それぞれ生成される。
 
 ---
 
@@ -219,8 +215,7 @@ python3 scripts/generate_readable_finetune_comparison.py \
 
 | ファイル | 用途 |
 |----------|------|
-| `<model_key>/{robot}_without_vs_finetune_readable.png` | **論文用**（凡例: `Without finetune (0% data)` / `Finetune Go1` など） |
-| `<model_key>/{robot}_without_vs_finetune_readable_poster.png` | **ポスター用**（凡例なし） |
+| `<model_key>/{robot}_without_vs_finetune_readable.png` | 0% vs 10%（凡例あり。エピソードごとの平均±σ は AD のウォームアップ説明用） |
 
 旧実験の `go1_without_epoch1_0p1data_finetune` 等の ckpt は使わない。
 
@@ -385,4 +380,4 @@ python3 scripts/generate_readable_finetune_comparison.py \
 | 日付 | 内容 |
 |------|------|
 | 2026-05-17 | `save_vintix` 評価で全条件再実行完了。グラフ凡例をロボット名のみに簡略化。本 README 作成。 |
-| 2026-05-23 | 評価は `save_vintix.py` に統一。§9–§10 学習コスト・PPO 比較。グラフを PPO leave-one-out と揃え（Y: -5〜28、ロボット色、論文/ポスター 2 種）。 |
+| 2026-05-23 | 評価は `save_vintix.py` に統一。§9–§10 学習コスト・PPO 比較。データ割合グラフは平均のみ（論文/ポスター各1枚）。 |

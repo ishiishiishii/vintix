@@ -33,11 +33,9 @@ from plot_style import (  # noqa: E402
     FIGSIZE,
     LEGEND_FONTSIZE,
     LINE_WIDTH,
-    STD_FILL_ALPHA,
     Y_LABEL,
     Y_LIM,
     finetune_legend_label,
-    shade_mean_std,
 )
 
 VINTIX_ROOT = SCRIPT_DIR.parent
@@ -394,30 +392,24 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
     graphs.mkdir(parents=True, exist_ok=True)
 
     spec_by_key = {s.key: s for s in MODEL_SPECS}
-    by_model: dict[str, list[tuple[int, float, float]]] = {s.key: [] for s in MODEL_SPECS}
+    by_model: dict[str, list[tuple[int, float]]] = {s.key: [] for s in MODEL_SPECS}
     for r in rows:
         if r.get("status") != "ok":
             continue
         mk = r["model_key"]
-        spec = spec_by_key.get(mk)
-        if spec is None:
+        if mk not in by_model:
             continue
         try:
             pct = int(r["data_fraction_pct"])
+            mean_val = float(r["mean_cumulative_reward"])
         except (KeyError, ValueError):
             continue
-        eval_dir = resolve_eval_result_dir(exp_root, r)
-        if eval_dir is None:
-            continue
-        mean_val, std_val = extract_episode_reward_stats(eval_dir, spec.eval_robot)
         if np.isfinite(mean_val):
-            if not np.isfinite(std_val):
-                std_val = 0.0
-            by_model[mk].append((pct, mean_val, std_val))
+            by_model[mk].append((pct, mean_val))
 
     def _plot_one(
         path: Path,
-        series: Iterable[tuple[ModelSpec, list[tuple[int, float, float]]]],
+        series: Iterable[tuple[ModelSpec, list[tuple[int, float]]]],
         *,
         show_legend: bool,
     ) -> None:
@@ -426,18 +418,18 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
             if not pts:
                 continue
             pts = sorted(pts, key=lambda x: x[0])
-            xs = np.array([p for p, _, _ in pts], dtype=float)
-            means = np.array([m for _, m, _ in pts], dtype=float)
-            stds = np.array([s for _, _, s in pts], dtype=float)
+            xs = [p for p, _ in pts]
+            ys = [m for _, m in pts]
             label = finetune_legend_label(spec.eval_robot) if show_legend else "_nolegend_"
             line, = ax.plot(
                 xs,
-                means,
+                ys,
                 linewidth=LINE_WIDTH,
                 color=spec.plot_color,
                 label=label,
+                marker="o",
+                markersize=8,
             )
-            shade_mean_std(ax, xs, means, stds, color=spec.plot_color, alpha=STD_FILL_ALPHA)
             if not show_legend:
                 line.set_label("_nolegend_")
         ax.set_xlabel("Training data used (%)", fontsize=AXIS_LABEL_FONTSIZE)
@@ -454,35 +446,21 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
 
     all_series = [(spec_by_key[k], by_model[k]) for k in by_model if by_model[k]]
     _plot_one(graphs / "all_models_data_fraction.png", all_series, show_legend=True)
-    _plot_one(graphs / "all_models_data_fraction.pdf", all_series, show_legend=True)
     _plot_one(
         graphs / "all_models_data_fraction_poster.png",
         all_series,
         show_legend=False,
     )
-    _plot_one(
-        graphs / "all_models_data_fraction_poster.pdf",
-        all_series,
-        show_legend=False,
-    )
 
-    for spec in MODEL_SPECS:
-        pts = by_model.get(spec.key, [])
-        if not pts:
+    # Remove legacy per-model / pdf outputs from earlier plot iterations
+    for old in graphs.glob("*"):
+        if old.name in (
+            "all_models_data_fraction.png",
+            "all_models_data_fraction_poster.png",
+        ):
             continue
-        one = [(spec, pts)]
-        _plot_one(graphs / f"{spec.key}_data_fraction.png", one, show_legend=True)
-        _plot_one(graphs / f"{spec.key}_data_fraction.pdf", one, show_legend=True)
-        _plot_one(
-            graphs / f"{spec.key}_data_fraction_poster.png",
-            one,
-            show_legend=False,
-        )
-        _plot_one(
-            graphs / f"{spec.key}_data_fraction_poster.pdf",
-            one,
-            show_legend=False,
-        )
+        if old.is_file():
+            old.unlink()
 
 
 def run_experiment(

@@ -222,7 +222,7 @@ def run_comparison(
     use_norm_from_training_base: bool = True,
     label_without: str | None = None,
     label_finetune: str | None = None,
-    write_poster: bool = True,
+    write_poster: bool = False,
 ) -> list[Path]:
     if use_norm_from_training_base:
         base_csv = resolve_norm_from_training_csv(base_dir, csv_prefix)
