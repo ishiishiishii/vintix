@@ -25,6 +25,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+from plot_style import Y_LABEL, Y_LIM, finetune_legend_label  # noqa: E402
+
 VINTIX_ROOT = SCRIPT_DIR.parent
 GENESIS_ROOT = VINTIX_ROOT.parent / "Genesis"
 
@@ -156,14 +160,42 @@ def latest_train_epoch_dir(train_parent: Path) -> Path:
     return candidates[-1].resolve()
 
 
-def extract_mean_episode_reward(eval_dir: Path, robot: str, num_envs: int = NUM_EVAL_ENVS, num_episodes: int = NUM_EVAL_EPISODES) -> float:
-    """Parse ``save_vintix``-style ``*_mean_reward.txt`` or fall back to ``episode_returns.csv``."""
+def _episode_rewards_from_csv(episodes_csv: Path) -> list[float]:
+    with open(episodes_csv, newline="", encoding="utf-8") as f:
+        header = f.readline().strip()
+    if "env_index" in header:
+        data = np.loadtxt(episodes_csv, delimiter=",", skiprows=1)
+        return [float(x) for x in data[:, 3]]
+    data = np.loadtxt(episodes_csv, delimiter=",", skiprows=1)
+    return [float(x) for x in data[:, 2]]
+
+
+def extract_episode_reward_stats(
+    eval_dir: Path,
+    robot: str,
+    num_envs: int = NUM_EVAL_ENVS,
+    num_episodes: int = NUM_EVAL_EPISODES,
+) -> tuple[float, float]:
+    """Mean and std of per-episode cumulative reward (100 eval episodes)."""
     prefix = canon_robot_type(robot)
     mean_txt = eval_dir / f"{prefix}_{num_envs}envs_{num_episodes}episodes_mean_reward.txt"
     if mean_txt.is_file():
+        mean_val = float("nan")
+        std_val = float("nan")
         for line in mean_txt.read_text(encoding="utf-8").splitlines():
             if line.startswith("Mean Reward per Episode:"):
-                return float(line.split(":", 1)[1].strip())
+                mean_val = float(line.split(":", 1)[1].strip())
+            elif line.startswith("Std Reward per Episode:"):
+                std_val = float(line.split(":", 1)[1].strip())
+        if np.isfinite(mean_val):
+            return mean_val, std_val if np.isfinite(std_val) else 0.0
+
+    episodes_csv = eval_dir / f"{prefix}_{num_envs}envs_{num_episodes}episodes_episodes.csv"
+    if episodes_csv.is_file():
+        vals = _episode_rewards_from_csv(episodes_csv)
+        if vals:
+            return float(np.mean(vals)), float(np.std(vals))
+
     csv_path = eval_dir / "episode_returns.csv"
     if csv_path.is_file():
         vals: list[float] = []
@@ -176,8 +208,14 @@ def extract_mean_episode_reward(eval_dir: Path, robot: str, num_envs: int = NUM_
                     if cell:
                         vals.append(float(cell))
         if vals:
-            return float(np.mean(vals))
-    return float("nan")
+            return float(np.mean(vals)), float(np.std(vals))
+    return float("nan"), float("nan")
+
+
+def extract_mean_episode_reward(eval_dir: Path, robot: str, num_envs: int = NUM_EVAL_ENVS, num_episodes: int = NUM_EVAL_EPISODES) -> float:
+    """Parse ``save_vintix``-style ``*_mean_reward.txt`` or fall back to ``episode_returns.csv``."""
+    mean_val, _ = extract_episode_reward_stats(eval_dir, robot, num_envs, num_episodes)
+    return mean_val
 
 
 def _subprocess_env() -> dict:
@@ -325,52 +363,105 @@ def plot_graphs(exp_root: Path, rows: list[dict]) -> None:
     graphs = exp_root / "graphs"
     graphs.mkdir(parents=True, exist_ok=True)
 
-    by_model: dict[str, list[tuple[int, float]]] = {s.key: [] for s in MODEL_SPECS}
+    spec_by_key = {s.key: s for s in MODEL_SPECS}
+    by_model: dict[str, list[tuple[int, float, float]]] = {s.key: [] for s in MODEL_SPECS}
     for r in rows:
         if r.get("status") != "ok":
             continue
         mk = r["model_key"]
+        spec = spec_by_key.get(mk)
+        if spec is None:
+            continue
         try:
             pct = int(r["data_fraction_pct"])
-            val = float(r["mean_cumulative_reward"])
         except (KeyError, ValueError):
             continue
-        if mk in by_model and np.isfinite(val):
-            by_model[mk].append((pct, val))
+        eval_dir = Path(r.get("eval_result_dir", ""))
+        if eval_dir.is_dir():
+            mean_val, std_val = extract_episode_reward_stats(eval_dir, spec.eval_robot)
+        else:
+            try:
+                mean_val = float(r["mean_cumulative_reward"])
+                std_val = float("nan")
+            except (KeyError, ValueError):
+                continue
+        if np.isfinite(mean_val):
+            if not np.isfinite(std_val):
+                std_val = 0.0
+            by_model[mk].append((pct, mean_val, std_val))
 
-    spec_by_key = {s.key: s for s in MODEL_SPECS}
-
-    def _plot_one(path: Path, series: Iterable[tuple[ModelSpec, list[tuple[int, float]]]]) -> None:
-        fig, ax = plt.subplots(figsize=(10, 6))
+    def _plot_one(
+        path: Path,
+        series: Iterable[tuple[ModelSpec, list[tuple[int, float, float]]]],
+        *,
+        show_legend: bool,
+    ) -> None:
+        fig, ax = plt.subplots(figsize=(14, 10))
         for spec, pts in series:
             if not pts:
                 continue
             pts = sorted(pts, key=lambda x: x[0])
-            xs = [p for p, _ in pts]
-            ys = [v for _, v in pts]
-            ax.plot(xs, ys, "o-", color=spec.plot_color, label=spec.display_label, linewidth=2, markersize=8)
+            xs = np.array([p for p, _, _ in pts], dtype=float)
+            means = np.array([m for _, m, _ in pts], dtype=float)
+            stds = np.array([s for _, _, s in pts], dtype=float)
+            label = finetune_legend_label(spec.eval_robot) if show_legend else "_nolegend_"
+            ax.plot(
+                xs,
+                means,
+                "o-",
+                color=spec.plot_color,
+                label=label,
+                linewidth=2.6,
+                markersize=8,
+            )
+            lower = np.maximum(means - stds, Y_LIM[0])
+            upper = np.minimum(means + stds, Y_LIM[1])
+            ax.fill_between(xs, lower, upper, alpha=0.15, color=spec.plot_color)
         ax.set_xlabel("Training data used (%)", fontsize=FONT_SIZE_LABEL)
-        ax.set_ylabel("Mean cumulative reward", fontsize=FONT_SIZE_LABEL)
+        ax.set_ylabel(Y_LABEL, fontsize=FONT_SIZE_LABEL)
         ax.set_xticks(DATA_FRACTIONS_PCT)
+        ax.set_ylim(*Y_LIM)
         ax.tick_params(axis="both", labelsize=FONT_SIZE_TICK)
         ax.grid(True, alpha=0.3)
-        handles, labels = ax.get_legend_handles_labels()
-        if len(handles) > 1:
-            ax.legend(fontsize=FONT_SIZE_LEGEND)
-        fig.tight_layout()
+        if show_legend:
+            handles, _labels = ax.get_legend_handles_labels()
+            if handles:
+                ax.legend(loc="lower right", fontsize=FONT_SIZE_LEGEND, framealpha=0.95)
+        plt.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.12)
         fig.savefig(path, dpi=150, bbox_inches="tight")
         plt.close(fig)
 
     all_series = [(spec_by_key[k], by_model[k]) for k in by_model if by_model[k]]
-    _plot_one(graphs / "all_models_data_fraction.png", all_series)
-    _plot_one(graphs / "all_models_data_fraction.pdf", all_series)
+    _plot_one(graphs / "all_models_data_fraction.png", all_series, show_legend=True)
+    _plot_one(graphs / "all_models_data_fraction.pdf", all_series, show_legend=True)
+    _plot_one(
+        graphs / "all_models_data_fraction_poster.png",
+        all_series,
+        show_legend=False,
+    )
+    _plot_one(
+        graphs / "all_models_data_fraction_poster.pdf",
+        all_series,
+        show_legend=False,
+    )
 
     for spec in MODEL_SPECS:
         pts = by_model.get(spec.key, [])
         if not pts:
             continue
-        _plot_one(graphs / f"{spec.key}_data_fraction.png", [(spec, pts)])
-        _plot_one(graphs / f"{spec.key}_data_fraction.pdf", [(spec, pts)])
+        one = [(spec, pts)]
+        _plot_one(graphs / f"{spec.key}_data_fraction.png", one, show_legend=True)
+        _plot_one(graphs / f"{spec.key}_data_fraction.pdf", one, show_legend=True)
+        _plot_one(
+            graphs / f"{spec.key}_data_fraction_poster.png",
+            one,
+            show_legend=False,
+        )
+        _plot_one(
+            graphs / f"{spec.key}_data_fraction_poster.pdf",
+            one,
+            show_legend=False,
+        )
 
 
 def run_experiment(

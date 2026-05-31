@@ -17,10 +17,16 @@ import os
 from pathlib import Path
 
 import matplotlib
+import sys
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
+
+_SCRIPT_DIR = Path(__file__).resolve().parent
+if str(_SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(_SCRIPT_DIR))
+from plot_style import ROBOT_COLORS, Y_LABEL, Y_LIM, finetune_legend_label  # noqa: E402
 
 FONT_SIZE_LABEL = 34
 FONT_SIZE_TICK = 28
@@ -129,46 +135,57 @@ def save_comparison_graph(
     base_csv: Path,
     finetune_csv: Path,
     out_path: Path,
-    label_without: str = "Without finetune",
-    label_finetune: str = "Decoder finetune",
+    eval_robot: str,
+    show_legend: bool,
+    label_without: str | None = None,
+    label_finetune: str | None = None,
 ) -> Path:
-    series = []
-    for csv_path, label, color in (
-        (base_csv, label_without, "blue"),
-        (finetune_csv, label_finetune, "darkorange"),
+    robot_color = ROBOT_COLORS.get(eval_robot, "#1f77b4")
+    without_label = label_without or "Without finetune (0% data)"
+    ft_label = label_finetune or finetune_legend_label(eval_robot)
+
+    series: list[tuple[list[int], list[float], list[float], str, str, str]] = []
+    for csv_path, label, color, linestyle in (
+        (base_csv, without_label, "#7f7f7f", "--"),
+        (finetune_csv, ft_label, robot_color, "-"),
     ):
         episode_nums, means, stds = load_episode_data(csv_path)
         if not episode_nums:
             raise ValueError(f"No episode data in {csv_path}")
         x_episodes = [ep + 1 for ep in episode_nums]
-        series.append((x_episodes, means, stds, label, color))
+        series.append((x_episodes, means, stds, label, color, linestyle))
 
     fig, ax = plt.subplots(1, 1, figsize=(14, 10))
-    for x_episodes, means, stds, label, color in series:
-        ax.plot(x_episodes, means, linewidth=2, label=label, color=color)
-        ax.fill_between(
+    for x_episodes, means, stds, label, color, linestyle in series:
+        line_label = label if show_legend else "_nolegend_"
+        ax.plot(
             x_episodes,
-            np.array(means) - np.array(stds),
-            np.array(means) + np.array(stds),
-            alpha=0.25,
+            means,
+            linewidth=2.6,
+            label=line_label,
             color=color,
+            linestyle=linestyle,
         )
+        lower = np.maximum(np.array(means) - np.array(stds), Y_LIM[0])
+        upper = np.minimum(np.array(means) + np.array(stds), Y_LIM[1])
+        ax.fill_between(x_episodes, lower, upper, alpha=0.15, color=color)
 
     ax.set_xlabel("Episode Number", fontsize=FONT_SIZE_LABEL)
-    ax.set_ylabel("Cumulative Reward per Episode", fontsize=FONT_SIZE_LABEL)
+    ax.set_ylabel(Y_LABEL, fontsize=FONT_SIZE_LABEL)
     ax.tick_params(axis="both", which="major", labelsize=FONT_SIZE_TICK)
-    ax.set_ylim(-5, 28)
+    ax.set_ylim(*Y_LIM)
     ax.set_xlim(0, 11)
     ax.grid(True, alpha=0.3)
-    ax.legend(
-        fontsize=FONT_SIZE_LEGEND,
-        loc="lower right",
-        bbox_to_anchor=(0.995, 0.02),
-        framealpha=0.92,
-        borderaxespad=0.0,
-        handlelength=1.6,
-        labelspacing=0.35,
-    )
+    if show_legend:
+        ax.legend(
+            fontsize=FONT_SIZE_LEGEND,
+            loc="lower right",
+            bbox_to_anchor=(0.995, 0.02),
+            framealpha=0.92,
+            borderaxespad=0.0,
+            handlelength=1.6,
+            labelspacing=0.35,
+        )
     fig.canvas.draw()
     ax.xaxis.get_offset_text().set_fontsize(FONT_SIZE_TICK)
     ax.yaxis.get_offset_text().set_fontsize(FONT_SIZE_TICK)
@@ -194,41 +211,62 @@ def run_comparison(
     output_dir: Path,
     *,
     use_norm_from_training_base: bool = True,
-    label_without: str = "Without finetune",
-    label_finetune: str = "Decoder finetune",
-) -> Path | None:
+    label_without: str | None = None,
+    label_finetune: str | None = None,
+    write_poster: bool = True,
+) -> list[Path]:
     if use_norm_from_training_base:
         base_csv = resolve_norm_from_training_csv(base_dir, csv_prefix)
         if base_csv is None:
             print(
                 f"⚠ [{model_label}] skip: not found {NORM_EPISODES_CSV.format(prefix=csv_prefix)} in {base_dir}"
             )
-            return None
+            return []
     else:
         base_csv = resolve_finetune_episodes_csv(base_dir, csv_prefix)
         if base_csv is None:
             print(
                 f"⚠ [{model_label}] skip: not found {FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)} in {base_dir}"
             )
-            return None
+            return []
     finetune_csv = resolve_finetune_episodes_csv(finetune_dir, csv_prefix)
     if finetune_csv is None:
         print(
             f"⚠ [{model_label}] skip: not found {FINETUNE_EPISODES_CSV.format(prefix=csv_prefix)} in {finetune_dir}"
         )
-        return None
+        return []
 
-    out_path = output_dir / model_label / f"{csv_prefix}_without_vs_finetune_readable.png"
+    stem = f"{csv_prefix}_without_vs_finetune_readable"
+    out_paper = output_dir / model_label / f"{stem}.png"
     print(f"[{model_label}] {target_robot}: {base_csv.name} vs {finetune_csv.name}")
-    saved = save_comparison_graph(
-        base_csv=base_csv,
-        finetune_csv=finetune_csv,
-        out_path=out_path,
-        label_without=label_without,
-        label_finetune=label_finetune,
+    saved_paths: list[Path] = []
+    saved_paths.append(
+        save_comparison_graph(
+            base_csv=base_csv,
+            finetune_csv=finetune_csv,
+            out_path=out_paper,
+            eval_robot=target_robot,
+            show_legend=True,
+            label_without=label_without,
+            label_finetune=label_finetune,
+        )
     )
-    print(f"  Saved: {saved}")
-    return saved
+    print(f"  Saved (paper): {saved_paths[-1]}")
+    if write_poster:
+        out_poster = output_dir / model_label / f"{stem}_poster.png"
+        saved_paths.append(
+            save_comparison_graph(
+                base_csv=base_csv,
+                finetune_csv=finetune_csv,
+                out_path=out_poster,
+                eval_robot=target_robot,
+                show_legend=False,
+                label_without=label_without,
+                label_finetune=label_finetune,
+            )
+        )
+        print(f"  Saved (poster): {saved_paths[-1]}")
+    return saved_paths
 
 
 def run_experiment_comparisons(
@@ -249,7 +287,7 @@ def run_experiment_comparisons(
             continue
         base_eval = eval_root / model_key / EXP_BASE_SUBDIR
         finetune_eval = eval_root / model_key / EXP_FINETUNE_SUBDIR
-        if run_comparison(
+        paths = run_comparison(
             model_key,
             base_eval,
             finetune_eval,
@@ -257,9 +295,8 @@ def run_experiment_comparisons(
             csv_prefix,
             out_root,
             use_norm_from_training_base=False,
-            label_without="Without finetune (0% data)",
-            label_finetune="Decoder finetune (10% data)",
-        ):
+        )
+        if paths:
             saved += 1
     return saved
 
@@ -318,7 +355,10 @@ def main() -> None:
             continue
         base_dir = vintix_root / base_rel
         finetune_dir = vintix_root / finetune_rel
-        if run_comparison(model_label, base_dir, finetune_dir, target_robot, csv_prefix, out_root):
+        paths = run_comparison(
+            model_label, base_dir, finetune_dir, target_robot, csv_prefix, out_root
+        )
+        if paths:
             saved += 1
 
     print(f"\nDone. Wrote {saved} comparison PNG(s) under {out_root}")
