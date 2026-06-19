@@ -1,0 +1,50 @@
+# Cursor のコードベース・インデックス（検索）から除外する設定。
+# ここに書いたものは普段は検索・自動コンテキストの対象外だが、
+# @参照や明示的な指示で開けば AI は参照できる（完全ブロックではない）。
+# 機密情報を完全に隠したい場合は .cursorignore を使う。
+
+# --- Python 仮想環境 ---
+venv/
+venv39/
+
+# --- 外部の埋め込みリポジトリ ---
+ad-eps/
+bullet3/
+mini_cheetah_urdf/
+
+# --- Genesis 内の巨大な外部ライブラリ（レンダラ等） ---
+Genesis/genesis/ext/
+
+# --- 生成データ・ログ・成果物（大容量ディレクトリ） ---
+vintix_go2/data/
+vintix_go2/wandb/
+vintix_go2/wandb_runs_from_scripts_dir_legacy/
+vintix_go2/models/
+vintix_go2/logs/
+vintix_go2/movie/
+
+# --- モデルパラメータ・チェックポイント ---
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.pkl
+*.pickle
+
+# --- 大容量データ配列 ---
+*.npz
+*.npy
+*.h5
+*.hdf5
+
+# --- グラフ・画像・動画・表などの出力物 ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.mp4
+*.avi
+*.csv
+
+# --- キャッシュ ---
+__pycache__/

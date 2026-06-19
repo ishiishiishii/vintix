@@ -1,0 +1,8 @@
+{
+  "name": "genesis_exp",
+  "dockerComposeFile": ["../docker-compose.yml"],
+  "service": "genesis",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "none",
+  "remoteUser": "kawa37"
+}
