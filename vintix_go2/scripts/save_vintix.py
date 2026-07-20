@@ -10,6 +10,7 @@ import json
 from pathlib import Path
 from collections import deque
 from importlib import metadata
+from typing import Optional
 
 import torch
 import numpy as np
@@ -234,6 +235,27 @@ def _get_task_name_for_robot(robot_type: str, model_metadata: dict):
     return task_name, True
 
 
+def _resolve_eval_body_param(args, task_name: str, model: Vintix) -> Optional[np.ndarray]:
+    """Load normalized body vector for eval when model uses body conditioning."""
+    if not model.conf.get("body_conditioning"):
+        return None
+    bp_path = getattr(args, "body_params_path", None)
+    if not bp_path:
+        print("Warning: body-conditioned model but --body_params_path not set; skipping body token")
+        return None
+    bp_path = Path(bp_path)
+    if not bp_path.is_file():
+        raise FileNotFoundError(f"body_params_path not found: {bp_path}")
+    with open(bp_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    sys.path.insert(0, str(Path(__file__).parent))
+    from embodiment_schema import task_body_vector
+
+    vec = np.asarray(task_body_vector(payload, task_name), dtype=np.float32)
+    print(f"✓ Body param for {task_name}: dim={vec.shape[0]}")
+    return vec
+
+
 def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
     """並列評価を実行"""
     NUM_ENVS = args.num_envs
@@ -260,7 +282,19 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
             print(f"Warning: Could not change base mass: {e}")
     
     print("✓ Vintix model loaded")
-    
+
+    # Locomotion metrics accumulator (CoT / tracking / distance / speed) over the whole eval.
+    # Survival / episode length are reported from this script's own episode stats, so we do not
+    # feed termination here (envs are reset manually below).
+    from locomotion_metrics import LocomotionMetrics, robot_total_mass
+    loco_metrics = LocomotionMetrics(
+        num_envs=NUM_ENVS,
+        robot_mass=robot_total_mass(env),
+        dt=env.dt,
+        device=gs.device,
+        leg_length_m=env_cfg.get("leg_length_m"),
+    )
+
     model_metadata = vintix_model.metadata if hasattr(vintix_model, 'metadata') else {}
     print(f"Available task names in model: {list(model_metadata.keys())}")
     
@@ -297,9 +331,16 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         print(f"{'=' * 80}\n")
     
     print(f"Using task_name: {task_name} for robot_type: {args.robot_type}")
+
+    eval_body = _resolve_eval_body_param(args, task_name, vintix_model)
+    if eval_body is not None:
+        vintix_model.set_body_param(eval_body)
     
     CONTEXT_LEN = 2048
-    history_buffers = [VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name) for _ in range(NUM_ENVS)]
+    history_buffers = [
+        VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name, body_param=eval_body)
+        for _ in range(NUM_ENVS)
+    ]
     
     obs, _ = env.reset()
     
@@ -391,6 +432,13 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
                     actions[env_idx] = action
             
             obs, rewards, dones, infos = env.step(actions)
+
+            # Accumulate locomotion metrics for envs still running (before manual reset below).
+            active_mask = torch.tensor(
+                [not c for c in env_completed], device=gs.device, dtype=torch.bool
+            )
+            loco_metrics.update_from_env(env, dones=None, active=active_mask)
+
             obs = obs[:, :-12]
             
             step_rewards = []
@@ -656,6 +704,19 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         f.write(f"Mean Reward per Step: {final_mean_reward:.6f}\n")
         f.write(f"Std Reward per Step: {final_std_reward:.6f}\n")
         f.write(f"\n")
+        loco_summary = loco_metrics.compute()
+        f.write(f"=== Locomotion Metrics (scale-invariant) ===\n")
+        f.write(f"Cost of Transport (CoT): {loco_summary['cost_of_transport']:.6f}\n")
+        f.write(f"Tracking Success Rate (±15%): {loco_summary['tracking_success_rate']:.6f}\n")
+        f.write(f"Lin-vel RMSE (m/s): {loco_summary['lin_vel_rmse']:.6f}\n")
+        f.write(f"Ang-vel RMSE (rad/s): {loco_summary['ang_vel_rmse']:.6f}\n")
+        f.write(f"Mean Distance (m): {loco_summary['mean_distance_m']:.6f}\n")
+        f.write(f"Avg Forward Speed (m/s): {loco_summary['avg_forward_speed_mps']:.6f}\n")
+        if "froude_number" in loco_summary:
+            f.write(f"Froude Number: {loco_summary['froude_number']:.6f}\n")
+        f.write(f"Robot Mass (kg): {loco_summary['robot_mass_kg']:.6f}\n")
+        f.write(f"(Survival / episode length: see Episode-based Statistics below.)\n")
+        f.write(f"\n")
         f.write(f"=== Episode-based Statistics ===\n")
         f.write(f"Mean Reward per Episode: {mean_episode_reward:.6f}\n")
         f.write(f"Std Reward per Episode: {std_episode_reward:.6f}\n")
@@ -683,6 +744,7 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
                 f.write(f"... (showing first 20 episodes, total {len(episode_stats)} episodes)\n")
         f.write(f"{'=' * 60}\n")
     print(f"✓ Mean reward summary saved: {mean_reward_path}")
+    print(LocomotionMetrics.format_summary(loco_summary))
     
     print(f"\n{'=' * 80}")
     print(f"✓ Parallel evaluation completed!")
@@ -741,6 +803,10 @@ def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         print(f"{'=' * 80}\n")
     
     print(f"Using task_name: {task_name} for robot_type: {args.robot_type}")
+
+    eval_body = _resolve_eval_body_param(args, task_name, vintix_model)
+    if eval_body is not None:
+        vintix_model.set_body_param(eval_body)
     
     print(f"\n{'=' * 80}")
     print(f"Starting video recording...")
@@ -759,7 +825,7 @@ def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
             print(f"Warning: Could not change base mass: {e}")
     
     CONTEXT_LEN = 2048
-    history_buffer = VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name)
+    history_buffer = VintixHistoryBuffer(max_len=CONTEXT_LEN, task_name=task_name, body_param=eval_body)
     
     obs, _ = env.reset()
     obs = obs[:, :-12]
@@ -866,9 +932,10 @@ def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
 class VintixHistoryBuffer:
     """Vintix用の履歴バッファ（環境リセット後も保持）"""
     
-    def __init__(self, max_len=1024, task_name='go2_walking_ad'):
+    def __init__(self, max_len=1024, task_name='go2_walking_ad', body_param=None):
         self.max_len = max_len
         self.task_name = task_name
+        self.body_param = None if body_param is None else np.asarray(body_param, dtype=np.float32)
         self.observations = deque(maxlen=max_len)
         self.actions = deque(maxlen=max_len)
         self.rewards = deque(maxlen=max_len)
@@ -900,6 +967,8 @@ class VintixHistoryBuffer:
             'step_num': torch.tensor(step_list, dtype=torch.int32),
             'task_name': self.task_name,
         }]
+        if self.body_param is not None:
+            batch[0]['body_param'] = torch.tensor(self.body_param, dtype=torch.float32)
         
         return batch
 
@@ -924,6 +993,8 @@ def main():
                         help="Record video of the evaluation")
     parser.add_argument("--trajectory_stats_path", type=str, default=None,
                         help="Path to trajectory JSON file containing normalization statistics. If specified, skips random data collection and uses statistics from this file.")
+    parser.add_argument("--body_params_path", type=str, default=None,
+                        help="Path to body_params.json for body-conditioned models (required at eval when model uses body conditioning).")
     args = parser.parse_args()
     
     if args.robot_type is None:

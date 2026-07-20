@@ -12,7 +12,8 @@ def gs_rand_float(lower, upper, shape, device):
 
 class Go2Env:
     def __init__(self, num_envs, env_cfg, obs_cfg, reward_cfg, command_cfg, show_viewer=False,
-                 domain_randomization=False, mass_range=(0.9, 1.1)):
+                 domain_randomization=False, mass_range=(0.9, 1.1),
+                 urdf_path=None, links_friction=None):
         self.num_envs = num_envs
         self.num_obs = obs_cfg["num_obs"]
         self.num_privileged_obs = None
@@ -58,23 +59,30 @@ class Go2Env:
         )
 
         # add plain
-        self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
+        self.plane = self.scene.add_entity(gs.morphs.URDF(file="urdf/plane/plane.urdf", fixed=True))
 
         # add robot
+        # urdf_path: optional path to a (procedurally generated) robot URDF; defaults to the
+        # nominal Go2 asset. Generated robots share the Go2 12-DoF joint layout, so the rest of
+        # the env (joint_names, default angles, obs) is reused unchanged.
+        self.links_friction = links_friction
+        if urdf_path is None:
+            urdf_path = str(
+                Path(__file__).resolve().parents[2]
+                / "genesis"
+                / "assets"
+                / "urdf"
+                / "go2"
+                / "urdf"
+                / "go2.urdf"
+            )
+        self.urdf_path = str(urdf_path)
         self.base_init_pos = torch.tensor(self.env_cfg["base_init_pos"], device=gs.device)
         self.base_init_quat = torch.tensor(self.env_cfg["base_init_quat"], device=gs.device)
         self.inv_base_init_quat = inv_quat(self.base_init_quat)
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file=str(
-                    Path(__file__).resolve().parents[2]
-                    / "genesis"
-                    / "assets"
-                    / "urdf"
-                    / "go2"
-                    / "urdf"
-                    / "go2.urdf"
-                ),
+                file=self.urdf_path,
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=self.base_init_quat.cpu().numpy(),
             ),
@@ -91,6 +99,16 @@ class Go2Env:
 
         # build
         self.scene.build(n_envs=num_envs)
+
+        # Apply per-robot ground/link friction (generated robots carry a DR'd friction).
+        # Contact friction is max(geom_a, geom_b), so set it on both robot and plane.
+        if self.links_friction is not None:
+            fr = float(min(max(self.links_friction, 1e-2), 5.0))
+            try:
+                self.robot.set_friction(fr)
+                self.plane.set_friction(fr)
+            except Exception as e:
+                print(f"Warning: could not set friction {fr}: {e}")
 
         # names to indices
         self.motors_dof_idx = [self.robot.get_joint(name).dof_start for name in self.env_cfg["joint_names"]]
