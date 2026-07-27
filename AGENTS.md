@@ -59,3 +59,6 @@ Transformer（Vintix）にロボットの「上達の履歴」を学習させ、
 - `README.md` … 研究背景・実験フローの詳細（人間向け）
 - `CONTAINER.md` … コンテナの手動起動・接続・TensorBoard 等
 - `Genesis/README.md` / `README_JA.md` … シミュレータ Genesis 本体の説明
+- **`REPORT_FORMAT.md` … 実験レポート作成フォーマット（ゼミ用＋詳細トグル）。
+  レポートを書く／更新するときは必ずこれに従う。**
+  実例: `vintix_go2/online_decoder_ft/REPORT.md`

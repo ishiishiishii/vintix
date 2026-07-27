@@ -84,6 +84,9 @@ def train_one(
     trajectory_sparsity: int | None,
     save_interval: int,
     skip_train: bool,
+    init_noise_std: float = 0.2,
+    saturate: bool = False,
+    seed_retries: int = 0,
 ) -> Path:
     spec = MODEL_SPECS[model_key]
     robot = spec["robot"]
@@ -106,10 +109,17 @@ def train_one(
     mdir.mkdir(parents=True, exist_ok=True)
     rdir.mkdir(parents=True, exist_ok=True)
 
+    # skip_train: prefer exact max_iterations export; if saturation stopped early, use latest
     final_export = final_vintix_dir(model_key, max_iterations)
-    if skip_train and (final_export / "model.pth").is_file():
-        print(f"[skip_train] Using existing: {final_export}")
-        return final_export
+    if skip_train:
+        if (final_export / "model.pth").is_file():
+            print(f"[skip_train] Using existing: {final_export}")
+            return final_export
+        candidates = sorted(mdir.glob("model_*/model.pth"), key=lambda p: p.parent.name)
+        if candidates:
+            print(f"[skip_train] Using latest: {candidates[-1].parent}")
+            return candidates[-1].parent
+        raise FileNotFoundError(f"No Vintix export under {mdir}")
 
     cmd = [
         sys.executable,
@@ -136,9 +146,21 @@ def train_one(
         str(resolved_traj_sparsity),
         "--save_interval",
         str(save_interval),
+        "--init_noise_std",
+        str(init_noise_std),
+        "--seed_retries",
+        str(seed_retries),
     ]
+    if saturate:
+        cmd.append("--saturate")
     _run(cmd, cwd=VINTIX_ROOT)
-    return final_export
+    # 飽和早期終了時は model_{max_iterations} が無いので最新を返す
+    if (final_export / "model.pth").is_file():
+        return final_export
+    candidates = sorted(mdir.glob("model_*/model.pth"), key=lambda p: p.parent.name)
+    if not candidates:
+        raise FileNotFoundError(f"No Vintix export under {mdir}")
+    return candidates[-1].parent
 
 
 def eval_one(
@@ -191,7 +213,13 @@ def main():
         help="Comma-separated: go1_without,go2_without,a1_without,minicheetah_without",
     )
     parser.add_argument("--num_envs", type=int, default=4096, help="PPO parallel envs")
-    parser.add_argument("--max_iterations", type=int, default=100, help="PPO iterations")
+    parser.add_argument(
+        "--max_iterations",
+        type=int,
+        default=100,
+        help="Hard cap on PPO iterations (1-based). Use -1 with --saturate "
+        "to stop only on reward saturation.",
+    )
     parser.add_argument("--seed", type=int, default=1)
     parser.add_argument(
         "--context_len",
@@ -210,6 +238,23 @@ def main():
         type=int,
         default=5,
         help="Save checkpoint every N PPO iterations (1-based), plus final",
+    )
+    parser.add_argument(
+        "--init_noise_std",
+        type=float,
+        default=0.2,
+        help="Initial action noise std (default 0.2; smaller than train.py 1.0)",
+    )
+    parser.add_argument(
+        "--saturate",
+        action="store_true",
+        help="Stop early when mean_reward saturates (built-in thresholds; see EXPERIMENT.md)",
+    )
+    parser.add_argument(
+        "--seed_retries",
+        type=int,
+        default=0,
+        help="On death-spiral, retry with seed+1 up to N times (recommended 3)",
     )
     parser.add_argument("--eval_num_envs", type=int, default=10)
     parser.add_argument("--eval_max_episodes", type=int, default=10)
@@ -244,6 +289,9 @@ def main():
             "context_len": args.context_len,
             "trajectory_sparsity": args.trajectory_sparsity,
             "save_interval": args.save_interval,
+            "init_noise_std": args.init_noise_std,
+            "saturate": args.saturate,
+            "seed_retries": args.seed_retries,
             "eval_num_envs": args.eval_num_envs,
             "eval_max_episodes": args.eval_max_episodes,
             "pretrained_ckpt": MODEL_SPECS[mk]["ckpt"],
@@ -264,6 +312,9 @@ def main():
             trajectory_sparsity=args.trajectory_sparsity,
             save_interval=args.save_interval,
             skip_train=args.skip_train,
+            init_noise_std=args.init_noise_std,
+            saturate=args.saturate,
+            seed_retries=args.seed_retries,
         )
         exports[mk] = str(export_dir)
         if args.train_only:
