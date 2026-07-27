@@ -760,10 +760,8 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
 
 
 def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
-    """単一環境で max_episodes エピソード分の動画録画を実行。"""
-    max_episodes = max(1, int(getattr(args, "max_episodes", 1) or 1))
-    max_steps_per_episode = 1000
-    max_recording_steps = max_episodes * max_steps_per_episode
+    """単一環境で1000ステップの動画録画を実行"""
+    MAX_RECORDING_STEPS = 1000
 
     print(f"Loading Vintix model from {args.vintix_path}...")
     vintix_model = Vintix()
@@ -873,29 +871,25 @@ def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
     output_path.parent.mkdir(parents=True, exist_ok=True)
     
     FPS = 30
-    print(
-        f"Recording up to {max_episodes} episode(s) "
-        f"(cap {max_recording_steps} steps) at {FPS} FPS..."
-    )
+    print(f"Recording {MAX_RECORDING_STEPS} steps at {FPS} FPS...")
     env.cam.start_recording()
-
+    
     step_count = 0
-    episodes_done = 0
     with torch.no_grad():
-        while step_count < max_recording_steps and episodes_done < max_episodes:
+        while step_count < MAX_RECORDING_STEPS:
             context = history_buffer.get_context(CONTEXT_LEN)
-
+            
             if context is not None:
                 for key in context[0]:
                     if isinstance(context[0][key], torch.Tensor):
                         context[0][key] = context[0][key].to(gs.device)
-
+                
                 with torch.amp.autocast("cuda", dtype=torch.bfloat16):
                     pred_actions, metadata = vintix_model(context)
-
+                
                 if isinstance(pred_actions, list):
                     pred_actions = pred_actions[0]
-
+                
                 if pred_actions.dim() == 3:
                     action = pred_actions[0, -1, :].unsqueeze(0).float()
                 elif pred_actions.dim() == 2:
@@ -904,31 +898,24 @@ def _run_video_recording(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
                     raise ValueError(f"Unexpected pred_actions shape: {pred_actions.shape}")
             else:
                 action = torch.zeros(1, env.num_actions, device=gs.device)
-
+            
             obs, rewards, dones, infos = env.step(action)
             obs = obs[:, :-12]
             env.cam.render()
-
+            
             reward_value = float(rewards.cpu().numpy()[0])
             history_buffer.add(obs[0].cpu().numpy(), action[0].cpu().numpy(), reward_value)
-
+            
             step_count += 1
-
+            
             if step_count % 100 == 0:
-                print(
-                    f"Recording step {step_count:5d} / {max_recording_steps} "
-                    f"(episodes_done={episodes_done}/{max_episodes})..."
-                )
-
+                print(f"Recording step {step_count:5d} / {MAX_RECORDING_STEPS}...")
+            
             if dones[0]:
-                episodes_done += 1
-                print(f"  episode {episodes_done}/{max_episodes} ended at step {step_count}")
-                if episodes_done >= max_episodes:
-                    break
                 reset_indices = torch.tensor([0], device=gs.device, dtype=torch.long)
                 env.reset_idx(reset_indices)
                 obs[0] = env.obs_buf[0, :-12]
-
+    
     print(f"\nStopping recording and saving to {args.output}...")
     env.cam.stop_recording(save_to_filename=str(args.output), fps=FPS)
     
