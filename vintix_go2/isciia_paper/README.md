@@ -2,7 +2,10 @@
 
 - 原稿: `src/main.tex`（Overleaf からの Source ZIP `2026_ISCIIA_ishii.zip` を展開したもの。LLNCS 形式）
 - 査読コメント: Notion「ISCIIAレビュー」（Review 167 / Review 168）
-- コンテナに LaTeX は無いため、コンパイル確認は Overleaf で行う。
+- ローカルプレビュー: `~/.local/bin/tectonic`（musl 静的ビルド。コンテナの glibc が古く通常版は動かない）＋
+  Cursor 拡張 LaTeX Workshop。設定は `~/.cursor-server/data/Machine/settings.json`（保存時に自動ビルド、
+  出力は `/tmp/latex_build/main/`）。手動なら `tectonic -X compile main.tex --outdir /tmp/latex_build/main`。
+  コンテナを作り直した場合は Tectonic の再インストールが必要。最終確認は Overleaf で行う。
 
 ## 査読指摘と対応状況
 
