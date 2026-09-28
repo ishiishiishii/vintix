@@ -8,13 +8,13 @@
 
 | # | 指摘 | 原稿の該当箇所 | 状態 |
 |---|------|----------------|------|
-| 167-1 | 学習ハイパーパラメータ一式の追記 | 4.1 Experimental Setup | 未着手 |
-| 167-2 | Sim-to-real の課題を Discussion に追記 | 4.4 Discussion | ローカル反映・Notion にコピペ用トグル追加済み（Overleaf 未反映） |
-| 168-1 | Decoder 適応の効果と Encoder の寄与の区別 | Abstract / 1 / 4.4 | 未着手 |
-| 168-2 | 10% のサンプル数と、PPO 専門家学習 / Decoder FT のコスト分離 | 4.1 / 4.4 | 未着手 |
-| 168-3 | 評価リターンのばらつき（可能なら複数 seed） | Table 2 / 4.3 | 未着手 |
-| 168-4 | Fig. 4 のプロトコル（履歴の持ち越し・context reset・平均と帯の計算） | 4.2 / 4.3 | 未着手 |
-| 168-5 | 再現用詳細（context length・ハイパラ・noise distillation・観測/行動・報酬重み） | 4.1 | 未着手（167-1 と統合） |
+| 167-1 | 学習ハイパーパラメータ一式の追記 | 4.1 Experimental Setup | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映）（表は 168-5 と共通） |
+| 167-2 | Sim-to-real の課題を Discussion に追記 | 4.4 Discussion | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映） |
+| 168-1 | Decoder 適応の効果と Encoder の寄与の区別 | Abstract / 1 / 4.4 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映） |
+| 168-2 | 10% のサンプル数と、PPO 専門家学習 / Decoder FT のコスト分離 | 4.1 / 4.4 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映） |
+| 168-3 | 評価リターンのばらつき（可能なら複数 seed） | Table 2 / 4.3 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映）。複数 seed は未実施（単一 seed と明記）。MC の値は保留タスク次第 |
+| 168-4 | Fig. 4 のプロトコル（履歴の持ち越し・context reset・平均と帯の計算） | 4.2 / 4.3 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映） |
+| 168-5 | 再現用詳細（context length・ハイパラ・noise distillation・観測/行動・報酬重み） | 4.1 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映）（167-1 と統合） |
 
 ## 保留タスク: Mini Cheetah の数値の出どころ
 
