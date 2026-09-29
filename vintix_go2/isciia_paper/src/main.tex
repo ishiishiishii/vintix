@@ -356,8 +356,7 @@ The model consists of an input embedding MLP, a causal Transformer~\cite{NIPS201
 The input module embeds the interaction history and current observation.
 The causal Transformer produces the latent representation $z_t\in\mathcal{Z}$, and
 the decoder predicts the action $\hat{a}_t$. 
-The model is optimized using Adam~\cite{kingma2015adammethodstochasticoptimization} with decoupled weight decay (AdamW) with the settings listed in Table~\ref{tab:hyperparameters}.
-Each input token concatenates embeddings of the current observation, the preceding action, and the preceding reward, and the decoder predicts the action from the Transformer output at the same position.
+The model is optimized using Adam~\cite{kingma2015adammethodstochasticoptimization}.
 
 \subsection{Decoder-Only Adaptation}
 For the target robot $n_{\mathrm{tar}}$, we fix the pretrained encoder parameters $\bar{\theta}$.
@@ -408,10 +407,9 @@ These differences make them suitable for evaluating cross-robot adaptation.
 
 We use a leave-one-robot-out evaluation protocol.
 For each target robot, we exclude one of the four robots (Go1, Go2, A1, or Mini Cheetah) from the training and train the model on data from the remaining three robots.
-The model has 1,231,706 parameters, of which the decoder has 200,460 parameters (16.3\%).
+The model has 1,231,706 parameters.
 For each robot, we generate ten trajectories in independent environments, with each trajectory containing one million time steps. 
-Table~\ref{tab:hyperparameters} lists the observation and action definitions, reward weights, noise-distillation settings, and model and training hyperparameters.
-The pretrained model is trained for two epochs on the data from the three pre-training robots with a single random seed.
+Table~\ref{tab:hyperparameters} lists the implementation details and hyperparameters.
 
 To train the model using trajectories corresponding to different stages of learning, we generate trajectories that mimic different stages of policy learning through continuous noise distillation. Therefore, the generated dataset is expected to include a balanced set of trajectories representing unsuccessful locomotion, gradually improving locomotion, and stable locomotion.
 
@@ -420,7 +418,6 @@ As shown in Fig.~\ref{fig:dataset_overview}, the episode return is initially clo
 % Figure~\ref{fig:dataset_overview} shows the average episode return during continuous noise distillation.
 
 For target-robot adaptation, we use 10\% of the available target-robot data for all four robots. We fix this data fraction across all leave-one-robot-out settings.
-We fine-tune the decoder for two epochs for every target robot.
 The data of each robot (approximately $10^7$ transitions) are divided into approximately 78,000 overlapping sequences of 2,048 transitions with a stride of 128 steps, and the 10\% adaptation set consists of approximately 7,800 randomly sampled sequences, which cover approximately $8\times10^6$ distinct transitions.
 
 \begin{figure}[t]
@@ -499,7 +496,7 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
     \multicolumn{2}{@{}l}{\textbf{Model}} \\
     Input embedding & Observation 127-D, action 127-D, reward 2-D (256-D token) \\
     Transformer & 3 layers, 4 heads, hidden size 256, feed-forward size 128, dropout 0.1, LayerNorm, query--key normalization \\
-    Decoder & MLP with three hidden layers of 256 units (LeakyReLU) and a 12-D output \\
+    Decoder & MLP with three hidden layers of 256 units (LeakyReLU) and a 12-D output (200,460 parameters, 16.3\% of the model) \\
     \midrule
     \multicolumn{2}{@{}l}{\textbf{Training (pre-training and adaptation)}} \\
     Sequences & Context length 2048, sequence stride 128; observations normalized per robot \\
@@ -528,7 +525,6 @@ where $R_k(t)$ and $w_k$ denote the $k$-th reward term and its weight, respectiv
 The reward function consists of linear velocity tracking, angular velocity tracking, body height, vertical velocity, action rate, and default-pose deviation terms~\cite{Genesis}. 
 The tracking terms encourage the robot to follow the commanded velocity.
 The remaining terms promote stable and smooth locomotion.
-The weights and the target body heights are listed in Table~\ref{tab:hyperparameters}.
 
 We define the return of an episode of length $T$ as
 \begin{equation}
