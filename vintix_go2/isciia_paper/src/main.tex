@@ -356,7 +356,7 @@ The model consists of an input embedding MLP, a causal Transformer~\cite{NIPS201
 The input module embeds the interaction history and current observation.
 The causal Transformer produces the latent representation $z_t\in\mathcal{Z}$, and
 the decoder predicts the action $\hat{a}_t$. 
-The model is optimized using Adam~\cite{kingma2015adammethodstochasticoptimization} with decoupled weight decay (AdamW) and a cosine learning-rate schedule with linear warm-up.
+The model is optimized using Adam~\cite{kingma2015adammethodstochasticoptimization} with decoupled weight decay (AdamW), and the learning rate is linearly warmed up and then decays only slightly within the training runs (Table~\ref{tab:hyperparameters}).
 Each input token concatenates embeddings of the current observation, the preceding action, and the preceding reward, and the decoder predicts the action from the Transformer output at the same position.
 
 \subsection{Decoder-Only Adaptation}
@@ -411,7 +411,7 @@ For each target robot, we exclude one of the four robots (Go1, Go2, A1, or Mini 
 The model has 1,231,706 parameters, of which the decoder has 200,460 parameters (16.3\%).
 For each robot, we generate ten trajectories in independent environments, with each trajectory containing one million time steps. 
 Table~\ref{tab:hyperparameters} lists the observation and action definitions, reward weights, noise-distillation settings, and model and training hyperparameters.
-The pretrained model is trained for two epochs on the data from the three pre-training robots with a single random seed.
+For pre-training, we use the checkpoint obtained after two epochs on the data from the three pre-training robots, trained with a single random seed.
 
 To train the model using trajectories corresponding to different stages of learning, we generate trajectories that mimic different stages of policy learning through continuous noise distillation. Therefore, the generated dataset is expected to include a balanced set of trajectories representing unsuccessful locomotion, gradually improving locomotion, and stable locomotion.
 
@@ -506,7 +506,8 @@ Each epoch of decoder fine-tuning consists of 975 mini-batches of eight sequence
     \midrule
     \multicolumn{2}{@{}l}{\textbf{Training (pre-training and adaptation)}} \\
     Sequences & Context length 2048, sequence stride 128; observations normalized per robot \\
-    Optimization & AdamW, learning rate $3\times10^{-4}$, $(\beta_1, \beta_2) = (0.9, 0.99)$, weight decay 0.1, cosine schedule with 0.5\% warm-up, bf16 \\
+    Optimization & AdamW, peak learning rate $3\times10^{-4}$, $(\beta_1, \beta_2) = (0.9, 0.99)$, weight decay 0.1, bf16 \\
+    Learning rate & Linear warm-up followed by cosine decay; pre-training warms up over the first 2,339 of 7,312 parameter updates and ends at 99.97\% of the peak, and adaptation warms up over the first 9 of 242 updates and ends at 96.5\% of the peak \\
     Batch & 8 sequences per mini-batch, gradient accumulation over 8 mini-batches \\
     Epochs & Pre-training 2, adaptation 2 (decoder only) \\
     Seed & 5 \\
