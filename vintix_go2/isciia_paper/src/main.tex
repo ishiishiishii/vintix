@@ -635,11 +635,8 @@ Mini Cheetah shows a lower return with a large variation only in the first episo
 whereas Go2 and A1 maintain high returns from the first episode.
 The shaded regions indicate one standard deviation of the $k$-th episode return across the ten environments.
 
-The standard deviation in Table~\ref{tab:adaptation_results_inv} is large for the adapted policy on Go1 ($\pm7.4$).
-This dispersion originates from the first three episodes, in which eight, five, and one of the ten environments terminate early, respectively, before the in-context improvement takes effect.
-From the fourth to the tenth episode, the adapted policy on Go1 achieves $22.35 \pm 0.12$.
-The dispersion on Mini Cheetah ($\pm2.0$) is caused by a single early termination in the first episode, and the return from the second to the tenth episode is $20.24 \pm 0.09$.
-The adapted policies on Go2 and A1 achieve stable returns from the first episode ($\pm0.1$ on both robots).
+The large standard deviations of the adapted policy on Go1 ($\pm7.4$) and Mini Cheetah ($\pm2.0$) arise from early terminations in the first few episodes, before the in-context improvement takes effect.
+After these episodes, the returns are stable: $22.35 \pm 0.12$ on Go1 from the fourth episode and $20.24 \pm 0.09$ on Mini Cheetah from the second episode.
 
 
 
