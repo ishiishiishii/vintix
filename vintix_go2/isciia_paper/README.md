@@ -19,6 +19,12 @@
 | 168-4 | Fig. 4 のプロトコル（履歴の持ち越し・context reset・平均と帯の計算） | 4.2 / 4.3 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映） |
 | 168-5 | 再現用詳細（context length・ハイパラ・noise distillation・観測/行動・報酬重み） | 4.1 | ローカル反映・Notion に方針コールアウトとコピペ用トグル追加済み（Overleaf 未反映）（167-1 と統合） |
 
+## Overleaf 版との照合（2026-09-29）
+
+Notion に添付された Overleaf の ZIP（08:08）を `src/main.tex` と比較した。査読 7 件の対応箇所はすべて入っているが、
+Fig. 4 のファイル名（miniCheetah）、4.1 の「ten trajectories … one million time steps」の欠落、
+ハイパーパラメータ表が旧版、などが未反映。一覧は Notion 冒頭の「照合結果」コールアウトと各項目の【照合 9/29】注記。
+
 ## 結果の差し替え（旧 保留タスク: Mini Cheetah の数値の出どころ）— ローカル反映済み
 
 論文の Table 2 の Mini Cheetah「19.6」は、本文に書いた 10%・1 epoch ではなく **70% データ・1 epoch** の run
