@@ -535,14 +535,10 @@ We define the return of an episode of length $T$ as
 G=\sum_{t=0}^{T-1}R_{\mathrm{total}}(t).
 \label{eq:episode_return}
 \end{equation}
-For each target robot, we run each policy in ten parallel environments, and each environment executes ten consecutive episodes, which yields 100 evaluation episodes per policy.
-At the beginning of the evaluation, the base position, the roll and pitch angles, and the joint angles in each environment are perturbed uniformly within $\pm0.1$~m, $\pm5^\circ$, and $\pm0.1$~rad, respectively, without a fixed random seed. The subsequent episodes start from the nominal initial state.
-The interaction history is carried across episodes within each environment and is not reset at episode boundaries.
-The model conditions on the most recent 2048 transitions, which span approximately two full-length episodes, and the history is initialized only at the beginning of the evaluation.
-Therefore, the change in the episode return across successive episodes reflects in-context policy improvement.
-We report the mean and standard deviation of the return over the 100 episodes.
-The PPO experts are evaluated over 200 episodes (ten environments with 20 episodes each).
-All results are obtained from a single pre-training run and a single adaptation run for each target robot (seed 5); results across independent pre-training and adaptation seeds are not available.
+Each policy is evaluated in ten parallel environments, each executing ten consecutive episodes (20 for the PPO experts).
+Only the first episode starts from a randomly perturbed initial state (base position $\pm0.1$~m, roll and pitch $\pm5^\circ$, joint angles $\pm0.1$~rad) without a fixed random seed.
+The interaction history is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
+We report the mean and standard deviation of the return over all episodes, obtained from single pre-training and adaptation runs (seed 5).
 
 We compare the following three policies:
 \begin{itemize}
