@@ -485,8 +485,8 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
     \multicolumn{2}{@{}l}{\textbf{Environment}} & \multicolumn{2}{l@{}}{\textbf{Training (pre-training, adaptation)}} \\
     Control frequency [Hz] & 50 & Context length, stride & 2048, 128 \\
     Action latency [steps] & 1 & Observation normalization & Per robot \\
-    Forward velocity command [m/s] & 0.5 & Optimizer & AdamW (bf16) \\
-    Lateral, yaw-rate commands & 0, 0 & Learning rate & $3\times10^{-4}$ \\
+    Forward command [m/s] & 0.5 & Optimizer & AdamW (bf16) \\
+    Lateral, yaw commands & 0, 0 & Learning rate & $3\times10^{-4}$ \\
     Observation scale $(\omega, \dot{q})$ & 0.25, 0.05 & $(\beta_1, \beta_2)$ & 0.9, 0.99 \\
     Observation scale $c$ & 2, 2, 0.25 & Weight decay & 0.1 \\
     Action scale & 0.25 & Mini-batch, accumulation & 8, 8 \\
