@@ -458,7 +458,7 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
 
 \begin{table}[t]
   \centering
-  \caption{Physical parameters of the quadrupedal robots.}
+  \caption{Physical parameters and target body heights of the quadrupedal robots.}
   \label{tab:robot_parameters}
     \begin{tabular}{lcccc}
       \hline
@@ -470,6 +470,7 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
       Body height [m] & 0.11 & 0.11 & 0.11 & 0.10 \\
       Thigh link length [m] & 0.21 & 0.21 & 0.20 & 0.21 \\
       Shank link length [m] & 0.21 & 0.21 & 0.20 & 0.21 \\
+      Target body height [m] & 0.32 & 0.30 & 0.27 & 0.30 \\
       \hline
     \end{tabular}
 \end{table}
@@ -479,35 +480,34 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
   \caption{Implementation details and hyperparameters. Unless otherwise noted, the settings are shared by all robots.}
   \label{tab:hyperparameters}
   \scriptsize
-  \begin{tabular}{@{}p{0.25\linewidth}p{0.71\linewidth}@{}}
+  \begin{tabular}{@{}ll@{\hspace{2em}}ll@{}}
     \toprule
-    \multicolumn{2}{@{}l}{\textbf{Environment}} \\
-    Control & 50~Hz control rate, one-step action latency, maximum episode length of 1000 steps, termination when the roll or pitch angle exceeds $10^\circ$ \\
-    Command & Forward velocity 0.5~m/s, lateral velocity 0~m/s, yaw rate 0~rad/s \\
-    Observation (33-D) & Base angular velocity ($\times 0.25$), projected gravity, velocity command (scaled by 2.0, 2.0, 0.25), joint-position offsets from the default pose, and joint velocities ($\times 0.05$) \\
-    Action (12-D) & Joint-position offsets; target angle $q_{\mathrm{default}} + 0.25\,a_t$, tracked by a PD controller ($K_p = 20$, $K_d = 0.5$) \\
-    Reward weights & Linear-velocity tracking 1.0, angular-velocity tracking 0.2 (both $\exp(-e^2/0.25)$), vertical velocity $-1.0$, body height $-50$, action rate $-0.005$, default-pose deviation $-0.1$; each weight is multiplied by the control period (0.02~s) \\
-    Target body height & Go1 0.32~m, Go2 0.30~m, A1 0.27~m, Mini Cheetah 0.30~m \\
-    \midrule
-    \multicolumn{2}{@{}l}{\textbf{Continuous noise distillation}} \\
-    Data per robot & Ten trajectories of $N_s = 10^6$ steps each \\
-    Schedule & $p = 0.6$, $f = 0.05$; $u_t$ sampled uniformly within the action range given by the joint limits \\
-    \midrule
-    \multicolumn{2}{@{}l}{\textbf{Model}} \\
-    Input embedding & Observation 127-D, action 127-D, reward 2-D (256-D token) \\
-    Transformer & 3 layers, 4 heads, hidden size 256, feed-forward size 128, dropout 0.1, LayerNorm, query--key normalization \\
-    Decoder & MLP with three hidden layers of 256 units (LeakyReLU) and a 12-D output (200,460 parameters, 16.3\% of the model) \\
-    \midrule
-    \multicolumn{2}{@{}l}{\textbf{Training (pre-training and adaptation)}} \\
-    Sequences & Context length 2048, sequence stride 128; observations normalized per robot \\
-    Optimization & AdamW, learning rate $3\times10^{-4}$, $(\beta_1, \beta_2) = (0.9, 0.99)$, weight decay 0.1, bf16 \\
-    Batch & 8 sequences per mini-batch, gradient accumulation over 8 mini-batches \\
-    Epochs & Pre-training 2, adaptation 2 (decoder only) \\
-    Seed & 5 \\
-    \midrule
-    \multicolumn{2}{@{}l}{\textbf{PPO expert (RSL-RL)}} \\
-    Network & Actor and critic MLPs with hidden layers (512, 256, 128), ELU, initial action std 1.0 \\
-    Optimization & 300 iterations, 24 steps per environment per iteration, 512--4096 parallel environments, 5 epochs, 4 mini-batches, learning rate $10^{-3}$ (adaptive, target KL 0.01), clip 0.2, $\gamma = 0.99$, $\lambda = 0.95$, entropy coefficient 0.01 \\
+    \multicolumn{2}{@{}l}{\textbf{Environment}} & \multicolumn{2}{l@{}}{\textbf{Training (pre-training, adaptation)}} \\
+    Control frequency & 50~Hz & Context length, stride & 2048, 128 \\
+    Action latency & 1 step & Observation normalization & Per robot \\
+    Command $(v_x, v_y, \omega_z)$ & 0.5~m/s, 0, 0 & Optimizer & AdamW (bf16) \\
+    Observation scale $(\omega, \dot{q})$ & 0.25, 0.05 & Learning rate & $3\times10^{-4}$ \\
+    Observation scale $c$ & 2, 2, 0.25 & $(\beta_1, \beta_2)$ & 0.9, 0.99 \\
+    Action scale & 0.25 & Weight decay & 0.1 \\
+    PD gains $(K_p, K_d)$ & 20, 0.5 & Mini-batch, accumulation & 8, 8 \\
+    \multicolumn{2}{@{}l}{\textbf{Reward weights}} & Epochs (pre-train., adapt.) & 2, 2 \\
+    Tracking (lin., ang.) & 1.0, 0.2 & Seed & 5 \\
+    Tracking width $\sigma$ & 0.25 & \multicolumn{2}{l@{}}{\textbf{PPO expert (RSL-RL)}} \\
+    Vertical velocity & $-1.0$ & Hidden layers (ELU) & 512, 256, 128 \\
+    Body height & $-50$ & Initial action std & 1.0 \\
+    Action rate & $-0.005$ & Iterations & 300 \\
+    Default-pose deviation & $-0.1$ & Steps per env.\ per iteration & 24 \\
+    Weight scale ($\Delta t$) & 0.02 & Parallel environments & 512--4096 \\
+    \multicolumn{2}{@{}l}{\textbf{Continuous noise distillation}} & Epochs, mini-batches & 5, 4 \\
+    $(p, f)$ & 0.6, 0.05 & Learning rate & $10^{-3}$ (adaptive) \\
+    \multicolumn{2}{@{}l}{\textbf{Model}} & Target KL & 0.01 \\
+    Embedding $(o, a, r)$ & 127, 127, 2 & Clip, $\gamma$, $\lambda$ & 0.2, 0.99, 0.95 \\
+    Layers, heads & 3, 4 & Entropy coefficient & 0.01 \\
+    Hidden, feed-forward size & 256, 128 & & \\
+    Dropout & 0.1 & & \\
+    Normalization & LayerNorm, QK norm & & \\
+    Decoder hidden layers & $3\times256$ & & \\
+    Decoder parameters & 200,460 (16.3\%) & & \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -515,6 +515,9 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
 \subsection{Evaluation Protocol}
 
 The target task is quadrupedal locomotion on a planar surface. 
+The robot is commanded to walk forward at a constant velocity.
+The 33-dimensional observation consists of the base angular velocity $\omega$, the projected gravity vector, the velocity command $c$, the joint-position offsets from the default pose, and the joint velocities $\dot{q}$.
+The 12-dimensional action specifies the target joint-position offsets from the default pose, which are tracked by a PD controller.
 Each episode terminates after 1000 time steps or when the roll or pitch angle of the robot body exceeds 10 degrees. 
 The total reward at time step $t$ is the weighted sum of reward and penalty terms:
 \begin{equation}
@@ -523,7 +526,7 @@ R_{\text{total}}(t) = \sum_{k} w_k R_k(t),
 where $R_k(t)$ and $w_k$ denote the $k$-th reward term and its weight, respectively.
 
 The reward function consists of linear velocity tracking, angular velocity tracking, body height, vertical velocity, action rate, and default-pose deviation terms~\cite{Genesis}. 
-The tracking terms encourage the robot to follow the commanded velocity.
+The tracking terms encourage the robot to follow the commanded velocity and are given by $\exp(-e^2/\sigma)$, where $e$ is the velocity tracking error.
 The remaining terms promote stable and smooth locomotion.
 
 We define the return of an episode of length $T$ as
