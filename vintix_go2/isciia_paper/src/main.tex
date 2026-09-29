@@ -539,7 +539,7 @@ G=\sum_{t=0}^{T-1}R_{\mathrm{total}}(t).
 \label{eq:episode_return}
 \end{equation}
 For each target robot, we run each policy in ten parallel environments, and each environment executes ten consecutive episodes, which yields 100 evaluation episodes per policy.
-At the beginning of the evaluation, the base position, the roll and pitch angles, and the joint angles in each environment are perturbed uniformly within $\pm0.1$~m, $\pm5^\circ$, and $\pm0.1$~rad, respectively. The subsequent episodes start from the nominal initial state.
+At the beginning of the evaluation, the base position, the roll and pitch angles, and the joint angles in each environment are perturbed uniformly within $\pm0.1$~m, $\pm5^\circ$, and $\pm0.1$~rad, respectively, without a fixed random seed. The subsequent episodes start from the nominal initial state.
 The interaction history is carried across episodes within each environment and is not reset at episode boundaries.
 The model conditions on the most recent 2048 transitions, which span approximately two full-length episodes, and the history is initialized only at the beginning of the evaluation.
 Therefore, the change in the episode return across successive episodes reflects in-context policy improvement.
