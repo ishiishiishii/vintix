@@ -491,24 +491,20 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
     Observation scale $c$ & 2, 2, 0.25 & Weight decay & 0.1 \\
     Action scale & 0.25 & Mini-batch, accumulation & 8, 8 \\
     PD gains $(K_p, K_d)$ & 20, 0.5 & Epochs (pre-train., adapt.) & 2, 2 \\
-    \multicolumn{2}{@{}l}{\textbf{Reward weights}} & Seed & 5 \\
-    Tracking (lin., ang.) & 1.0, 0.2 & \multicolumn{2}{l@{}}{\textbf{PPO expert (RSL-RL)}} \\
-    Tracking width $\sigma$ & 0.25 & Hidden layers (ELU) & 512, 256, 128 \\
-    Vertical velocity & $-1.0$ & Initial action std & 1.0 \\
-    Body height & $-50$ & Iterations & 300 \\
-    Action rate & $-0.005$ & Steps per env.\ per iteration & 24 \\
-    Default-pose deviation & $-0.1$ & Parallel environments & 512--4096 \\
-    Weight scale $\Delta t$ [s] & 0.02 & Epochs, mini-batches & 5, 4 \\
-    \multicolumn{2}{@{}l}{\textbf{Continuous noise distillation}} & Learning rate & $10^{-3}$ (adaptive) \\
-    $(p, f)$ & 0.6, 0.05 & Target KL & 0.01 \\
-    \multicolumn{2}{@{}l}{\textbf{Model}} & Clip, $\gamma$, $\lambda$ & 0.2, 0.99, 0.95 \\
-    Embedding $(o, a, r)$ & 127, 127, 2 & Entropy coefficient & 0.01 \\
-    Layers, heads & 3, 4 & Value-loss coefficient & 1.0 \\
-    Hidden, feed-forward size & 256, 128 & Max gradient norm & 1.0 \\
-    Dropout & 0.1 & & \\
-    Normalization & LayerNorm, QK norm & & \\
-    Decoder hidden layers & $3\times256$ (LeakyReLU) & & \\
-    Decoder parameters & 200,460 (16.3\%) & & \\
+    \multicolumn{2}{@{}l}{\textbf{Continuous noise distillation}} & Seed & 5 \\
+    $(p, f)$ & 0.6, 0.05 & \multicolumn{2}{l@{}}{\textbf{PPO expert (RSL-RL)}} \\
+    \multicolumn{2}{@{}l}{\textbf{Model}} & Hidden layers (ELU) & 512, 256, 128 \\
+    Embedding $(o, a, r)$ & 127, 127, 2 & Initial action std & 1.0 \\
+    Layers, heads & 3, 4 & Iterations & 300 \\
+    Hidden, feed-forward size & 256, 128 & Steps per env.\ per iteration & 24 \\
+    Dropout & 0.1 & Parallel environments & 512--4096 \\
+    Normalization & LayerNorm, QK norm & Epochs, mini-batches & 5, 4 \\
+    Decoder hidden layers & $3\times256$ (LeakyReLU) & Learning rate & $10^{-3}$ (adaptive) \\
+    Decoder parameters & 200,460 (16.3\%) & Target KL & 0.01 \\
+    & & Clip, $\gamma$, $\lambda$ & 0.2, 0.99, 0.95 \\
+    & & Entropy coefficient & 0.01 \\
+    & & Value-loss coefficient & 1.0 \\
+    & & Max gradient norm & 1.0 \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -527,8 +523,27 @@ R_{\text{total}}(t) = \sum_{k} w_k R_k(t),
 where $R_k(t)$ and $w_k$ denote the $k$-th reward term and its weight, respectively.
 
 The reward function consists of linear velocity tracking, angular velocity tracking, body height, vertical velocity, action rate, and default-pose deviation terms~\cite{Genesis}. 
-The tracking terms encourage the robot to follow the commanded velocity and are given by $\exp(-e^2/\sigma)$, where $e$ is the velocity tracking error.
+The tracking terms encourage the robot to follow the commanded velocity.
 The remaining terms promote stable and smooth locomotion.
+Table~\ref{tab:reward} lists the definitions and weights of the reward terms.
+
+\begin{table}[t]
+  \centering
+  \caption{Reward terms and weights. $v$ and $\omega$ are the base linear and angular velocities, $h$ is the base height, $h^{\ast}$ is the robot-specific target body height (Table~\ref{tab:robot_parameters}), and $\sigma = 0.25$. Each weight is multiplied by the control period (0.02~s).}
+  \label{tab:reward}
+  \begin{tabular}{llr}
+    \toprule
+    \textbf{Term} & \textbf{Definition} & \textbf{Weight} \\
+    \midrule
+    Linear velocity tracking & $\exp(-\|c_{xy} - v_{xy}\|^2/\sigma)$ & 1.0 \\
+    Angular velocity tracking & $\exp(-(c_{\omega} - \omega_z)^2/\sigma)$ & 0.2 \\
+    Vertical velocity & $v_z^2$ & $-1.0$ \\
+    Body height & $(h - h^{\ast})^2$ & $-50$ \\
+    Action rate & $\|a_t - a_{t-1}\|^2$ & $-0.005$ \\
+    Default-pose deviation & $\|q - q_{\mathrm{default}}\|_1$ & $-0.1$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 We define the return of an episode of length $T$ as
 \begin{equation}
