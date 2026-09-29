@@ -634,9 +634,7 @@ After decoder-only adaptation, the return for Go1 increases during the first thr
 Mini Cheetah shows a lower return with a large variation only in the first episode,
 whereas Go2 and A1 maintain high returns from the first episode.
 The shaded regions indicate one standard deviation of the $k$-th episode return across the ten environments.
-
-The large standard deviations of the adapted policy on Go1 ($\pm7.4$) and Mini Cheetah ($\pm2.0$) arise from early terminations in the first few episodes, before the in-context improvement takes effect.
-After these episodes, the returns are stable: $22.35 \pm 0.12$ on Go1 from the fourth episode and $20.24 \pm 0.09$ on Mini Cheetah from the second episode.
+Early terminations in these initial episodes cause the large standard deviations of the adapted policy on Go1 and Mini Cheetah in Table~\ref{tab:adaptation_results_inv}; from the fourth episode on Go1 and the second episode on Mini Cheetah, the returns are $22.35 \pm 0.12$ and $20.24 \pm 0.09$, respectively.
 
 
 
