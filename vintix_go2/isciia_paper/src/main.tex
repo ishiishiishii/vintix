@@ -492,16 +492,16 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
     Action scale & 0.25 & Mini-batch, accumulation & 8, 8 \\
     PD gains $(K_p, K_d)$ & 20, 0.5 & Epochs (pre-train., adapt.) & 2, 2 \\
     \multicolumn{2}{@{}l}{\textbf{Continuous noise distillation}} & Seed & 5 \\
-    $(p, f)$ & 0.6, 0.05 & \multicolumn{2}{l@{}}{\textbf{PPO expert (RSL-RL)}} \\
-    \multicolumn{2}{@{}l}{\textbf{Model}} & Hidden layers (ELU) & 512, 256, 128 \\
-    Embedding $(o, a, r)$ & 127, 127, 2 & Initial action std & 1.0 \\
-    Layers, heads & 3, 4 & Iterations & 300 \\
-    Hidden, feed-forward size & 256, 128 & Steps per env.\ per iteration & 24 \\
-    Dropout & 0.1 & Parallel environments & 512--4096 \\
-    Normalization & LayerNorm, QK norm & Epochs, mini-batches & 5, 4 \\
-    Decoder hidden layers & $3\times256$ (LeakyReLU) & Learning rate & $10^{-3}$ (adaptive) \\
-    Decoder parameters & 200,460 (16.3\%) & Target KL & 0.01 \\
-    & & Clip, $\gamma$, $\lambda$ & 0.2, 0.99, 0.95 \\
+    Decay shape $p$ & 0.6 & \multicolumn{2}{l@{}}{\textbf{PPO expert (RSL-RL)}} \\
+    Noise-free fraction $f$ & 0.05 & Hidden layers (ELU) & 512, 256, 128 \\
+    \multicolumn{2}{@{}l}{\textbf{Model}} & Initial action std & 1.0 \\
+    Embedding $(o, a, r)$ & 127, 127, 2 & Iterations & 300 \\
+    Layers, heads & 3, 4 & Steps per env.\ per iteration & 24 \\
+    Hidden, feed-forward size & 256, 128 & Parallel environments & 512--4096 \\
+    Dropout & 0.1 & Epochs, mini-batches & 5, 4 \\
+    Normalization & LayerNorm, QK norm & Learning rate & $10^{-3}$ (adaptive) \\
+    Decoder hidden layers & $3\times256$ (LeakyReLU) & Target KL & 0.01 \\
+    Decoder parameters & 200,460 (16.3\%) & Clip, $\gamma$, $\lambda$ & 0.2, 0.99, 0.95 \\
     & & Entropy coefficient & 0.01 \\
     & & Value-loss coefficient & 1.0 \\
     & & Max gradient norm & 1.0 \\
