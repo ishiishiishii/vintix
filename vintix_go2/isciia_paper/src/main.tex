@@ -422,7 +422,6 @@ As shown in Fig.~\ref{fig:dataset_overview}, the episode return is initially clo
 For target-robot adaptation, we use 10\% of the available target-robot data for all four robots. We fix this data fraction across all leave-one-robot-out settings.
 We fine-tune the decoder for two epochs for every target robot.
 The data of each robot (approximately $10^7$ transitions) are divided into approximately 78,000 overlapping sequences of 2,048 transitions with a stride of 128 steps, and the 10\% adaptation set consists of approximately 7,800 randomly sampled sequences, which cover approximately $8\times10^6$ distinct transitions.
-The two epochs amount to 242 parameter updates and take approximately two minutes on a single NVIDIA RTX A5000 GPU.
 
 \begin{figure}[t]
   \centering
@@ -656,7 +655,7 @@ However, the present results do not isolate the contribution of the encoder, bec
 
 The adaptation data are generated from a PPO expert trained on the target robot.
 Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than parameter-free adaptation to a new robot.
-Regarding practical efficiency, decoder fine-tuning updates 16.3\% of the model parameters and takes approximately two minutes, whereas training the target-specific PPO expert requires $3.7\times10^6$--$2.9\times10^7$ environment steps and 6,000 gradient updates, and continuous noise distillation requires an additional $10^7$ environment steps.
+Regarding practical efficiency, decoder fine-tuning updates 16.3\% of the model parameters with 242 parameter updates, whereas training the target-specific PPO expert requires $3.7\times10^6$--$2.9\times10^7$ environment steps and 6,000 gradient updates, and continuous noise distillation requires an additional $10^7$ environment steps.
 Thus, the present method does not reduce the cost of obtaining a target-robot expert; its efficiency lies in adapting the pretrained model with a small number of parameter updates.
 
 Deploying the method on real hardware assumes that a simulation model of the target robot is available.
