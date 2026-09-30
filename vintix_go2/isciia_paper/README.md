@@ -52,8 +52,11 @@ Notion 冒頭「教授フィードバック対応（9/30）」にチェックボ
 
 - Optimizer は実装どおり AdamW に統一（`train_utils.py` / `train_vintix.py` とも `torch.optim.AdamW`。
   チェックポイントの `config.json` の `optimizer: "Adam"` は未使用の値）。`refs.bib` に Loshchilov & Hutter（キー `loshchilov2019decoupledweightdecayregularization`、他の ICLR 文献と同じ書式）を追加して引用。
-- Table 4 は小数 2 桁に統一し、本文の差は表の表示値から計算（4.10 / 20.70 / 5.51 / 20.15）。
-  PPO 平均は `episode_reward_comparison.csv`。
+- Table 4 は小数 2 桁に統一し、本文の差と専門家比は表の表示値から計算（差 4.10 / 20.70 / 5.51 / 20.15、
+  専門家比 85.6 / 99.5 / 99.2 / 94.9%）。PPO 平均は `episode_reward_comparison.csv`。
+- Fig. 3 は縦軸名を「Average episode return」にして再生成（`fig3_episode_return/make_fig3.py`、出力も同ディレクトリ、
+  `src/figs/` に同名でコピー済み）。Go1・Go2・A1 は旧図と曲線が一致。Mini Cheetah の旧図は 1 月の古い収集データ由来
+  （最終値 約 21.0）で、現行の `data/minicheetah_trajectories`（4/11 以降未変更、論文実験で使用）では 約 20.4。
 - 評価の仕様（`save_vintix.py`）: 終了理由によらず `reset_idx` で既定姿勢・速度 0 に戻す（摂動は初回のみ）、
   履歴は保持し直近 2048 遷移のみ入力。
 - **要判断:** 学習データは `step_num` がエピソードごとに 0 に戻り、エンコーダは step_num==0 の前行動・前報酬を
