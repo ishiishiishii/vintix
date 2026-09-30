@@ -261,6 +261,7 @@ h_{t-1}^{(n)}
 \right).
 \label{eq:history_def}
 \end{equation}
+In practice, $h_{t-1}^{(n)}$ is truncated to the most recent 2,048 transitions (the context length in Table~\ref{tab:hyperparameters}); when fewer transitions are available, all of them are used.
 The shared encoder $E_\theta$ maps the interaction history and current observation to a latent representation:
 \begin{equation}
 z_t^{(n)}=E_\theta
@@ -554,8 +555,8 @@ Each policy is evaluated in ten parallel environments, each executing ten consec
 Only the first episode starts from a randomly perturbed initial state (base position $\pm0.1$~m, roll and pitch $\pm5^\circ$, joint angles $\pm0.1$~rad) without a fixed random seed.
 After each episode, whether it ends by early termination or at the time limit, the physical state of the robot is reset in the same way to the fixed default pose with zero velocity.
 In contrast, the interaction history is not reset; it is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
-The model receives only the latest 2,048 transitions, or all transitions while the history is shorter.
-Episode boundaries are not explicitly marked in the history during evaluation.
+In the training data, the first step of each episode is marked by replacing the previous action and reward with learned padding embeddings.
+During evaluation, only the first step of the evaluation is marked in this way, so later episode starts are indicated to the model only by the reset observation.
 We report the mean and standard deviation of the return over all episodes, obtained from single pre-training and adaptation runs (seed 5).
 
 We compare the following three policies:
