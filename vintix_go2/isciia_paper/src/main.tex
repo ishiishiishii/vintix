@@ -123,13 +123,13 @@ Figure~\ref{fig:robot_sim_views} shows the four robots.
 We conduct leave-one-robot-out experiments in which the model is pretrained on three robots and adapted to the remaining robot.
 For adaptation, we use 10\% of the target-robot dataset generated from its PPO expert and fine-tune the decoder for two epochs.
 Decoder-only adaptation improves the average
-cumulative reward for all four held-out robots and reaches 85.7--99.6\% of the reward obtained by the corresponding expert policies.
+episode return for all four held-out robots and reaches 85.7--99.6\% of the returns obtained by the corresponding expert policies.
 
 The main contributions of this work are as follows:
 \begin{itemize}
 \item We introduce a decoder-only adaptation method for transferring an algorithm-distilled locomotion policy to an unseen robot while keeping its history encoder fixed.
 \item We examine the hypothesis that a history-dependent locomotion representation can be shared across quadruped robots, while the action mapping requires robot-specific adaptation. Our results are consistent with this hypothesis, but they do not isolate the contribution of the encoder.
-\item We evaluate the method in a leave-one-robot-out setting with four simulated quadruped robots. The adapted policies reach 85.7--99.6\% of the corresponding expert-policy rewards using 10\% of the available target-robot data.
+\item We evaluate the method in a leave-one-robot-out setting with four simulated quadruped robots. The adapted policies reach 85.7--99.6\% of the corresponding expert-policy returns using 10\% of the available target-robot data.
 \end{itemize}
 
 \begin{figure}[t]
@@ -236,7 +236,7 @@ r,
 \label{eq:robot_pomdp}
 \end{equation}
 where $\mathcal{S}^{(n)}$ is the state space, $\mathcal{A}$ is the action space, $P^{(n)}$ is the transition model, $r$ is the reward function, $\mathcal{O}$ is the observation space, $\Omega^{(n)}$ is the observation model, and $\gamma$ is the discount factor.
-All robots share observation and action spaces of the same dimensionality and use the same reward definition. 
+All robots share observation and action spaces of the same dimensionality and use the same reward terms and weights, with robot-specific target body heights. 
 Their transition and observation models differ because of their physical characteristics.
 
 
@@ -356,7 +356,7 @@ The model consists of an input embedding MLP, a causal Transformer~\cite{NIPS201
 The input module embeds the interaction history and current observation.
 The causal Transformer produces the latent representation $z_t\in\mathcal{Z}$, and
 the decoder predicts the action $\hat{a}_t$. 
-The model is optimized using Adam~\cite{kingma2015adammethodstochasticoptimization}.
+The model is optimized using AdamW~\cite{loshchilov2019decoupledweightdecayregularization}.
 
 \subsection{Decoder-Only Adaptation}
 For the target robot $n_{\mathrm{tar}}$, we fix the pretrained encoder parameters $\bar{\theta}$.
@@ -391,7 +391,7 @@ We generate this dataset by applying continuous noise distillation to a target-r
 
 The adaptation stage uses supervised gradient updates.
 Algorithm Distillation provides the pretrained history representation, whereas decoder fine-tuning adjusts the output mapping to the target robot.
-Thus, adaptation to the target robot is not parameter-free in-context adaptation.
+Thus, adaptation to the target robot is not in-context adaptation without parameter updates.
 
 \section{Experiments}
 \label{experiment}
@@ -552,7 +552,10 @@ G=\sum_{t=0}^{T-1}R_{\mathrm{total}}(t).
 \end{equation}
 Each policy is evaluated in ten parallel environments, each executing ten consecutive episodes (20 for the PPO experts).
 Only the first episode starts from a randomly perturbed initial state (base position $\pm0.1$~m, roll and pitch $\pm5^\circ$, joint angles $\pm0.1$~rad) without a fixed random seed.
+When an episode ends, either by early termination or by reaching the time limit, the robot is reset to the default pose with zero velocity, and the next episode starts from this fixed state.
 The interaction history is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
+The model receives the most recent 2,048 transitions of the history; older transitions are discarded, and all available transitions are used while the history is shorter.
+Episode boundaries are not explicitly marked in the history during evaluation.
 We report the mean and standard deviation of the return over all episodes, obtained from single pre-training and adaptation runs (seed 5).
 
 We compare the following three policies:
@@ -583,8 +586,8 @@ We use RSL-RL~\cite{schwarke2025rslrllearninglibraryrobotics} to train the PPO e
 \textbf{Method} & \textbf{Go1} & \textbf{Go2} & \textbf{A1} & \textbf{Mini Cheetah} \\
 \midrule
 Zero-shot Algorithm Distillation & $15.17 \pm 1.07$ & $0.53 \pm 0.13$ & $15.19 \pm 7.70$ & $-0.17 \pm 0.04$ \\
- Decoder-only adaptation (ours) & $19.3 \pm 7.4$ & $21.2 \pm 0.1$ & $20.7 \pm 0.1$ & $20.0 \pm 2.0$ \\
- PPO expert & $22.5 \pm 0.03$ & $21.3 \pm 0.01$ & $20.9 \pm 0.02$ & $21.1 \pm 0.03$ \\
+ Decoder-only adaptation (ours) & $19.27 \pm 7.43$ & $21.23 \pm 0.07$ & $20.70 \pm 0.12$ & $19.98 \pm 2.02$ \\
+ PPO expert & $22.50 \pm 0.03$ & $21.33 \pm 0.01$ & $20.86 \pm 0.02$ & $21.05 \pm 0.03$ \\
 \midrule
 Expert ratio [\%] & 85.7 & 99.6 & 99.2 & 94.9 \\
 \bottomrule
@@ -627,12 +630,12 @@ Table~\ref{tab:adaptation_results_inv} summarizes the average episode return on 
 The zero-shot algorithm-distilled policy achieves returns of 15.17, 0.53, 15.19, and $-0.17$ on Go1, Go2, A1, and Mini Cheetah, respectively.
 Thus, zero-shot transfer performs reasonably well on Go1 and A1 but performs poorly on Go2 and Mini Cheetah.
 Decoder-only adaptation (ours) yields a higher average episode return than the zero-shot policy for all four robots.
-The adapted policies achieve returns of 19.3, 21.2, 20.7, and 20.0 for Go1, Go2, A1, and Mini Cheetah, respectively. These values correspond to 85.7\%, 99.6\%, 99.2\%, and 94.9\% of the returns achieved by the corresponding expert policies.
+The adapted policies achieve returns of 19.27, 21.23, 20.70, and 19.98 for Go1, Go2, A1, and Mini Cheetah, respectively. These values correspond to 85.7\%, 99.6\%, 99.2\%, and 94.9\% of the returns achieved by the corresponding expert policies.
 
 The largest increases are observed on Go2 and Mini Cheetah, for which
 decoder-only adaptation increases the average return by 20.70 and
-20.16, respectively.
-The increases on Go1 and A1 are 4.10 and 5.52, respectively.
+20.15, respectively.
+The increases on Go1 and A1 are 4.10 and 5.51, respectively.
 Thus, the improvement is particularly large for the two robots on which
 the zero-shot policy achieves returns close to zero.
 
@@ -660,7 +663,7 @@ These results demonstrate the benefit of decoder adaptation and are consistent w
 However, the present results do not isolate the contribution of the encoder, because we do not compare decoder-only adaptation with full-model fine-tuning, a newly initialized decoder trained on the fixed encoder, or training from scratch using the same amount of target data.
 
 The adaptation data are generated from a PPO expert trained on the target robot.
-Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than parameter-free adaptation to a new robot.
+Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than in-context adaptation to a new robot without parameter updates.
 Regarding practical efficiency, decoder fine-tuning updates 16.3\% of the model parameters with 242 parameter updates, whereas training the target-specific PPO expert requires $3.7\times10^6$--$2.9\times10^7$ environment steps and 6,000 gradient updates, and continuous noise distillation requires an additional $10^7$ environment steps.
 Thus, the present method does not reduce the cost of obtaining a target-robot expert; its efficiency lies in adapting the pretrained model with a small number of parameter updates.
 
@@ -683,7 +686,7 @@ They are consistent with the hypothesis that the pretrained history representati
 This finding contributes to the study of reusable control representations and suggests a possible route toward reducing the number of parameter updates required when deploying controllers on diverse quadruped platforms.
 
 The present study is limited to four simulated robots with similar kinematic structures and relies on expert demonstrations from each target robot.
-Future work will examine adaptation from non-expert interaction data, compare decoder-only adaptation with full-model fine-tuning, a newly initialized decoder, and training from scratch under matched target data, report results across multiple pre-training and adaptation seeds, evaluate robots with larger morphological and dynamic differences, and validate the method on real hardware.
+Future work will assess the contribution of the pretrained representation and the variability across training runs. It will also examine adaptation from non-expert data and transfer to robots with different morphologies and to real hardware.
 
 
 \section*{Acknowledgements}
