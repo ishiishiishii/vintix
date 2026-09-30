@@ -228,14 +228,14 @@ M^{(n)}
 \mathcal{S}^{(n)},
 \mathcal{A},
 P^{(n)},
-r,
+r^{(n)},
 \mathcal{O},
 \Omega^{(n)},
 \gamma
 \right),
 \label{eq:robot_pomdp}
 \end{equation}
-where $\mathcal{S}^{(n)}$ is the state space, $\mathcal{A}$ is the action space, $P^{(n)}$ is the transition model, $r$ is the reward function, $\mathcal{O}$ is the observation space, $\Omega^{(n)}$ is the observation model, and $\gamma$ is the discount factor.
+where $\mathcal{S}^{(n)}$ is the state space, $\mathcal{A}$ is the action space, $P^{(n)}$ is the transition model, $r^{(n)}$ is the reward function, $\mathcal{O}$ is the observation space, $\Omega^{(n)}$ is the observation model, and $\gamma$ is the discount factor.
 All robots share observation and action spaces of the same dimensionality and use the same reward terms and weights, with robot-specific target body heights. 
 Their transition and observation models differ because of their physical characteristics.
 
@@ -581,6 +581,7 @@ We use RSL-RL~\cite{schwarke2025rslrllearninglibraryrobotics} to train the PPO e
 \caption{Episode return on each held-out target robot (mean $\pm$ standard deviation over the evaluation episodes).
     The expert ratio is the mean return of the decoder-adapted policy divided by that of the corresponding PPO expert.}
 \label{tab:adaptation_results_inv}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lcccc}
 \toprule
 \textbf{Method} & \textbf{Go1} & \textbf{Go2} & \textbf{A1} & \textbf{Mini Cheetah} \\
@@ -591,7 +592,7 @@ Zero-shot Algorithm Distillation & $15.17 \pm 1.07$ & $0.53 \pm 0.13$ & $15.19 \
 \midrule
 Expert ratio [\%] & 85.6 & 99.5 & 99.2 & 94.9 \\
 \bottomrule
-\end{tabular}
+\end{tabular}}
 \end{table}
 
 \begin{figure}[t]
@@ -647,7 +648,6 @@ episodes.
 After decoder-only adaptation, the return for Go1 increases during the first three episodes and then stabilizes.
 Mini Cheetah shows a lower return with a large variation only in the first episode,
 whereas Go2 and A1 maintain high returns from the first episode.
-The shaded regions indicate one standard deviation of the $k$-th episode return across the ten environments.
 Early terminations in these initial episodes cause the large standard deviations of the adapted policy on Go1 and Mini Cheetah in Table~\ref{tab:adaptation_results_inv}; from the fourth episode on Go1 and the second episode on Mini Cheetah, the returns are $22.35 \pm 0.12$ and $20.24 \pm 0.09$, respectively.
 
 
