@@ -101,7 +101,7 @@ The first approach broadens the training distribution through domain randomizati
 These methods improve robustness but require training over a sufficiently diverse range of environments and dynamics.
 The second approach adapts policy behavior from interaction histories.
 In-context reinforcement learning methods condition their actions on previous observations, actions, and rewards~\cite{duan2016rl2fastreinforcementlearning,NEURIPS2021_7f489f64}.
-Algorithm distillation further learns an implicit policy-improvement process from such histories~\cite{laskin2022incontextreinforcementlearningalgorithm,zisman2024emergenceincontextreinforcementlearning}, and Vintix applies this framework to robotic control~\cite{polubarov2025vintixactionmodelincontext}.
+Algorithm Distillation further learns an implicit policy-improvement process from such histories~\cite{laskin2022incontextreinforcementlearningalgorithm,zisman2024emergenceincontextreinforcementlearning}, and Vintix applies this framework to robotic control~\cite{polubarov2025vintixactionmodelincontext}.
 However, the resulting policy still depends on the robot embodiments represented in the training data. Interaction histories alone may not sufficiently compensate for the dynamics of a previously unseen robot.
 
 
@@ -293,7 +293,7 @@ For the held-out robot, the encoder remains fixed, and only the decoder is adapt
 \subsection{Pre-training with Continuous Noise Distillation}
 
 Algorithm Distillation requires histories that represent policy improvement.
-Recording complete reinforcement-learning processes is expensive because early exploration is inefficient and the policy distribution changes during training.
+Recording complete reinforcement learning processes is expensive because early exploration is inefficient and the policy distribution changes during training.
 We therefore use continuous noise distillation to generate synthetic improvement histories efficiently~\cite{zisman2024emergenceincontextreinforcementlearning,polubarov2025vintixactionmodelincontext}.
 
 For robot $n$, the executed action combines an expert action with uniformly sampled noise:
