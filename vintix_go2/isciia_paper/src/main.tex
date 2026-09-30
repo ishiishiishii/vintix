@@ -37,6 +37,7 @@
 %\renewcommand\UrlFont{\color{blue}\rmfamily}
 %\urlstyle{rm}
 %
+\emergencystretch=1.5em
 \begin{document}
 %
 \title{Cross-Robot Knowledge Transfer for Quadrupedal Control via In-Context Reinforcement Learning}
@@ -188,7 +189,7 @@ In-context reinforcement learning (in-context RL) adapts policy behavior from in
 RL$^2$ uses a recurrent state to summarize previous observations, actions, and rewards~\cite{duan2016rl2fastreinforcementlearning}.
 Related sequence-modeling approaches, such as Decision Transformer, formulate offline reinforcement learning as return-conditioned sequence modeling~\cite{NEURIPS2021_7f489f64}.
 
-Algorithm Distillation trains a causal sequence model on complete reinforcement-learning histories and learns to reproduce policy improvement within its context~\cite{laskin2022incontextreinforcementlearningalgorithm}. 
+Algorithm Distillation trains a causal sequence model on complete reinforcement learning histories and learns to reproduce policy improvement within its context~\cite{laskin2022incontextreinforcementlearningalgorithm}. 
 Noise Distillation generates such histories by gradually reducing noise added to expert actions~\cite{zisman2024emergenceincontextreinforcementlearning}, and Vintix extends Algorithm Distillation to multiple tasks and robotic control domains~\cite{polubarov2025vintixactionmodelincontext}.
 
 Unlike these methods, our approach addresses a target robot whose physical characteristics are absent from the pre-training data. We keep the pretrained history encoder fixed and fine-tune only the action decoder. This setting examines whether the history representation can be reused across robots while the output mapping is adapted to the target robot.
