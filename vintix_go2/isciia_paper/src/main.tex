@@ -552,8 +552,8 @@ G=\sum_{t=0}^{T-1}R_{\mathrm{total}}(t).
 \end{equation}
 Each policy is evaluated in ten parallel environments, each executing ten consecutive episodes (20 for the PPO experts).
 Only the first episode starts from a randomly perturbed initial state (base position $\pm0.1$~m, roll and pitch $\pm5^\circ$, joint angles $\pm0.1$~rad) without a fixed random seed.
-After early termination or at the time limit, the robot is reset to the default pose with zero velocity.
-The interaction history is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
+After each episode, whether it ends by early termination or at the time limit, the physical state of the robot is reset in the same way to the fixed default pose with zero velocity.
+In contrast, the interaction history is not reset; it is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
 The model receives only the latest 2,048 transitions, or all transitions while the history is shorter.
 Episode boundaries are not explicitly marked in the history during evaluation.
 We report the mean and standard deviation of the return over all episodes, obtained from single pre-training and adaptation runs (seed 5).
