@@ -356,7 +356,7 @@ The model consists of an input embedding MLP, a causal Transformer~\cite{NIPS201
 The input module embeds the interaction history and current observation.
 The causal Transformer produces the latent representation $z_t\in\mathcal{Z}$, and
 the decoder predicts the action $\hat{a}_t$. 
-The model is optimized using AdamW~\cite{loshchilov2019decoupledweightdecayregularization}.
+The model is optimized using AdamW, a variant of Adam~\cite{kingma2015adammethodstochasticoptimization} with decoupled weight decay.
 
 \subsection{Decoder-Only Adaptation}
 For the target robot $n_{\mathrm{tar}}$, we fix the pretrained encoder parameters $\bar{\theta}$.

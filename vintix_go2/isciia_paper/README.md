@@ -51,7 +51,7 @@ Fig. 4 の PDF はもともとこのスイープの PNG（`vintix_without_vs_fin
 Notion 冒頭「教授フィードバック対応（9/30）」にチェックボックスと貼り付け用コードあり。
 
 - Optimizer は実装どおり AdamW に統一（`train_utils.py` / `train_vintix.py` とも `torch.optim.AdamW`。
-  チェックポイントの `config.json` の `optimizer: "Adam"` は未使用の値）。`refs.bib` に Loshchilov & Hutter を追加。
+  チェックポイントの `config.json` の `optimizer: "Adam"` は未使用の値）。参考文献は追加せず、既存の Adam の文献を引いて「AdamW, a variant of Adam」と書く。
 - Table 4 は小数 2 桁に統一し、本文の差は表の表示値から計算（4.10 / 20.70 / 5.51 / 20.15）。
   PPO 平均は `episode_reward_comparison.csv`。
 - 評価の仕様（`save_vintix.py`）: 終了理由によらず `reset_idx` で既定姿勢・速度 0 に戻す（摂動は初回のみ）、
