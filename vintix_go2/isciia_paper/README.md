@@ -45,3 +45,18 @@ Fig. 4 の PDF はもともとこのスイープの PNG（`vintix_without_vs_fin
   → 975 // 8 = 121 回/epoch、2 epoch で 242 回（旧稿の「122 回/epoch」は誤り）。学習時間は 2 epoch で約 2.3 分。
 - Abstract は確定済みのため確定版の文に戻した（168-1 の Abstract 変更は取り消し）。
 - Notion: 各タスクのトグルを更新し、「追加対応（査読指摘外）」に差し替え項目を追加。
+
+## 教授フィードバック対応（2026-09-30）— ローカル反映済み（図を除く）
+
+Notion 冒頭「教授フィードバック対応（9/30）」にチェックボックスと貼り付け用コードあり。
+
+- Optimizer は実装どおり AdamW に統一（`train_utils.py` / `train_vintix.py` とも `torch.optim.AdamW`。
+  チェックポイントの `config.json` の `optimizer: "Adam"` は未使用の値）。`refs.bib` に Loshchilov & Hutter を追加。
+- Table 4 は小数 2 桁に統一し、本文の差は表の表示値から計算（4.10 / 20.70 / 5.51 / 20.15）。
+  PPO 平均は `episode_reward_comparison.csv`。
+- 評価の仕様（`save_vintix.py`）: 終了理由によらず `reset_idx` で既定姿勢・速度 0 に戻す（摂動は初回のみ）、
+  履歴は保持し直近 2048 遷移のみ入力。
+- **要判断:** 学習データは `step_num` がエピソードごとに 0 に戻り、エンコーダは step_num==0 の前行動・前報酬を
+  padding に置換してエピソード先頭を示す。評価の `VintixHistoryBuffer` は step_num を 0 に戻さないため、
+  評価ではエピソード境界がモデルに伝わっていない（学習と評価の不一致）。
+- Fig. 2 は元ファイルがなく未対応（描き直しの項目は Notion に記載）。
