@@ -682,7 +682,7 @@ This study investigates cross-robot adaptation of an algorithm-distilled locomot
 The model is pretrained on multiple quadruped robots, and only its decoder is fine-tuned for a robot excluded from pre-training.
 In leave-one-robot-out experiments, the adapted policies achieve 85.6--99.5\% of the returns obtained by the corresponding PPO experts.
 These results show that adaptation across robot embodiments can be achieved while limiting parameter updates to the output mapping.
-They are consistent with the hypothesis that the pretrained history representation is reusable across robots, although the contribution of the encoder remains to be isolated.
+They are consistent with the hypothesis that the pretrained history representation is reusable across robots.
 This finding contributes to the study of reusable control representations and suggests a possible route toward reducing the number of parameter updates required when deploying controllers on diverse quadruped platforms.
 
 The present study is limited to four simulated robots with similar kinematic structures and relies on expert demonstrations from each target robot.
