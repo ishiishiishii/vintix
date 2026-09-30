@@ -409,7 +409,7 @@ These differences make them suitable for evaluating cross-robot adaptation.
 We use a leave-one-robot-out evaluation protocol.
 For each target robot, we exclude one of the four robots (Go1, Go2, A1, or Mini Cheetah) from the training and train the model on data from the remaining three robots.
 The model has 1,231,706 parameters.
-For each robot, we generate ten trajectories in independent environments, with each trajectory containing one million time steps. 
+For each robot, we generate ten trajectories in independent environments, with each trajectory containing one million time steps.
 Table~\ref{tab:hyperparameters} lists the implementation details and hyperparameters.
 
 To train the model using trajectories corresponding to different stages of learning, we generate trajectories that mimic different stages of policy learning through continuous noise distillation. Therefore, the generated dataset is expected to include a balanced set of trajectories representing unsuccessful locomotion, gradually improving locomotion, and stable locomotion.
@@ -498,7 +498,7 @@ The data of each robot (approximately $10^7$ transitions) are divided into appro
     \multicolumn{2}{@{}l}{\textbf{Model}} & Initial action std & 1.0 \\
     Embedding $(o, a, r)$ & 127, 127, 2 & Iterations & 300 \\
     Layers, heads & 3, 4 & Steps per env.\ per iteration & 24 \\
-    Hidden, feed-forward size & 256, 128 & Parallel environments & 512--4096 \\
+    Hidden, feed-forward size & 256, 128 & Parallel environments & 512--4,096 \\
     Dropout & 0.1 & Epochs, mini-batches & 5, 4 \\
     Normalization & LayerNorm, QK norm & Learning rate & $10^{-3}$ (adaptive) \\
     Decoder hidden layers & $3\times256$ (LeakyReLU) & Target KL & 0.01 \\
@@ -516,7 +516,7 @@ The target task is quadrupedal locomotion on a planar surface.
 The robot is commanded to walk forward at a constant velocity.
 The 33-dimensional observation consists of the base angular velocity $\omega$, the projected gravity vector, the velocity command $c$, the joint-position offsets from the default pose, and the joint velocities $\dot{q}$.
 The 12-dimensional action specifies the target joint-position offsets from the default pose, which are tracked by a PD controller.
-Each episode terminates after 1000 time steps or when the roll or pitch angle of the robot body exceeds 10 degrees. 
+Each episode terminates after 1,000 time steps or when the roll or pitch angle of the robot body exceeds 10 degrees. 
 The total reward at time step $t$ is the weighted sum of reward and penalty terms:
 \begin{equation}
 R_{\text{total}}(t) = \sum_{k} w_k R_k(t),
@@ -587,8 +587,8 @@ We use RSL-RL~\cite{schwarke2025rslrllearninglibraryrobotics} to train the PPO e
 \textbf{Method} & \textbf{Go1} & \textbf{Go2} & \textbf{A1} & \textbf{Mini Cheetah} \\
 \midrule
 Zero-shot Algorithm Distillation & $15.17 \pm 1.07$ & $0.53 \pm 0.13$ & $15.19 \pm 7.70$ & $-0.17 \pm 0.04$ \\
- Decoder-only adaptation (ours) & $19.27 \pm 7.43$ & $21.23 \pm 0.07$ & $20.70 \pm 0.12$ & $19.98 \pm 2.02$ \\
- PPO expert & $22.50 \pm 0.03$ & $21.33 \pm 0.01$ & $20.86 \pm 0.02$ & $21.05 \pm 0.03$ \\
+Decoder-only adaptation (ours) & $19.27 \pm 7.43$ & $21.23 \pm 0.07$ & $20.70 \pm 0.12$ & $19.98 \pm 2.02$ \\
+PPO expert & $22.50 \pm 0.03$ & $21.33 \pm 0.01$ & $20.86 \pm 0.02$ & $21.05 \pm 0.03$ \\
 \midrule
 Expert ratio [\%] & 85.6 & 99.5 & 99.2 & 94.9 \\
 \bottomrule
@@ -633,6 +633,7 @@ Thus, zero-shot transfer performs reasonably well on Go1 and A1 but performs poo
 Decoder-only adaptation (ours) yields a higher average episode return than the zero-shot policy for all four robots.
 The adapted policies achieve returns of 19.27, 21.23, 20.70, and 19.98 for Go1, Go2, A1, and Mini Cheetah, respectively. These values correspond to 85.6\%, 99.5\%, 99.2\%, and 94.9\% of the returns achieved by the corresponding expert policies.
 
+
 The largest increases are observed on Go2 and Mini Cheetah, for which
 decoder-only adaptation increases the average return by 20.70 and
 20.15, respectively.
@@ -650,8 +651,6 @@ Mini Cheetah shows a lower return with a large variation only in the first episo
 whereas Go2 and A1 maintain high returns from the first episode.
 Early terminations in these initial episodes cause the large standard deviations of the adapted policy on Go1 and Mini Cheetah in Table~\ref{tab:adaptation_results_inv}; from the fourth episode on Go1 and the second episode on Mini Cheetah, the returns are $22.35 \pm 0.12$ and $20.24 \pm 0.09$, respectively.
 
-
-
 \subsection{Discussion}
 The zero-shot results vary substantially across the held-out target robots.
 The pretrained policy transfers relatively well to Go1 and A1 but achieves returns close to zero on Go2 and Mini Cheetah.
@@ -666,6 +665,7 @@ The adaptation data are generated from a PPO expert trained on the target robot.
 Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than in-context adaptation without parameter updates.
 Regarding practical efficiency, decoder fine-tuning updates 16.3\% of the model parameters with 242 parameter updates, whereas training the target-specific PPO expert requires $3.7\times10^6$--$2.9\times10^7$ environment steps and 6,000 gradient updates, and continuous noise distillation requires an additional $10^7$ environment steps.
 Thus, the present method does not reduce the cost of obtaining a target-robot expert; its efficiency lies in adapting the pretrained model with a small number of parameter updates.
+%Comparisons with full-model fine-tuning, decoder training from random initialization, and training from scratch using the same amount of target data are necessary to isolate the contribution of the pretrained encoder.
 
 Deploying the method on real hardware assumes that a simulation model of the target robot is available.
 The adaptation data are generated by continuous noise distillation, which mixes the expert actions with uniformly sampled random actions; executing such actions on a physical robot would risk falls and hardware damage.
@@ -675,7 +675,6 @@ The main challenge is robustness to the gap between simulation and hardware, bec
 This challenge can be addressed by applying domain randomization~\cite{8202133,8460528} to these factors when training the experts and generating the pre-training and adaptation datasets, so that the interaction histories cover these variations.
 With this extension, the policy adapted in simulation is expected to transfer to physical robots.
 
-
 \section{Conclusion}
 \label{conclusion}
 This study investigates cross-robot adaptation of an algorithm-distilled locomotion policy. 
@@ -684,9 +683,12 @@ In leave-one-robot-out experiments, the adapted policies achieve 85.6--99.5\% of
 These results show that adaptation across robot embodiments can be achieved while limiting parameter updates to the output mapping.
 They are consistent with the hypothesis that the pretrained history representation is reusable across robots.
 This finding contributes to the study of reusable control representations and suggests a possible route toward reducing the number of parameter updates required when deploying controllers on diverse quadruped platforms.
+%These results provide evidence that a pretrained history representation can support adaptation across robot embodiments while limiting parameter updates to the output mapping.
+%This finding contributes to the study of reusable control representations and suggests a possible route toward reducing the adaptation burden when deploying controllers on diverse quadruped platforms.
 
 The present study is limited to four simulated robots with similar kinematic structures and relies on expert demonstrations from each target robot.
 Future work will assess the contribution of the pretrained representation and the variability across training runs. It will also examine adaptation from non-expert data and transfer to robots with different morphologies and to real hardware.
+%Future work will examine adaptation from non-expert interaction data, compare decoder-only adaptation with full-model fine-tuning and training from scratch, evaluate robots with larger morphological and dynamic differences, and validate the method on real hardware.
 
 
 \section*{Acknowledgements}
