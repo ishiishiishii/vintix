@@ -356,7 +356,7 @@ The model consists of an input embedding MLP, a causal Transformer~\cite{NIPS201
 The input module embeds the interaction history and current observation.
 The causal Transformer produces the latent representation $z_t\in\mathcal{Z}$, and
 the decoder predicts the action $\hat{a}_t$. 
-The model is optimized using AdamW, a variant of Adam~\cite{kingma2015adammethodstochasticoptimization} with decoupled weight decay.
+The model is optimized using AdamW~\cite{loshchilov2019decoupledweightdecayregularization}.
 
 \subsection{Decoder-Only Adaptation}
 For the target robot $n_{\mathrm{tar}}$, we fix the pretrained encoder parameters $\bar{\theta}$.
@@ -552,9 +552,9 @@ G=\sum_{t=0}^{T-1}R_{\mathrm{total}}(t).
 \end{equation}
 Each policy is evaluated in ten parallel environments, each executing ten consecutive episodes (20 for the PPO experts).
 Only the first episode starts from a randomly perturbed initial state (base position $\pm0.1$~m, roll and pitch $\pm5^\circ$, joint angles $\pm0.1$~rad) without a fixed random seed.
-When an episode ends, either by early termination or by reaching the time limit, the robot is reset to the default pose with zero velocity, and the next episode starts from this fixed state.
+After early termination or at the time limit, the robot is reset to the default pose with zero velocity.
 The interaction history is initialized only at the start of the evaluation and carried across episodes, so the change in the return over successive episodes reflects in-context policy improvement.
-The model receives the most recent 2,048 transitions of the history; older transitions are discarded, and all available transitions are used while the history is shorter.
+The model receives only the latest 2,048 transitions, or all transitions while the history is shorter.
 Episode boundaries are not explicitly marked in the history during evaluation.
 We report the mean and standard deviation of the return over all episodes, obtained from single pre-training and adaptation runs (seed 5).
 
@@ -663,7 +663,7 @@ These results demonstrate the benefit of decoder adaptation and are consistent w
 However, the present results do not isolate the contribution of the encoder, because we do not compare decoder-only adaptation with full-model fine-tuning, a newly initialized decoder trained on the fixed encoder, or training from scratch using the same amount of target data.
 
 The adaptation data are generated from a PPO expert trained on the target robot.
-Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than in-context adaptation to a new robot without parameter updates.
+Therefore, the present experiments evaluate parameter-efficient adaptation from target-robot expert demonstrations rather than in-context adaptation without parameter updates.
 Regarding practical efficiency, decoder fine-tuning updates 16.3\% of the model parameters with 242 parameter updates, whereas training the target-specific PPO expert requires $3.7\times10^6$--$2.9\times10^7$ environment steps and 6,000 gradient updates, and continuous noise distillation requires an additional $10^7$ environment steps.
 Thus, the present method does not reduce the cost of obtaining a target-robot expert; its efficiency lies in adapting the pretrained model with a small number of parameter updates.
 
