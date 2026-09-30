@@ -76,7 +76,7 @@ Deep reinforcement learning policies for quadrupedal locomotion often depend on 
 As a result, transferring a policy to a different robot can require costly retraining.
 Existing methods improve generalization by increasing the diversity of robot dynamics during training, but this requires additional data and computation.
 This study investigates whether a pretrained policy can be adapted to a robot excluded from training by updating only its action mapping.
-Algorithm distillation trains a causal Transformer on continuous-noise-distillation data from three robots. 
+A causal Transformer is pretrained by algorithm distillation on data generated from three robots using continuous noise distillation.
 Decoder-only adaptation then keeps the history encoder fixed and updates only the decoder using 10\% of the available target-robot data.
 Leave-one-robot-out experiments in the Genesis simulator with Go1, Go2, A1, and Mini Cheetah show that decoder-only adaptation yields higher average episode returns than zero-shot transfer for all four robots.
 These results indicate that a history representation learned across multiple robots can support cross-robot adaptation through updates limited to the output mapping.
@@ -105,7 +105,7 @@ Algorithm Distillation further learns an implicit policy-improvement process fro
 However, the resulting policy still depends on the robot embodiments represented in the training data. Interaction histories alone may not sufficiently compensate for the dynamics of a previously unseen robot.
 
 
-This work examines which part of an algorithm-distilled policy should be adapted to a new robot. 
+This work examines whether updating only the action decoder can adapt an algorithm-distilled policy to a new robot.
 We hypothesize that the history-dependent features required for quadrupedal locomotion contain information that is transferable across robots, whereas the mapping from these features to joint commands is more robot-specific. 
 Based on this hypothesis, we separate the policy into a shared encoder and an action decoder. 
 The encoder extracts a latent representation from the interaction history and the current observation, and the decoder maps this representation to control actions. 
@@ -393,7 +393,7 @@ We generate this dataset by applying continuous noise distillation to a target-r
 
 The adaptation stage uses supervised gradient updates.
 Algorithm Distillation provides the pretrained history representation, whereas decoder fine-tuning adjusts the output mapping to the target robot.
-Thus, adaptation to the target robot is not in-context adaptation without parameter updates.
+Thus, target-robot adaptation requires supervised updates to the decoder parameters.
 
 \section{Experiments}
 \label{experiment}
@@ -413,9 +413,9 @@ The model has 1,231,706 parameters.
 For each robot, we generate ten trajectories in independent environments, with each trajectory containing one million time steps.
 Table~\ref{tab:hyperparameters} lists the implementation details and hyperparameters.
 
-To train the model using trajectories corresponding to different stages of learning, we generate trajectories that mimic different stages of policy learning through continuous noise distillation. Therefore, the generated dataset is expected to include a balanced set of trajectories representing unsuccessful locomotion, gradually improving locomotion, and stable locomotion.
-
-As shown in Fig.~\ref{fig:dataset_overview}, the episode return is initially close to zero, gradually increases, and finally stabilizes at approximately 20 for all robots. These results indicate that the generated trajectories include multiple stages of learning, demonstrating that continuous noise distillation successfully generates the intended training trajectories.
+Continuous noise distillation generates interaction histories that mimic policy improvement by gradually reducing action noise.
+As shown in Fig.~\ref{fig:dataset_overview}, the episode return increases from near zero and eventually stabilizes at approximately 20 for all four robots.
+The resulting dataset therefore includes behaviors ranging from unsuccessful to stable locomotion.
 
 % Figure~\ref{fig:dataset_overview} shows the average episode return during continuous noise distillation.
 
@@ -624,7 +624,7 @@ Expert ratio [\%] & 85.6 & 99.5 & 99.2 & 94.9 \\
     \caption{Mini Cheetah}
   \end{subfigure}
 
-  \caption{Episode return curves before (Zero-shot) and after (Decoder-only adaptation) on the held-out target robots. Each environment executes ten consecutive episodes while the interaction history is carried across episodes. The curves show the return of the $k$-th episode averaged over the ten environments, and the shaded regions indicate one standard deviation across the environments.}
+  \caption{Episode returns before and after decoder-only adaptation on the held-out target robots. Each environment executes ten consecutive episodes while the interaction history is carried across episodes. The curves show the return of the $k$-th episode averaged over the ten environments, and the shaded regions indicate one standard deviation across the environments.}
   \label{fig:adaptation}
 \end{figure}
 
@@ -670,7 +670,7 @@ Thus, the present method does not reduce the cost of obtaining a target-robot ex
 
 Deploying the method on real hardware assumes that a simulation model of the target robot is available.
 The adaptation data are generated by continuous noise distillation, which mixes the expert actions with uniformly sampled random actions; executing such actions on a physical robot would risk falls and hardware damage.
-Therefore, the adaptation is performed in simulation, and the adapted policy is then transferred to the physical robot.
+A possible deployment procedure is to adapt the policy in simulation before transferring it to a physical robot.
 The inputs required by the adapted policy are available on hardware: the observations are proprioceptive, and the base linear velocity and body height needed to compute the rewards in the interaction history can be supplied by an onboard state estimator.
 The main challenge is robustness to the gap between simulation and hardware, because the expert policies and datasets are generated without randomizing physical parameters, sensor noise, or external disturbances.
 This challenge can be addressed by applying domain randomization~\cite{8202133,8460528} to these factors when training the experts and generating the pre-training and adaptation datasets, so that the interaction histories cover these variations.
