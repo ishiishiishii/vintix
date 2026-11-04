@@ -56,7 +56,25 @@ Vintix のゼロショット（Go1 を学習していない `go1_without` を追
 | `graphs/{mass,size}_scale_zeroshot.png` | 倍率 vs 報酬・エピソード長（平均 ± 標準偏差） |
 | `logs/` | 各点の実行ログ |
 
-## 実行方法（コンテナ内）
+## 第 2 段階: 刻みの追加・10 シード・PPO（`pipeline.py`）
+
+| 項目 | 内容 |
+|------|------|
+| 追加の刻み | 質量 0.55, 1.15, 1.25, 1.35 / 大きさ 0.55, 0.65, 1.15, 1.25, 1.35（`body_scale.py` の `*_REFINE`） |
+| シード | 0〜9。評価前に python / numpy / torch / Genesis を固定し、各シード 10 env × 10 ep（1 点 1000 エピソード）。同じシードで結果が完全一致することを確認済み |
+| 順番 | ① 体の確認 → ② 境界付近（`BOUNDARY_GRID`）を全シード → ③ PPO を体ごとにゼロから学習（`PPO_GRID`、500 反復、学習シード 1）して 10 シード評価 → ④ 残りの点を全シード |
+| 並列 | 評価は最大 4 本同時。PPO 学習は 1 本（評価 2 本分として数える）で、② が終わってから ④ と並行 |
+| PPO 学習 | `run_experiment.py --worker train_ppo`。Go1 専門家の `cfgs.pkl` と同じ PPO 設定・`OnPolicyRunner`、4096 env、`precision=64`。出力 `ppo/<axis>/s<倍率>/` |
+| 集計 | `results.csv`（シード付きの結果のみ。全エピソードの平均 ± 標準偏差と、シード平均のばらつき `reward_seed_std`）。以前の 1 回だけの結果は `results_single_run.csv` / `graphs/single_run/` に分けて残す |
+| 進捗 | `pipeline_status.json`、`logs/pipeline.log`。`STOP` ファイルを置くと新しいジョブを起動しない |
+
+```bash
+cd /workspace/vintix_go2
+setsid nohup python -u go1_body_scale_zeroshot/pipeline.py > go1_body_scale_zeroshot/logs/pipeline.log 2>&1 < /dev/null &
+python go1_body_scale_zeroshot/pipeline.py --dry_run   # 段階ごとの完了数
+```
+
+## 実行方法（第 1 段階、コンテナ内）
 
 ```bash
 cd /workspace/vintix_go2

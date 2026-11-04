@@ -28,6 +28,32 @@ AXES = ("mass", "size")
 MASS_SCALES = (0.25, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.5, 1.75, 2.0, 2.5, 3.0, 4.0)
 SIZE_SCALES = (0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5, 1.75, 2.0)
 
+# Finer steps where the single-run sweep showed a sharp drop (Vintix 1.2 -> 1.3 on both axes,
+# transferred expert 0.5 -> 0.6 in mass and 0.6 -> 0.7 in size, Vintix 0.5 -> 0.6 in size).
+MASS_REFINE = (0.55, 1.15, 1.25, 1.35)
+SIZE_REFINE = (0.55, 0.65, 1.15, 1.25, 1.35)
+FULL_GRID = {
+    "mass": tuple(sorted(set(MASS_SCALES) | set(MASS_REFINE))),
+    "size": tuple(sorted(set(SIZE_SCALES) | set(SIZE_REFINE))),
+}
+
+# Evaluated with all seeds first (around the drops, plus nominal as control).
+BOUNDARY_GRID = {
+    "mass": (1.0, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.5, 0.25, 0.4, 0.5, 0.55, 0.6),
+    "size": (1.0, 1.1, 1.15, 1.2, 1.25, 1.3, 1.35, 1.5, 0.5, 0.55, 0.6, 0.65, 0.7),
+}
+
+# PPO trained from scratch on these bodies to check whether the body itself can walk.
+PPO_GRID = {
+    "mass": (0.25, 0.5, 1.0, 1.2, 1.25, 1.3, 1.5, 2.0),
+    "size": (0.5, 0.6, 1.0, 1.2, 1.25, 1.3, 1.5, 2.0),
+}
+# Go1 expert curve (Genesis/logs/go1-walking): Train/mean_reward 20.8 at 500 iters vs 22.3 at 2000.
+PPO_ITERATIONS = 500
+PPO_TRAIN_SEED = 1
+
+EVAL_SEEDS = tuple(range(10))
+
 # Existing robots expressed as Go1 ratios (robot_specifications_table.md), for plot markers.
 REFERENCE_ROBOTS = {
     "mass": {"SpotMicro": 4.5 / 13.1, "Mini Cheetah": 8.3 / 13.1, "A1": 13.7 / 13.1,
