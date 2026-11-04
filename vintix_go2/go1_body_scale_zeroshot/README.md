@@ -8,6 +8,7 @@ Vintix のゼロショット（Go1 を学習していない `go1_without` を追
 - 記録ページ（Notion）: [体の違いとゼロショット適応の限界](https://app.notion.com/p/40cd65e6123f81b3be04fe61479b7c70)（この目的の実験はすべてここに追記）
 - 設計と議論: Notion「ISCIIA後のステップ」→「Go1 質量・サイズ変化のゼロショット境界（理解と設計書）」
 - ブランチ: `exp/go1-body-scale-zeroshot`
+- Issue: [#1](https://github.com/ishiishiishii/vintix/issues/1)（目的）、[#2](https://github.com/ishiishiishii/vintix/issues/2)（刻み・10 シード・PPO）、[#3](https://github.com/ishiishiishii/vintix/issues/3)（設計の合意）
 - 区切りのまとめ: `REPORT.md`。経過は末尾の「実行ログ」
 
 ## 方針（Notion での合意）
