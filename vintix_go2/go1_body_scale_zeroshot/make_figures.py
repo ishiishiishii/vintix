@@ -152,6 +152,45 @@ def plot_env_modes(policy: str, axis: str, scales: List[float], max_episodes: in
     return out
 
 
+def plot_first_episode_vs_heavy(axis: str, heavy_scales: List[float], max_episodes: int, out: Path) -> Path:
+    """Per (seed, env): first-episode return on the normal body vs mean return on heavier bodies.
+
+    The same seed gives each env the same initial offset on every body, so this shows whether the
+    env's first episode on the normal body already tells which side it lands on near the boundary.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, len(heavy_scales), figsize=(3.2 * len(heavy_scales), 3.4), sharex=True, sharey=True,
+                             squeeze=False)
+    seeds = sorted(int(p.name.rsplit("seed", 1)[1]) for p in (RESULTS_DIR / "vintix" / "mass").glob("s1p000_seed*")
+                   if (p / f"{OUTPUT_STEM}_episodes.csv").exists())
+    for j, s in enumerate(heavy_scales):
+        ax = axes[0, j]
+        for k, seed in enumerate(seeds):
+            point = RESULTS_DIR / "vintix" / axis / (f"s{s:.3f}".replace(".", "p") + f"_seed{seed}")
+            if not (point / f"{OUTPUT_STEM}_episodes.csv").exists():
+                continue
+            first = episode_returns(RESULTS_DIR / "vintix" / "mass" / f"s1p000_seed{seed}", max_episodes)[:, 0]
+            heavy = np.nanmean(episode_returns(point, max_episodes), axis=1)
+            ax.scatter(first, heavy, s=28, color=plt.cm.tab10(k), label=f"seed {seed}", alpha=0.8)
+        ax.set_title(f"{axis} x{s:g}", fontsize=9)
+        ax.set_xlabel("1st-episode return, normal body", fontsize=8)
+        ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=7)
+    axes[0, 0].set_ylabel(f"Mean return over {max_episodes} ep.\non the scaled body (1 dot = 1 env)", fontsize=8)
+    axes[0, -1].legend(fontsize=7, loc="lower right")
+    fig.suptitle(f"Vintix: does the normal-body 1st episode predict the heavy-side outcome? ({time.strftime('%Y-%m-%d')})",
+                 fontsize=10)
+    fig.tight_layout()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--max_episodes", type=int, default=10)
@@ -164,6 +203,9 @@ def main() -> None:
                          FIG_DIR / f"vintix_mass_env_modes_{args.tag}.png"))
     print(plot_env_modes("vintix", "size", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
                          FIG_DIR / f"vintix_size_env_modes_{args.tag}.png"))
+    for axis in ("mass", "size"):
+        print(plot_first_episode_vs_heavy(axis, [1.1, 1.15, 1.2, 1.25], args.max_episodes,
+                                          FIG_DIR / f"vintix_{axis}_first_episode_predictor_{args.tag}.png"))
 
 
 if __name__ == "__main__":
