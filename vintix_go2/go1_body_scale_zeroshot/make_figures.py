@@ -162,6 +162,8 @@ def main() -> None:
         print(plot_axis(data, axis, FIG_DIR / f"{axis}_completion_return_{args.tag}.png"))
     print(plot_env_modes("vintix", "mass", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
                          FIG_DIR / f"vintix_mass_env_modes_{args.tag}.png"))
+    print(plot_env_modes("vintix", "size", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
+                         FIG_DIR / f"vintix_size_env_modes_{args.tag}.png"))
 
 
 if __name__ == "__main__":
