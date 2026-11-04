@@ -34,7 +34,9 @@ GH_TOKEN=...         # GitHub の Fine-grained token（ishiishiishii/vintix に 
 1. `AGENTS.md` と `research-experiment-workflow` スキル、前回までの記録 `state/journal.md`、open Issue、稼働中のジョブを読む
 2. 自分が起動したジョブの失敗に対処する
 3. 新しい結果を集計し、分析・考察する
-4. Issue に進捗コメント、区切りなら REPORT.md と Notion を更新する
+4. 結果・考察・次の実行内容を、研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の台帳）の
+   「実行ログ」と実験ディレクトリの `README.md` の「実行ログ」に追記し、Issue にもコメントする
+   （実行ごとにページは作らず、同じ目的なら 1 ページに追記していく）
 5. 次に必要な実験を Issue にする。条件を満たせばそのまま起動する
 6. `state/journal.md` に記録して終了する
 
