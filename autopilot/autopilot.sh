@@ -33,8 +33,8 @@ alive() { [ -f "$1" ] && kill -0 "$(cat "$1")" 2>/dev/null; }
 
 tick() {
   load_secrets
-  if [ -z "${CURSOR_API_KEY:-}" ]; then
-    echo "[autopilot] CURSOR_API_KEY is not set in $WORKSPACE/.env; skipping tick" >&2
+  if [ -z "${CURSOR_API_KEY:-}" ] && "$AGENT_BIN" status 2>&1 | grep -qi "not logged in"; then
+    echo "[autopilot] Cursor CLI is not logged in (run: agent login) and CURSOR_API_KEY is unset; skipping tick" >&2
     return 1
   fi
   if alive "$TICK_PID"; then
