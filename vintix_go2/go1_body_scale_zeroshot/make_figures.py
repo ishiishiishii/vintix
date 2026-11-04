@@ -191,6 +191,54 @@ def plot_first_episode_vs_heavy(axis: str, heavy_scales: List[float], max_episod
     return out
 
 
+def plot_completion_by_episode(axis: str, scales: List[float], max_episodes: int, out: Path) -> Path:
+    """Completion rate at each episode index (pooled over seeds x envs), Vintix vs the transferred expert.
+
+    Vintix keeps earlier episodes in its context, so a rise after episode 1 is in-context adaptation;
+    the expert has no memory, so its curve should stay flat.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    fig, axes = plt.subplots(1, len(scales), figsize=(3.0 * len(scales), 3.2), sharey=True, squeeze=False)
+    for j, s in enumerate(scales):
+        ax = axes[0, j]
+        n_seeds = {}
+        for policy in ("vintix", "expert"):
+            done = []
+            for point in sorted((RESULTS_DIR / policy / axis).glob(f"s{s:.3f}".replace(".", "p") + "_seed*")):
+                f = point / f"{OUTPUT_STEM}_episodes.csv"
+                if not f.exists():
+                    continue
+                by_env: Dict[int, List[dict]] = defaultdict(list)
+                for r in csv.DictReader(open(f)):
+                    by_env[int(r["env_index"])].append(r)
+                for env_rows in by_env.values():
+                    ep = sorted(env_rows, key=lambda r: int(r["episode_number"]))[:max_episodes]
+                    if len(ep) == max_episodes:
+                        done.append([float(r["episode_length"]) >= 1000 for r in ep])
+            if done:
+                n_seeds[policy] = len(done) // 10
+                ax.plot(range(1, max_episodes + 1), np.array(done).mean(0) * 100, "o-", color=COLORS[policy], ms=3,
+                        label=LABELS[policy].split(" (")[0])
+        ax.set_title(f"{axis} x{s:g}  (seeds: Vintix {n_seeds.get('vintix', 0)}, expert {n_seeds.get('expert', 0)})",
+                     fontsize=8)
+        ax.set_xlabel("episode index", fontsize=8)
+        ax.set_ylim(-5, 105)
+        ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=7)
+    axes[0, 0].set_ylabel("Completed [%] (seeds x envs pooled)", fontsize=8)
+    axes[0, -1].legend(fontsize=7, loc="center right")
+    fig.suptitle(f"Completion at each episode index near the heavy boundary ({time.strftime('%Y-%m-%d')})", fontsize=10)
+    fig.tight_layout()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--max_episodes", type=int, default=10)
@@ -206,6 +254,8 @@ def main() -> None:
     for axis in ("mass", "size"):
         print(plot_first_episode_vs_heavy(axis, [1.1, 1.15, 1.2, 1.25], args.max_episodes,
                                           FIG_DIR / f"vintix_{axis}_first_episode_predictor_{args.tag}.png"))
+        print(plot_completion_by_episode(axis, [1.15, 1.2, 1.25, 1.3], args.max_episodes,
+                                         FIG_DIR / f"{axis}_completion_by_episode_{args.tag}.png"))
 
 
 if __name__ == "__main__":
