@@ -5,10 +5,11 @@
 ## まず読む
 
 1. `AGENTS.md`（最優先のルール）と `.cursor/skills/research-experiment-workflow/SKILL.md`
-2. `autopilot/state/journal.md`（前回までの autopilot の記録。無ければ作る）
-3. GitHub Issue: `gh issue list -R ishiishiishii/vintix --state open --limit 50`
+2. `RESEARCH_OBJECTIVES.md`（研究の目的ごとの Notion ページ・実験ディレクトリ・Issue の台帳）
+3. `autopilot/state/journal.md`（前回までの autopilot の記録。無ければ作る）
+4. GitHub Issue: `gh issue list -R ishiishiishii/vintix --state open --limit 50`
    （`set -a; source /workspace/.env; set +a` で `GH_TOKEN` を読む。`gh` は `~/.local/bin/gh`）
-4. 稼働中の実験: `ps -eo pid,etime,args | grep -E "pipeline|run_experiment|train|collect|save_vintix" | grep -v grep`、
+5. 稼働中の実験: `ps -eo pid,etime,args | grep -E "pipeline|run_experiment|train|collect|save_vintix" | grep -v grep`、
    `nvidia-smi`、各実験ディレクトリの進捗ファイル（例: `vintix_go2/go1_body_scale_zeroshot/pipeline_status.json`、`logs/pipeline.log`）
 
 ## やること（優先順）
@@ -17,8 +18,12 @@
    （例: パイプラインの再起動。完了済みは自動で飛ばされる）。
 2. **分析・考察**: 新しく出た結果を集計（各実験の `--stage report` 等）し、数値で何が言えるかを考える。
    言えること／言えないこと（seed 数、分散、物理的限界との切り分け）を区別する。
-3. **記録**: 関連 Issue に進捗コメント（`issue-templates.md` の進捗コメント形式、数値と図のパス付き）。
-   区切りの結果が出たら `REPORT.md` と Notion レポートを `REPORT_FORMAT.md` に従って更新する。
+3. **記録**（スキル §4）: 新しい結果・考察・次の実行内容があれば、毎回次の 3 か所に同じ内容を残す。
+   - 研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の page_id）の末尾「実行ログ」に 1 エントリ追記。
+     実行ごとにページを作らない。結果が変わったらページ冒頭の要約も最新にする
+   - 実験ディレクトリの `README.md` 末尾「実行ログ」に同じエントリを追記
+   - 関連 Issue に進捗コメント（`issue-templates.md` の形式、数値と図のパス付き）
+   区切りの結果が出たら `REPORT.md` も更新する。新しい目的の実験を始めたら台帳に行を足し、ページを 1 つ作る。
 4. **次の一手**: 結果から次に必要な実験が分かれば `experiment` Issue を作る（仮説・方法・GPU 時間見積もり付き）。
    次の条件を**すべて**満たすときだけ、そのまま実装・起動してよい:
    - `autopilot` ラベル付きの open Issue の範囲内、または既存実験の README / Issue に書かれた次の手順である
