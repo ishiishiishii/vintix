@@ -99,6 +99,59 @@ def plot_axis(data, axis: str, out: Path) -> Path:
     return out
 
 
+def episode_returns(point: Path, max_episodes: int) -> np.ndarray:
+    """(env, episode) matrix of returns, first ``max_episodes`` episodes per env (NaN if missing)."""
+    rows = list(csv.DictReader(open(point / f"{OUTPUT_STEM}_episodes.csv")))
+    by_env: Dict[int, List[dict]] = defaultdict(list)
+    for r in rows:
+        by_env[int(r["env_index"])].append(r)
+    out = np.full((max(by_env) + 1, max_episodes), np.nan)
+    for env, env_rows in by_env.items():
+        for i, r in enumerate(sorted(env_rows, key=lambda r: int(r["episode_number"]))[:max_episodes]):
+            out[env, i] = float(r["cumulative_reward"])
+    return out
+
+
+def plot_env_modes(policy: str, axis: str, scales: List[float], max_episodes: int, out: Path) -> Path:
+    """Per-env, per-episode return heatmaps (rows = seeds, columns = scales)."""
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    seeds = sorted({int(p.name.rsplit("seed", 1)[1]) for s in scales
+                    for p in (RESULTS_DIR / policy / axis).glob(f"s{s:.3f}".replace(".", "p") + "_seed*")
+                    if (p / f"{OUTPUT_STEM}_episodes.csv").exists()})
+    fig, axes = plt.subplots(len(seeds), len(scales), figsize=(2.3 * len(scales) + 1, 2.3 * len(seeds) + 0.6),
+                             squeeze=False, sharex=True, sharey=True)
+    im = None
+    for i, seed in enumerate(seeds):
+        for j, s in enumerate(scales):
+            ax = axes[i, j]
+            point = RESULTS_DIR / policy / axis / (f"s{s:.3f}".replace(".", "p") + f"_seed{seed}")
+            if (point / f"{OUTPUT_STEM}_episodes.csv").exists():
+                im = ax.imshow(episode_returns(point, max_episodes), vmin=0, vmax=20, cmap="viridis", aspect="auto")
+            else:
+                ax.text(0.5, 0.5, "running", ha="center", va="center", transform=ax.transAxes, fontsize=8)
+            if i == 0:
+                ax.set_title(f"{axis} x{s:g}", fontsize=9)
+            if j == 0:
+                ax.set_ylabel(f"seed {seed}\nenv index", fontsize=8)
+            if i == len(seeds) - 1:
+                ax.set_xlabel("episode", fontsize=8)
+            ax.set_xticks(range(0, max_episodes, 3))
+            ax.set_xticklabels(range(1, max_episodes + 1, 3), fontsize=7)
+            ax.set_yticks(range(0, 10, 3))
+            ax.tick_params(labelsize=7)
+    if im is not None:
+        fig.colorbar(im, ax=axes, shrink=0.8, label="Episode return (falls early -> ~0-4)")
+    fig.suptitle(f"{LABELS[policy]}: return of each env and episode ({time.strftime('%Y-%m-%d')})", fontsize=10)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--max_episodes", type=int, default=10)
@@ -107,6 +160,8 @@ def main() -> None:
     data = collect(args.max_episodes)
     for axis in ("mass", "size"):
         print(plot_axis(data, axis, FIG_DIR / f"{axis}_completion_return_{args.tag}.png"))
+    print(plot_env_modes("vintix", "mass", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
+                         FIG_DIR / f"vintix_mass_env_modes_{args.tag}.png"))
 
 
 if __name__ == "__main__":
