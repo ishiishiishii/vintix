@@ -19,8 +19,12 @@
 2. **分析・考察**: 新しく出た結果を集計（各実験の `--stage report` 等）し、数値で何が言えるかを考える。
    言えること／言えないこと（seed 数、分散、物理的限界との切り分け）を区別する。
 3. **記録**（スキル §4）: 新しい結果・考察・次の実行内容があれば、毎回次の 3 か所に同じ内容を残す。
-   - 研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の page_id）の末尾「実行ログ」に 1 エントリ追記。
-     実行ごとにページを作らない。結果が変わったらページ冒頭の要約も最新にする
+   - 研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の page_id）を
+     `.cursor/skills/research-experiment-workflow/notion-page-format.md` の構成で更新する: 結果が変わったら上部
+     （結論のコールアウト・主な結果の図と表・いま言えること・次）を書き換え、末尾「実行ログ」に「分かったこと」を見出しにした
+     エントリを 1 つ追記。新しい結果が無い回はコールアウトの状態・最終更新だけ。実行ごとにページを作らない
+   - 図は `vintix_go2/<実験>/figures/` に保存（Go1 体スケール実験は `python go1_body_scale_zeroshot/make_figures.py`）、
+     `git add -f` → コミット → push し、SHA 固定の raw.githubusercontent.com URL で Notion に埋め込む
    - 実験ディレクトリの `README.md` 末尾「実行ログ」に同じエントリを追記
    - 関連 Issue に進捗コメント（`issue-templates.md` の形式、数値と図のパス付き）
    区切りの結果が出たら `REPORT.md` も更新する。新しい目的の実験を始めたら台帳に行を足し、ページを 1 つ作る。
