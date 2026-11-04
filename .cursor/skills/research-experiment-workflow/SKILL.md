@@ -25,12 +25,17 @@ description: >-
   stash / reset / clean はしない。`git add` は自分が作った・変えたファイルだけ。
 - 稼働中のジョブが読むファイルがブランチ間で異なる場合は切り替えない（実行中のコードが変わるため）。
 - 区切りごとにこまめにコミットする。`main` への取り込みはユーザーの確認後（PR を作って `Closes #<番号>` を書く）。
-- push は SSH が使える環境から行う（コンテナには `ssh` がない。`SSH_GITHUB_SETUP.md`）。
+- push はコンテナから HTTPS で行う（コンテナには `ssh` がない。`origin` は SSH の URL のまま変えない）:
+  `git push https://github.com/ishiishiishii/vintix.git <branch>`（`gh auth setup-git` 済みなので認証は `gh` のトークン）。
+  force push はしない。
 
 ## 2. GitHub Issue（課題・壁打ち・実験の記録）
 
-リポジトリ: `ishiishiishii/vintix`。`gh` は `~/.local/bin/gh`、認証は `.env` の `GH_TOKEN`
-（`set -a; source /workspace/.env; set +a`）。
+リポジトリ: `ishiishiishii/vintix`。`gh` は `~/.local/bin/gh`。認証は `vintix` だけに限定した
+Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env` の `GH_TOKEN`）。
+**`vintix` 以外のリポジトリ（研究室の組織 `kawakera-lab` を含む）は操作しない**。トークンも `vintix` 以外には効かない。
+トークンの期限切れで 401 になったら、ユーザーに作り直しを頼む（手順はユーザーに説明済み: Resource owner `ishiishiishii`、
+`vintix` のみ、Contents / Issues / Pull requests を Read and write）。
 
 いつ作るか:
 
@@ -52,10 +57,11 @@ description: >-
 
 ## 3. Notion との連携
 
-- 方式: Notion 標準の GitHub 連携（同期データベース）。「研究進捗」配下のページ
-  「研究イシュー（GitHub 同期）」に `https://github.com/ishiishiishii/vintix/issues` の同期データベースを置く
-  （ユーザーが Notion 上で一度だけ GitHub と接続して作成する）。Issue を作れば自動で Notion に表示されるので、
-  Notion 側へ Issue を手で複製しない。
+- 方式: Notion「研究進捗」配下のページ「研究イシュー（GitHub 同期）」（page_id `40ed65e6-123f-81a9-80c3-ed7590337e8d`）に
+  Issue の一覧表（# / 題名リンク / ラベル / 状態 / 更新日 / 要約）を置き、**Issue を作成・更新・close したら毎回作り直す**
+  （`gh issue list -R ishiishiishii/vintix --state all --json number,title,state,labels,updatedAt,url` を元に
+  `API-update-page-markdown` の `replace_content`、`allow_deleting_content: true`。冒頭の説明文・「最終同期」の日時・ラベル表も保つ）。
+  autopilot は毎回の最後にも同期する。Notion API ではデータベースを新規作成できないため表で代用している。
 - 実験の記録は研究の目的ごとの Notion ページに置き（§4）、Issue の URL を本文に書く。
 
 ## 4. 記録: 研究の目的ごとに Notion ページ 1 つ + 実験ディレクトリの README

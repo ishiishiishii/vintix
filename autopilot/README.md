@@ -18,14 +18,10 @@ autopilot/autopilot.sh run-once  # 1 回だけ手元で実行（動作確認用�
 
 コンテナを再起動したらスケジューラは止まるので、必要なら `on` し直す。
 
-## 初回の準備（ユーザー）
+## 初回の準備
 
-`/workspace/.env`（Git 管理外）に次を書く:
-
-```bash
-CURSOR_API_KEY=...   # Cursor のダッシュボードで発行（Integrations / API Keys）
-GH_TOKEN=...         # GitHub の Fine-grained token（ishiishiishii/vintix に Issues: Read and write、Contents: Read）
-```
+- GitHub: `gh` に `vintix` 専用の Fine-grained token でログイン済み（同じ値が `/workspace/.env` の `GH_TOKEN`）
+- Cursor: `agent login`（表示される URL をブラウザで開いて許可）。または `/workspace/.env` に `CURSOR_API_KEY=...`
 
 ## 1 回の実行でやること
 

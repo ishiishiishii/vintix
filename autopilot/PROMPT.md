@@ -8,7 +8,7 @@
 2. `RESEARCH_OBJECTIVES.md`（研究の目的ごとの Notion ページ・実験ディレクトリ・Issue の台帳）
 3. `autopilot/state/journal.md`（前回までの autopilot の記録。無ければ作る）
 4. GitHub Issue: `gh issue list -R ishiishiishii/vintix --state open --limit 50`
-   （`set -a; source /workspace/.env; set +a` で `GH_TOKEN` を読む。`gh` は `~/.local/bin/gh`）
+   （`gh` は `~/.local/bin/gh`、ログイン済み。操作してよいのは `ishiishiishii/vintix` だけ）
 5. 稼働中の実験: `ps -eo pid,etime,args | grep -E "pipeline|run_experiment|train|collect|save_vintix" | grep -v grep`、
    `nvidia-smi`、各実験ディレクトリの進捗ファイル（例: `vintix_go2/go1_body_scale_zeroshot/pipeline_status.json`、`logs/pipeline.log`）
 
@@ -40,11 +40,14 @@
 - 他人の未コミット変更を含むファイルのコミット、stash / reset / clean、force push、`main` の書き換え
 - データ・チェックポイント・結果の削除（自分が直前に作った壊れた出力の作り直しは可）
 - 共通コード・既存の設定ファイルの変更（実験ディレクトリ内で import／継承して差し替える）
-- 秘密情報（`.env` の中身）をログ・Issue・Notion に書くこと
+- 秘密情報（`.env` の中身、トークン）をログ・Issue・Notion に書くこと
+- `ishiishiishii/vintix` 以外の GitHub リポジトリ（研究室の組織 `kawakera-lab` を含む）への操作
 
 ## 最後に必ず
 
-`autopilot/state/journal.md` の末尾に次を追記して終了する（次回の自分が読む）:
+1. Issue を作成・更新・close したかどうかに関わらず、Notion「研究イシュー（GitHub 同期）」の一覧表を作り直す（スキル §3）。
+2. 自分のコミットがあれば `git push https://github.com/ishiishiishii/vintix.git <branch>` で送る（force push しない）。
+3. `autopilot/state/journal.md` の末尾に次を追記して終了する（次回の自分が読む）:
 
 ```
 ## tick {{TICK_TS}}
