@@ -44,7 +44,7 @@ def per_seed_values(point: Path, max_episodes: int) -> Dict[str, float]:
 
 def collect(max_episodes: int) -> Dict[str, Dict[str, Dict[float, List[Dict[str, float]]]]]:
     data: Dict[str, Dict[str, Dict[float, List[Dict[str, float]]]]] = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-    for meta in RESULTS_DIR.glob("*/*/*_seed*/point.json"):
+    for meta in sorted(RESULTS_DIR.glob("*/*/*_seed*/point.json"), key=lambda p: (p.parent.parent, int(p.parent.name.rsplit("seed", 1)[1]))):
         point = meta.parent
         if not (point / f"{OUTPUT_STEM}_episodes.csv").exists():
             continue
