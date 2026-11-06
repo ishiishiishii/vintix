@@ -239,6 +239,48 @@ def plot_completion_by_episode(axis: str, scales: List[float], max_episodes: int
     return out
 
 
+def plot_ppo_learning_curves(out: Path) -> Path:
+    """Mean training episode length of the from-scratch PPO runs, one line per body scale.
+
+    Early in training every run first learns to end episodes quickly (the per-step reward is still
+    negative and falling is not penalized); the dip gets deeper and longer for bigger bodies.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True)
+    for ax, axis in zip(axes, ("mass", "size")):
+        runs = sorted((EXP_DIR / "ppo" / axis).glob("s*"), key=lambda d: float(d.name[1:].replace("p", ".")))
+        cmap = plt.get_cmap("viridis")
+        for k, d in enumerate(runs):
+            events = sorted(d.glob("events.out.tfevents*"))
+            if not events or not (d / "train_info.json").exists():
+                continue
+            ea = EventAccumulator(str(events[-1]), size_guidance={"scalars": 0})
+            ea.Reload()
+            pts = ea.Scalars("Train/mean_episode_length")
+            ax.plot([p.step for p in pts], [p.value for p in pts], color=cmap(k / max(len(runs) - 1, 1)), lw=1.2,
+                    label=f"x{float(d.name[1:].replace('p', '.')):g}")
+        ax.set_yscale("log")
+        ax.set_xlim(0, 250)
+        ax.set_title(f"{axis} axis: PPO trained on each body (1 run each)", fontsize=9)
+        ax.set_xlabel("training iteration", fontsize=8)
+        ax.grid(True, which="both", alpha=0.3)
+        ax.tick_params(labelsize=7)
+        ax.legend(fontsize=7, ncol=2, loc="lower right")
+    axes[0].set_ylabel("mean episode length [steps] (log, 1000 = no fall)", fontsize=8)
+    fig.suptitle(f"PPO learning: early dip to short episodes, size x1.5 never recovers ({time.strftime('%Y-%m-%d')})",
+                 fontsize=10)
+    fig.tight_layout()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--max_episodes", type=int, default=10)
@@ -256,6 +298,7 @@ def main() -> None:
                                           FIG_DIR / f"vintix_{axis}_first_episode_predictor_{args.tag}.png"))
         print(plot_completion_by_episode(axis, [1.15, 1.2, 1.25, 1.3], args.max_episodes,
                                          FIG_DIR / f"{axis}_completion_by_episode_{args.tag}.png"))
+    print(plot_ppo_learning_curves(FIG_DIR / f"ppo_learning_curves_{args.tag}.png"))
 
 
 if __name__ == "__main__":
