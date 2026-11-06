@@ -272,7 +272,7 @@ def plot_ppo_learning_curves(out: Path) -> Path:
         ax.tick_params(labelsize=7)
         ax.legend(fontsize=7, ncol=2, loc="lower right")
     axes[0].set_ylabel("mean episode length [steps] (log, 1000 = no fall)", fontsize=8)
-    fig.suptitle(f"PPO learning: early dip to short episodes, size x1.5 never recovers ({time.strftime('%Y-%m-%d')})",
+    fig.suptitle(f"PPO learning: early dip to short episodes, size x1.5 and x2 never recover ({time.strftime('%Y-%m-%d')})",
                  fontsize=10)
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
