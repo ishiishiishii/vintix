@@ -125,6 +125,9 @@ def main() -> None:
     p.add_argument("--max_evals", type=int, default=4, help="concurrent evaluation jobs")
     p.add_argument("--capacity", type=int, default=5, help="total GPU weight (eval=1, PPO training=2)")
     p.add_argument("--max_trains", type=int, default=1)
+    p.add_argument("--max_evals_with_train", type=int, default=0,
+                   help="concurrent evaluation jobs while a PPO training runs (a 4096-env training ran out of "
+                        "memory next to 3 Vintix evals on the 24 GB GPU); running evals drain before a training starts")
     p.add_argument("--max_attempts", type=int, default=2)
     p.add_argument("--poll", type=float, default=15.0)
     p.add_argument("--dry_run", action="store_true")
@@ -171,17 +174,22 @@ def main() -> None:
             used = sum(running[j][2].weight for j in running)
             n_eval = sum(1 for j in running if running[j][2].kind != "train_ppo")
             n_train = sum(1 for j in running if running[j][2].kind == "train_ppo")
+            train_waiting = False
             for job in pending:  # already in priority order
-                if job.kind == "train_ppo" and not boundary_done:
-                    continue
+                if job.kind == "train_ppo":
+                    if not boundary_done or n_train >= args.max_trains:
+                        continue
+                    if n_eval > args.max_evals_with_train:
+                        train_waiting = True
+                        continue
                 if any(not by_id[d].done() for d in job.deps):
                     continue
                 if used + job.weight > args.capacity:
                     continue
-                if job.kind == "train_ppo" and n_train >= args.max_trains:
-                    continue
-                if job.kind != "train_ppo" and n_eval >= args.max_evals:
-                    continue
+                if job.kind != "train_ppo":
+                    limit = args.max_evals_with_train if n_train else args.max_evals
+                    if train_waiting or n_eval >= limit:
+                        continue
                 job.attempts += 1
                 log = job.log_path()
                 log.parent.mkdir(parents=True, exist_ok=True)
