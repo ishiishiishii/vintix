@@ -90,8 +90,8 @@ def plot_axis(data, axis: str, out: Path) -> Path:
     else:
         ax_r.set_xticklabels([f"{t:g}\n{GO1_THIGH_LENGTH_M * t * 100:.0f}cm" for t in all_scales], fontsize=8)
         ax_r.set_xlabel("Size scale (Go1 = 1.0 = thigh 21 cm, mass fixed; equally spaced, not to scale)")
-    ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=2, fontsize=8, frameon=False)
-    ax_c.set_title(f"Go1 {axis} scale - mean ± std over seeds ({time.strftime('%Y-%m-%d')})", fontsize=10, pad=24)
+    ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, fontsize=8, frameon=False)
+    ax_c.set_title(f"Go1 {axis} scale - mean ± std over seeds ({time.strftime('%Y-%m-%d')})", fontsize=10, pad=34)
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=110, bbox_inches="tight")
