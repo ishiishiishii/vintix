@@ -297,8 +297,15 @@ def run_subprocess(cmd: List[str], log_path: Path) -> int:
 # --------------------------------------------------------------------------- report
 
 
-def _read_episodes(path: Path) -> Dict[str, np.ndarray]:
+def _read_episodes(path: Path, max_episodes: Optional[int] = None) -> Dict[str, np.ndarray]:
+    """``max_episodes`` keeps only the first episodes of each env (save_expert.py can log extra ones)."""
     rows = list(csv.DictReader(open(path)))
+    if max_episodes is not None:
+        by_env: Dict[str, List[Dict[str, str]]] = {}
+        for r in rows:
+            by_env.setdefault(r["env_index"], []).append(r)
+        rows = [r for env_rows in by_env.values()
+                for r in sorted(env_rows, key=lambda r: int(r["episode_number"]))[:max_episodes]]
     return {
         "episode_number": np.array([int(r["episode_number"]) for r in rows]),
         "reward": np.array([float(r["cumulative_reward"]) for r in rows]),
@@ -349,7 +356,9 @@ def collect_rows(seeded: bool = True) -> List[Dict[str, object]]:
                 scale = float(json.load(open(meta))["scale"])
                 by_scale.setdefault(scale, []).append(point)
             for scale, points in sorted(by_scale.items()):
-                eps = [_read_episodes(p / f"{OUTPUT_STEM}_episodes.csv") for p in points]
+                eps = [_read_episodes(p / f"{OUTPUT_STEM}_episodes.csv",
+                                      json.load(open(p / "point.json")).get("max_episodes"))
+                       for p in points]
                 reward = np.concatenate([e["reward"] for e in eps])
                 length = np.concatenate([e["length"] for e in eps])
                 seed_means = np.array([e["reward"].mean() for e in eps])
