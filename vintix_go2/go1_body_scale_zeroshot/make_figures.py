@@ -180,6 +180,58 @@ def plot_walking_quality(data, axis: str, out: Path) -> Path:
     return out
 
 
+def write_summary_table(data, out: Path) -> Path:
+    """Markdown table per axis for REPORT.md: completion of the three policies, Vintix speed, return vs PPO.
+
+    Completion is the mean over seeds with the per-seed min-max. The return ratio divides Vintix's
+    mean return of completed episodes by the PPO's mean return on the same body, and is left blank
+    where the PPO itself did not learn to walk (completion < 50 %).
+    """
+    def stats(policy, axis, x, key):
+        v = np.array([s[key] for s in data.get(policy, {}).get(axis, {}).get(x, [])], dtype=float)
+        v = v[np.isfinite(v)]
+        return (float(v.mean()), float(v.min()), float(v.max()), v.size) if v.size else None
+
+    def completion(policy, axis, x):
+        s = stats(policy, axis, x, "completion")
+        if s is None:
+            return "-"
+        mean, lo, hi, n = s
+        return f"{mean:.1f}" if lo == hi else f"{mean:.1f}（{lo:.0f}〜{hi:.0f}）"
+
+    lines = [f"<!-- make_figures.py write_summary_table, {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())} -->"]
+    for axis in ("mass", "size"):
+        unit = "質量" if axis == "mass" else "大きさ（質量は固定）"
+        lines += ["", f"### {unit}", "",
+                  "| 倍率 | シード数 | Vintix 完走率 % | 専門家 完走率 % | その体の PPO 完走率 % | Vintix 前進速度 m/s | Vintix 完走本の報酬 / PPO の報酬 |",
+                  "|---:|---:|---:|---:|---:|---:|---:|"]
+        for x in sorted({x for policy in data for x in data[policy].get(axis, {})}):
+            n = max(len(data.get(p, {}).get(axis, {}).get(x, [])) for p in ("vintix", "expert"))
+            speed = stats("vintix", axis, x, "speed")
+            vintix_fin = stats("vintix", axis, x, "finished_reward")
+            ppo_reward = stats("ppo", axis, x, "reward")
+            ppo_completion = stats("ppo", axis, x, "completion")
+            if ppo_completion is None:
+                ratio = "-"
+            elif ppo_completion[0] < 50:
+                ratio = "（PPO 学習失敗）"
+            elif vintix_fin is None:
+                ratio = "（完走なし）"
+            else:
+                ratio = f"{vintix_fin[0]:.1f} / {ppo_reward[0]:.1f} = {vintix_fin[0] / ppo_reward[0]:.2f}"
+            if speed is None:
+                speed_text = "-"
+            else:
+                speed_text = f"{speed[0]:.2f}" + ("*" if stats("vintix", axis, x, "completion")[0] < 80 else "")
+            lines.append(f"| {x:g} | {n} | {completion('vintix', axis, x)} | {completion('expert', axis, x)} | "
+                         f"{completion('ppo', axis, x)} | {speed_text} | {ratio} |")
+    lines += ["", "\\* Vintix の完走率 80% 未満。速度は各環境の最初の転倒までしか数えないので、転ぶ前の速さを表す。",
+              "シード数は Vintix・専門家の評価シード数。PPO は各倍率 学習 1 本を 10 シードで評価。完走率は各環境の先頭 10 本。"]
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text("\n".join(lines) + "\n")
+    return out
+
+
 def episode_returns(point: Path, max_episodes: int) -> np.ndarray:
     """(env, episode) matrix of returns, first ``max_episodes`` episodes per env (NaN if missing)."""
     rows = list(csv.DictReader(open(point / f"{OUTPUT_STEM}_episodes.csv")))
@@ -381,6 +433,7 @@ def main() -> None:
         print(plot_completion_by_episode(axis, [1.15, 1.2, 1.25, 1.3], args.max_episodes,
                                          FIG_DIR / f"{axis}_completion_by_episode_{args.tag}.png"))
     print(plot_ppo_learning_curves(FIG_DIR / f"ppo_learning_curves_{args.tag}.png"))
+    print(write_summary_table(data, FIG_DIR / f"summary_table_{args.tag}.md"))
 
 
 if __name__ == "__main__":
