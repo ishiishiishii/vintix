@@ -27,6 +27,10 @@ FIG_DIR = EXP_DIR / "figures"
 OUTPUT_STEM = "go1_10envs_10episodes"
 GO1_TOTAL_MASS_KG = 13.100528
 GO1_THIGH_LENGTH_M = 0.213
+COMMAND_SPEED_MPS = 0.5
+# Per-step reward x dt x 1000 steps with zero velocity and no penalty:
+# tracking_lin_vel 1.0 * exp(-0.5^2 / 0.25) + tracking_ang_vel 0.2 * exp(0), times 0.02 s.
+STAND_STILL_RETURN = (1.0 * np.exp(-COMMAND_SPEED_MPS ** 2 / 0.25) + 0.2) * 0.02 * 1000
 LABELS = {"vintix": "Vintix zero-shot", "expert": "Go1 PPO expert (transferred)", "ppo": "PPO trained on the body"}
 COLORS = {"vintix": "#1f77b4", "expert": "#7f7f7f", "ppo": "#2ca02c"}
 
@@ -39,7 +43,16 @@ def per_seed_values(point: Path, max_episodes: int) -> Dict[str, float]:
     kept = [r for env_rows in by_env.values() for r in sorted(env_rows, key=lambda r: int(r["episode_number"]))[:max_episodes]]
     reward = np.array([float(r["cumulative_reward"]) for r in kept])
     length = np.array([float(r["episode_length"]) for r in kept])
-    return {"reward": float(reward.mean()), "completion": float((length >= 1000).mean() * 100)}
+    done = length >= 1000
+    # Only save_vintix.py writes locomotion metrics; they count each env until its first fall.
+    speed = float("nan")
+    summary = point / f"{OUTPUT_STEM}_mean_reward.txt"
+    if summary.exists():
+        for line in open(summary):
+            if line.startswith("Avg Forward Speed (m/s):"):
+                speed = float(line.split(":")[1])
+    return {"reward": float(reward.mean()), "completion": float(done.mean() * 100),
+            "finished_reward": float(reward[done].mean()) if done.any() else float("nan"), "speed": speed}
 
 
 def collect(max_episodes: int) -> Dict[str, Dict[str, Dict[float, List[Dict[str, float]]]]]:
@@ -92,6 +105,74 @@ def plot_axis(data, axis: str, out: Path) -> Path:
         ax_r.set_xlabel("Size scale (Go1 = 1.0 = thigh 21 cm, mass fixed; equally spaced, not to scale)")
     ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, fontsize=8, frameon=False)
     ax_c.set_title(f"Go1 {axis} scale - mean ± std over seeds ({time.strftime('%Y-%m-%d')})", fontsize=10, pad=34)
+    fig.tight_layout()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
+def plot_walking_quality(data, axis: str, out: Path) -> Path:
+    """How well the completed episodes walk: their mean return (all policies) and Vintix's forward speed.
+
+    Completion alone counts an episode that survives 1000 steps without walking. Vintix speed is
+    drawn hollow where completion < 80 %, since it only covers steps before each env's first fall.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    all_scales = sorted({x for policy in data for x in data[policy].get(axis, {})})
+    pos = {x: i for i, x in enumerate(all_scales)}
+    fig, (ax_q, ax_v) = plt.subplots(2, 1, figsize=(10, 7), sharex=True)
+    for policy in ("vintix", "expert", "ppo"):
+        pts = data.get(policy, {}).get(axis, {})
+        if not pts:
+            continue
+        # NaN where no seed completed an episode, so the line breaks instead of bridging the gap.
+        xs = sorted(pts)
+        vals = [np.array([v["finished_reward"] for v in pts[x]]) for x in xs]
+        mean = np.array([np.nanmean(v) if np.isfinite(v).any() else np.nan for v in vals])
+        std = np.array([np.nanstd(v) if np.isfinite(v).any() else np.nan for v in vals])
+        ax_q.errorbar([pos[x] for x in xs], mean, yerr=std, fmt="o-", color=COLORS[policy], label=LABELS[policy],
+                      lw=2, ms=4, capsize=3)
+        for x, m in zip(xs, mean):
+            if m < -5:
+                ax_q.annotate(f"{m:.1f}", (pos[x], -5), xytext=(pos[x], -2.5), color=COLORS[policy], fontsize=7,
+                              ha="center", arrowprops={"arrowstyle": "->", "color": COLORS[policy]})
+    ax_q.set_ylim(-5, 24)
+    ax_q.axhline(STAND_STILL_RETURN, color="red", lw=1, ls=":")
+    ax_q.text(0, STAND_STILL_RETURN + 0.4, f"standing still, no penalty ≈ {STAND_STILL_RETURN:.1f}", color="red", fontsize=7)
+    ax_q.set_ylabel("Mean return of completed episodes\n(seeds with >= 1 completion)")
+    pts = data.get("vintix", {}).get(axis, {})
+    xs = sorted(pts)
+    speed = np.array([np.nanmean([v["speed"] for v in pts[x]]) for x in xs])
+    sd = np.array([np.nanstd([v["speed"] for v in pts[x]]) for x in xs])
+    reliable = np.array([np.mean([v["completion"] for v in pts[x]]) >= 80 for x in xs])
+    p = np.array([pos[x] for x in xs])
+    ax_v.errorbar(p, speed, yerr=sd, fmt="-", color=COLORS["vintix"], lw=1.5, capsize=3, label=LABELS["vintix"])
+    ax_v.plot(p[reliable], speed[reliable], "o", color=COLORS["vintix"], ms=5)
+    ax_v.plot(p[~reliable], speed[~reliable], "o", mfc="white", color=COLORS["vintix"], ms=5,
+              label="completion < 80 % (counts steps before the first fall only)")
+    ax_v.axhline(COMMAND_SPEED_MPS, color="black", lw=1, ls=":", label=f"command {COMMAND_SPEED_MPS} m/s")
+    ax_v.set_ylabel("Vintix forward speed [m/s]\n(mean over seeds)")
+    ax_v.set_ylim(0, 0.7)
+    ax_v.legend(fontsize=8, loc="lower right")
+    for ax in (ax_q, ax_v):
+        if 1.0 in pos:
+            ax.axvline(pos[1.0], color="black", lw=1, ls="--", alpha=0.5)
+        ax.grid(True, alpha=0.3)
+    ax_v.set_xticks(range(len(all_scales)))
+    if axis == "mass":
+        ax_v.set_xticklabels([f"{t:g}\n{GO1_TOTAL_MASS_KG * t:.1f}kg" for t in all_scales], fontsize=8)
+        ax_v.set_xlabel("Mass scale (Go1 = 1.0 = 13.1 kg; equally spaced, not to scale)")
+    else:
+        ax_v.set_xticklabels([f"{t:g}\n{GO1_THIGH_LENGTH_M * t * 100:.0f}cm" for t in all_scales], fontsize=8)
+        ax_v.set_xlabel("Size scale (Go1 = 1.0 = thigh 21 cm, mass fixed; equally spaced, not to scale)")
+    ax_q.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, fontsize=8, frameon=False)
+    ax_q.set_title(f"Go1 {axis} scale - how well the completed episodes walk ({time.strftime('%Y-%m-%d')})",
+                   fontsize=10, pad=34)
     fig.tight_layout()
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out, dpi=110, bbox_inches="tight")
@@ -289,6 +370,7 @@ def main() -> None:
     data = collect(args.max_episodes)
     for axis in ("mass", "size"):
         print(plot_axis(data, axis, FIG_DIR / f"{axis}_completion_return_{args.tag}.png"))
+        print(plot_walking_quality(data, axis, FIG_DIR / f"{axis}_walking_quality_{args.tag}.png"))
     print(plot_env_modes("vintix", "mass", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
                          FIG_DIR / f"vintix_mass_env_modes_{args.tag}.png"))
     print(plot_env_modes("vintix", "size", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
