@@ -232,8 +232,8 @@ def write_summary_table(data, out: Path) -> Path:
     return out
 
 
-def episode_returns(point: Path, max_episodes: int) -> np.ndarray:
-    """(env, episode) matrix of returns, first ``max_episodes`` episodes per env (NaN if missing)."""
+def episode_returns(point: Path, max_episodes: int, key: str = "cumulative_reward") -> np.ndarray:
+    """(env, episode) matrix of ``key``, first ``max_episodes`` episodes per env (NaN if missing)."""
     rows = list(csv.DictReader(open(point / f"{OUTPUT_STEM}_episodes.csv")))
     by_env: Dict[int, List[dict]] = defaultdict(list)
     for r in rows:
@@ -241,7 +241,7 @@ def episode_returns(point: Path, max_episodes: int) -> np.ndarray:
     out = np.full((max(by_env) + 1, max_episodes), np.nan)
     for env, env_rows in by_env.items():
         for i, r in enumerate(sorted(env_rows, key=lambda r: int(r["episode_number"]))[:max_episodes]):
-            out[env, i] = float(r["cumulative_reward"])
+            out[env, i] = float(r[key])
     return out
 
 
@@ -372,6 +372,50 @@ def plot_completion_by_episode(axis: str, scales: List[float], max_episodes: int
     return out
 
 
+def plot_completion_by_side(scales: List[float], max_episodes: int, out: Path, side_scale: float = 1.2) -> Path:
+    """Completion of the Vintix walking / low side and of the expert on the same (seed, env) pairs.
+
+    The side of each (seed, env) is fixed once on the ``side_scale`` body (episodes 2-10 mean return
+    < 15 = low side). Within one policy a seed gives every env the same initial offset on every body;
+    the expert script draws its offsets with the same code, but whether the GPU RNG state matches
+    Vintix's at that point is not verified.
+    """
+    import matplotlib
+
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    def point(policy: str, axis: str, s: float, seed: int) -> Path:
+        return RESULTS_DIR / policy / axis / (f"s{s:.3f}".replace(".", "p") + f"_seed{seed}")
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 3.6), sharey=True)
+    for ax, axis in zip(axes, ("mass", "size")):
+        seeds = [k for k in range(10) if all((point(pol, axis, s, k) / f"{OUTPUT_STEM}_episodes.csv").exists()
+                                             for pol in ("vintix", "expert") for s in scales + [side_scale])]
+        low = np.concatenate([np.nanmean(episode_returns(point("vintix", axis, side_scale, k), max_episodes)[:, 1:],
+                                         axis=1) < 15 for k in seeds])
+        for policy, ls in (("vintix", "-"), ("expert", "--")):
+            done = {s: np.concatenate([episode_returns(point(policy, axis, s, k), max_episodes, "episode_length")
+                                       for k in seeds]) >= 1000 for s in scales}
+            for side, mask, marker in (("walking side", ~low, "o"), ("low side", low, "x")):
+                ax.plot(scales, [done[s][mask].mean() * 100 for s in scales], ls, marker=marker, ms=5,
+                        color=COLORS[policy] if side == "walking side" else "#d62728" if policy == "vintix" else "#ff9896",
+                        label=f"{LABELS[policy].split(' (')[0]} on Vintix {side} envs ({int(mask.sum())})")
+        ax.set_title(f"{axis} axis (seeds x envs = {len(low)}; side fixed on x{side_scale:g})", fontsize=9)
+        ax.set_xlabel(f"{axis} scale", fontsize=8)
+        ax.set_ylim(-5, 105)
+        ax.grid(True, alpha=0.3)
+        ax.tick_params(labelsize=7)
+    axes[0].set_ylabel("Completed [%] (episodes 1-10)", fontsize=8)
+    axes[1].legend(fontsize=7, loc="lower left")
+    fig.suptitle(f"Vintix low-side envs vs the expert on the same envs ({time.strftime('%Y-%m-%d')})", fontsize=10)
+    fig.tight_layout()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out, dpi=110, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def plot_ppo_learning_curves(out: Path) -> Path:
     """Mean training episode length of the from-scratch PPO runs, one line per body scale.
 
@@ -432,6 +476,8 @@ def main() -> None:
                                           FIG_DIR / f"vintix_{axis}_first_episode_predictor_{args.tag}.png"))
         print(plot_completion_by_episode(axis, [1.15, 1.2, 1.25, 1.3], args.max_episodes,
                                          FIG_DIR / f"{axis}_completion_by_episode_{args.tag}.png"))
+    print(plot_completion_by_side([1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
+                                  FIG_DIR / f"vintix_side_vs_expert_{args.tag}.png"))
     print(plot_ppo_learning_curves(FIG_DIR / f"ppo_learning_curves_{args.tag}.png"))
     print(write_summary_table(data, FIG_DIR / f"summary_table_{args.tag}.md"))
 
