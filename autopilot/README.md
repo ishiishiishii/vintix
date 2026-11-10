@@ -8,15 +8,29 @@ IDE やチャットを閉じていても動く（コンテナが動いている�
 
 ```bash
 cd /workspace
-autopilot/autopilot.sh on        # 有効化。すぐ 1 回実行し、以後 config.env の間隔（既定 2 時間）ごと
-autopilot/autopilot.sh on 4      # 間隔を 4 時間にして有効化（次回以降も 4 時間）
-autopilot/autopilot.sh off       # 無効化（実行中の 1 回は最後まで走る）
-autopilot/autopilot.sh off --now # 実行中の 1 回も止める
-autopilot/autopilot.sh status    # 状態と最後のログ
-autopilot/autopilot.sh run-once  # 1 回だけ手元で実行（動作確認用）
+autopilot/autopilot.sh on        # 有効化。すぐ 1 回確認し、以後 8 時間ごと（config.env の INTERVAL_HOURS）
+autopilot/autopilot.sh on 12     # 間隔を 12 時間にして有効化（次回以降も 12 時間）
+autopilot/autopilot.sh off       # 無効化（実行中の AI は最後まで走る）
+autopilot/autopilot.sh off --now # 実行中の AI も止める
+autopilot/autopilot.sh status    # 状態・今日の AI 実行回数・最近の確認結果
+autopilot/autopilot.sh check     # 次の確認で AI が呼ばれるか（AI は呼ばない）
+autopilot/autopilot.sh run-once  # 変化がなくても AI を 1 回実行（動作確認用）
 ```
 
 コンテナを再起動したらスケジューラは止まるので、必要なら `on` し直す。
+
+## 利用枠を使いすぎない仕組み
+
+| 仕組み | 内容（`config.env`） |
+|--------|----------------------|
+| 変化がなければ AI を呼ばない | 8 時間ごとの確認はスクリプト（`fingerprint.py`）だけで行い、前回の AI 実行のあとに Issue・コメント・ラベル、実験の進み具合・失敗、コミットのどれかが変わったときだけ AI を呼ぶ。確認だけなら Cursor の利用枠は使わない |
+| 1 日の上限 | AI は 1 日 3 回まで（`MAX_AI_TICKS_PER_DAY`） |
+| 自動停止（変化なし） | 変化のない確認が 3 回（24 時間）続いたら OFF（`AUTO_OFF_IDLE_CHECKS`） |
+| 自動停止（判断待ち） | AI が 2 回続けて「判断待ちで進められない」と報告したら OFF（`AUTO_OFF_WAITING_TICKS`） |
+| 停止の通知 | 自動で OFF になったら Issue #6 にコメント（理由と判断待ちの Issue 番号）。再開は判断を書いてから `on` |
+| 記録を読みすぎない | AI は作業記録 `state/journal.md` の直近 5 回分だけ読む。結果が変わらない回は Notion に書かない |
+
+確認の履歴は `logs/checks.log`、AI の各回の出力は `logs/tick_<日時>.log`。
 
 ## 初回の準備
 
