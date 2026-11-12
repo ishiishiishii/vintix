@@ -52,6 +52,12 @@ def processes() -> list:
 
 def pipelines() -> dict:
     res = {}
+    for f in glob.glob(str(WORKSPACE / "vintix_go2" / "*" / "status.json")):
+        try:
+            s = json.load(open(f))
+            res[Path(f).parent.name] = {"done_total": s.get("done_total"), "note": s.get("note")}
+        except Exception as e:
+            res[Path(f).parent.name] = {"error": str(e)}
     for f in glob.glob(str(WORKSPACE / "vintix_go2" / "*" / "pipeline_status.json")):
         try:
             s = json.load(open(f))
