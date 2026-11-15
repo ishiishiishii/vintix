@@ -108,7 +108,7 @@ def plot_axis(data, axis: str, out: Path) -> Path:
     # legend cannot stretch the canvas and leave empty space on the right.
     legend_names = {
         "vintix": "Vintix",
-        "expert": "Expert (transferred)",
+        "expert": "Expert",
         "ppo": "Body PPO",
     }
     with plt.rc_context({
