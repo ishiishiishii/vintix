@@ -1,0 +1,15 @@
+{
+  "policy": "expert",
+  "axis": "mass",
+  "scale": 0.25,
+  "role": "lower_ok",
+  "label": "下限 0.25×（まだ歩ける）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/Genesis/logs/go1-walking/model_2000.pt",
+  "mp4": "go1_expert_mass_s0p250_lower_ok.mp4",
+  "gif": "go1_expert_mass_s0p250_lower_ok.gif",
+  "gif_mb": 4.96
+}

@@ -1,0 +1,15 @@
+{
+  "policy": "expert",
+  "axis": "mass",
+  "scale": 1.3,
+  "role": "upper_fail",
+  "label": "上限 1.3×（歩けない）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/Genesis/logs/go1-walking/model_2000.pt",
+  "mp4": "go1_expert_mass_s1p300_upper_fail.mp4",
+  "gif": "go1_expert_mass_s1p300_upper_fail.gif",
+  "gif_mb": 3.58
+}

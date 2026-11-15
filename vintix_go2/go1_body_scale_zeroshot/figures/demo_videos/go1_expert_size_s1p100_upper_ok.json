@@ -1,0 +1,15 @@
+{
+  "policy": "expert",
+  "axis": "size",
+  "scale": 1.1,
+  "role": "upper_ok",
+  "label": "上限 1.1×（余裕）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/Genesis/logs/go1-walking/model_2000.pt",
+  "mp4": "go1_expert_size_s1p100_upper_ok.mp4",
+  "gif": "go1_expert_size_s1p100_upper_ok.gif",
+  "gif_mb": 4.45
+}

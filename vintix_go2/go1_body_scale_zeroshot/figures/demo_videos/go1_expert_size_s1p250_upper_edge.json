@@ -1,0 +1,15 @@
+{
+  "policy": "expert",
+  "axis": "size",
+  "scale": 1.25,
+  "role": "upper_edge",
+  "label": "上限 1.25×（ギリギリ）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/Genesis/logs/go1-walking/model_2000.pt",
+  "mp4": "go1_expert_size_s1p250_upper_edge.mp4",
+  "gif": "go1_expert_size_s1p250_upper_edge.gif",
+  "gif_mb": 5.0
+}

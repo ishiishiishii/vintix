@@ -1,0 +1,15 @@
+{
+  "policy": "expert",
+  "axis": "mass",
+  "scale": 1.0,
+  "role": "nominal",
+  "label": "1.0×（基準）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/Genesis/logs/go1-walking/model_2000.pt",
+  "mp4": "go1_expert_mass_s1p000_nominal.mp4",
+  "gif": "go1_expert_mass_s1p000_nominal.gif",
+  "gif_mb": 4.25
+}
