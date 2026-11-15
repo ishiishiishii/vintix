@@ -65,6 +65,7 @@ Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env`
   Issue の一覧表（# / 題名リンク / ラベル / 状態 / 更新日 / 要約）を置き、**Issue を作成・更新・close したら毎回作り直す**
   （`gh issue list -R ishiishiishii/vintix --state all --json number,title,state,labels,updatedAt,url` を元に
   `API-update-page-markdown` の `replace_content`、`allow_deleting_content: true`。冒頭の説明文・「最終同期」の日時・ラベル表も保つ）。
+  **表は Markdown の pipe 表**にする（HTML `<table>` は途中で切れて行が消えることがある）。
   autopilot は毎回の最後にも同期する。Notion API ではデータベースを新規作成できないため表で代用している。
 - 実験の記録は研究の目的ごとの Notion ページに置き（§4）、Issue の URL を本文に書く。
 
