@@ -104,15 +104,22 @@ def plot_axis(data, axis: str, out: Path) -> Path:
                 labeled.add(i)
         return sorted(labeled)
 
+    # Legend below the plots, centered on the axes (not the full figure) so a wide
+    # legend cannot stretch the canvas and leave empty space on the right.
+    legend_names = {
+        "vintix": "Vintix",
+        "expert": "Expert (transferred)",
+        "ppo": "Body PPO",
+    }
     with plt.rc_context({
         "font.size": 16,
         "axes.labelsize": 18,
         "xtick.labelsize": 15,
         "ytick.labelsize": 15,
-        "legend.fontsize": 13,
+        "legend.fontsize": 12,
         "axes.linewidth": 1.4,
     }):
-        fig, (ax_c, ax_r) = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
+        fig, (ax_c, ax_r) = plt.subplots(2, 1, figsize=(10.5, 8.6), sharex=True)
         for policy in ("vintix", "expert", "ppo"):
             pts = data.get(policy, {}).get(axis, {})
             if not pts:
@@ -121,14 +128,14 @@ def plot_axis(data, axis: str, out: Path) -> Path:
             if not xs:
                 continue
             n = [len(pts[x]) for x in xs]
-            seeds = (f"{min(n)}-{max(n)} seeds" if min(n) != max(n)
-                     else f"{n[0]} seed{'s' if n[0] > 1 else ''}")
+            seeds = (f"{min(n)}-{max(n)}" if min(n) != max(n) else f"{n[0]}")
             xp = np.array([pos[x] for x in xs], dtype=float)
             for ax, key in ((ax_c, "completion"), (ax_r, "reward")):
                 vals = [np.array([v[key] for v in pts[x]]) for x in xs]
                 mean = np.array([v.mean() for v in vals])
                 std = np.array([v.std() for v in vals])
-                ax.plot(xp, mean, "o-", color=COLORS[policy], label=f"{LABELS[policy]} ({seeds})",
+                ax.plot(xp, mean, "o-", color=COLORS[policy],
+                        label=f"{legend_names[policy]} ({seeds})",
                         lw=2.8, ms=6, zorder=3)
                 ax.fill_between(xp, mean - std, mean + std, color=COLORS[policy], alpha=0.25, lw=0, zorder=2)
         for ax in (ax_c, ax_r):
@@ -143,10 +150,16 @@ def plot_axis(data, axis: str, out: Path) -> Path:
         ax_r.set_xticks(range(len(all_scales)))
         ax_r.set_xticklabels([f"{all_scales[i]:g}" if i in tick_idx else "" for i in range(len(all_scales))])
         ax_r.set_xlabel(f"{axis.capitalize()} scale (× Go1; equally spaced, not to scale)")
-        ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, frameon=False, handlelength=2.4)
-        fig.tight_layout()
+        # left/right fixed: ylabel needs ~15% left; keep right tight so plots are not left-biased.
+        fig.subplots_adjust(left=0.14, right=0.99, top=0.99, bottom=0.14, hspace=0.12)
+        handles, labels = ax_c.get_legend_handles_labels()
+        # Anchor to the shared axes x-span (midpoint of left/right margins).
+        axes_mid = 0.5 * (0.14 + 0.99)
+        fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False,
+                   bbox_to_anchor=(axes_mid, 0.055),
+                   handlelength=2.0, columnspacing=1.6, handletextpad=0.5)
         out.parent.mkdir(parents=True, exist_ok=True)
-        fig.savefig(out, dpi=160, bbox_inches="tight")
+        fig.savefig(out, dpi=160)
         plt.close(fig)
     return out
 
