@@ -67,6 +67,12 @@ def collect(max_episodes: int) -> Dict[str, Dict[str, Dict[float, List[Dict[str,
 
 
 def plot_axis(data, axis: str, out: Path) -> Path:
+    """Completion rate and episode return vs body scale (mean line + std band).
+
+    X range stops at the largest scale where the from-scratch PPO was evaluated, so the
+    three policies share the same horizontal span. Tick labels show the scale multiplier
+    every 5 ticks (no kg/cm). No figure title — the filename carries the meaning.
+    """
     import matplotlib
 
     matplotlib.use("Agg")
@@ -74,41 +80,57 @@ def plot_axis(data, axis: str, out: Path) -> Path:
 
     # Evaluated scales are placed at equal spacing so the dense steps near the drop stay readable.
     all_scales = sorted({x for policy in data for x in data[policy].get(axis, {})})
+    ppo_scales = data.get("ppo", {}).get(axis, {})
+    if ppo_scales:
+        xmax = max(ppo_scales)
+        all_scales = [x for x in all_scales if x <= xmax + 1e-12]
     pos = {x: i for i, x in enumerate(all_scales)}
-    fig, (ax_c, ax_r) = plt.subplots(2, 1, figsize=(10, 7.5), sharex=True)
-    for policy in ("vintix", "expert", "ppo"):
-        pts = data.get(policy, {}).get(axis, {})
-        if not pts:
-            continue
-        xs = sorted(pts)
-        n = [len(pts[x]) for x in xs]
-        seeds = f"{min(n)}-{max(n)} seeds/point" if min(n) != max(n) else f"{n[0]} seed{'s' if n[0] > 1 else ''}/point"
-        for ax, key in ((ax_c, "completion"), (ax_r, "reward")):
-            vals = [np.array([v[key] for v in pts[x]]) for x in xs]
-            mean = np.array([v.mean() for v in vals])
-            std = np.array([v.std() for v in vals])
-            ax.errorbar([pos[x] for x in xs], mean, yerr=std, fmt="o-", color=COLORS[policy],
-                        label=f"{LABELS[policy]} ({seeds})", lw=2, ms=4, capsize=3)
-    for ax in (ax_c, ax_r):
-        if 1.0 in pos:
-            ax.axvline(pos[1.0], color="black", lw=1, ls="--", alpha=0.5)
-        ax.grid(True, alpha=0.3)
-    ax_c.set_ylabel("Completed episodes [%]\n(no fall in 1000 steps)")
-    ax_c.set_ylim(-5, 105)
-    ax_r.set_ylabel("Episode return")
-    ax_r.set_xticks(range(len(all_scales)))
-    if axis == "mass":
-        ax_r.set_xticklabels([f"{t:g}\n{GO1_TOTAL_MASS_KG * t:.1f}kg" for t in all_scales], fontsize=8)
-        ax_r.set_xlabel("Mass scale (Go1 = 1.0 = 13.1 kg; equally spaced, not to scale)")
-    else:
-        ax_r.set_xticklabels([f"{t:g}\n{GO1_THIGH_LENGTH_M * t * 100:.0f}cm" for t in all_scales], fontsize=8)
-        ax_r.set_xlabel("Size scale (Go1 = 1.0 = thigh 21 cm, mass fixed; equally spaced, not to scale)")
-    ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, fontsize=8, frameon=False)
-    ax_c.set_title(f"Go1 {axis} scale - mean ± std over seeds ({time.strftime('%Y-%m-%d')})", fontsize=10, pad=34)
-    fig.tight_layout()
-    out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=110, bbox_inches="tight")
-    plt.close(fig)
+    with plt.rc_context({
+        "font.size": 16,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 15,
+        "ytick.labelsize": 15,
+        "legend.fontsize": 13,
+        "axes.linewidth": 1.4,
+    }):
+        fig, (ax_c, ax_r) = plt.subplots(2, 1, figsize=(12, 9), sharex=True)
+        for policy in ("vintix", "expert", "ppo"):
+            pts = data.get(policy, {}).get(axis, {})
+            if not pts:
+                continue
+            xs = [x for x in sorted(pts) if x in pos]
+            if not xs:
+                continue
+            n = [len(pts[x]) for x in xs]
+            seeds = (f"{min(n)}-{max(n)} seeds" if min(n) != max(n)
+                     else f"{n[0]} seed{'s' if n[0] > 1 else ''}")
+            xp = np.array([pos[x] for x in xs], dtype=float)
+            for ax, key in ((ax_c, "completion"), (ax_r, "reward")):
+                vals = [np.array([v[key] for v in pts[x]]) for x in xs]
+                mean = np.array([v.mean() for v in vals])
+                std = np.array([v.std() for v in vals])
+                ax.plot(xp, mean, "o-", color=COLORS[policy], label=f"{LABELS[policy]} ({seeds})",
+                        lw=2.8, ms=6, zorder=3)
+                ax.fill_between(xp, mean - std, mean + std, color=COLORS[policy], alpha=0.25, lw=0, zorder=2)
+        for ax in (ax_c, ax_r):
+            if 1.0 in pos:
+                ax.axvline(pos[1.0], color="black", lw=1.3, ls="--", alpha=0.5)
+            ax.grid(True, alpha=0.3)
+            ax.tick_params(width=1.3, length=6)
+        ax_c.set_ylabel("Completed episodes [%]\n(no fall in 1000 steps)")
+        ax_c.set_ylim(-5, 105)
+        ax_r.set_ylabel("Episode return")
+        tick_idx = list(range(0, len(all_scales), 5))
+        if all_scales and (len(all_scales) - 1) not in tick_idx:
+            tick_idx.append(len(all_scales) - 1)
+        ax_r.set_xticks(range(len(all_scales)))
+        ax_r.set_xticklabels([f"{all_scales[i]:g}" if i in tick_idx else "" for i in range(len(all_scales))])
+        ax_r.set_xlabel(f"{axis.capitalize()} scale (× Go1; equally spaced, not to scale)")
+        ax_c.legend(loc="lower left", bbox_to_anchor=(0.0, 1.02), ncol=3, frameon=False, handlelength=2.4)
+        fig.tight_layout()
+        out.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out, dpi=160, bbox_inches="tight")
+        plt.close(fig)
     return out
 
 
@@ -465,7 +487,8 @@ def main() -> None:
     args = p.parse_args()
     data = collect(args.max_episodes)
     for axis in ("mass", "size"):
-        print(plot_axis(data, axis, FIG_DIR / f"{axis}_completion_return_{args.tag}.png"))
+        # Filename carries the meaning (figures have no title, for paper reuse).
+        print(plot_axis(data, axis, FIG_DIR / f"go1_{axis}_scale_completion_return_mean_std.png"))
         print(plot_walking_quality(data, axis, FIG_DIR / f"{axis}_walking_quality_{args.tag}.png"))
     print(plot_env_modes("vintix", "mass", [1.0, 1.1, 1.15, 1.2, 1.25, 1.3], args.max_episodes,
                          FIG_DIR / f"vintix_mass_env_modes_{args.tag}.png"))

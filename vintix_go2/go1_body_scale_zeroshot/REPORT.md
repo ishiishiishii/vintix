@@ -57,11 +57,11 @@
 PPO は質量 0.25〜2.0 倍の 8 点・大きさ 0.5〜1.3 倍の 6 点で 99% 以上（報酬 18.5〜21.9）、大きさ 1.5・2.0 倍で 0%（学習の失敗、下記）。「—」は PPO を学習していない倍率。
 速度は各環境の最初の転倒までしか数えないので、完走率 80% 未満の点（カッコ付き）は「転ぶ前の速さ」。
 
-![質量軸の完走率と報酬。青 = Vintix、灰 = 流用した専門家、緑 = その体で学習した PPO（全点 10 シード平均 ± 標準偏差）](figures/mass_completion_return_20261104.png)
-`figures/mass_completion_return_20261104.png`
+![質量軸の完走率と報酬。青 = Vintix、灰 = 流用した専門家、緑 = その体で学習した PPO。実線 = シード平均、帯 = 標準偏差。横軸は PPO がある 2.0 倍まで](figures/go1_mass_scale_completion_return_mean_std.png)
+`figures/go1_mass_scale_completion_return_mean_std.png`
 
-![大きさ軸の完走率と報酬（緑の 1.5・2.0 倍の 0% は学習の失敗で、体の限界とは言えない）](figures/size_completion_return_20261104.png)
-`figures/size_completion_return_20261104.png`
+![大きさ軸の完走率と報酬（緑の 1.5・2.0 倍の 0% は学習の失敗で、体の限界とは言えない）](figures/go1_size_scale_completion_return_mean_std.png)
+`figures/go1_size_scale_completion_return_mean_std.png`
 
 **完走した本はどれだけ歩けているか**
 
