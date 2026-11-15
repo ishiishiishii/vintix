@@ -45,6 +45,9 @@
    満たさない場合は Issue に `needs-decision` ラベルを付け、判断してほしい点を書いて止める。
 5. 新しい実験は `research-experiment-workflow` に従う（ブランチ `exp/<name>`、実験ディレクトリ、README、
    長時間ジョブは `setsid nohup` で切り離し、再開可能に）。
+   **方針を決めて実装する前に**、`.cursor/skills/research-experiment-workflow/literature-design.md` に従い
+   近いテーマの論文を **5 本以上**調べ、変えるパラメータ・評価指標・正規化の根拠を Issue/README に残す。
+   文献調査なしで新しい設計を本番起動しない。
 
 ## 禁止
 

@@ -5,7 +5,8 @@ description: >-
   quadruped RL research repo. Use when starting, resuming or finishing an experiment, when the
   user raises a research task / question / experiment idea, when discussing what to try next,
   when making or updating experiment summary figures / Notion reports, or when the autopilot
-  (autopilot/) runs a scheduled tick. Figure style: figure-style.md. Notion writing: notion-page-format.md.
+  (autopilot/) runs a scheduled tick. Before implementing experiment design, survey 5+ related
+  papers (literature-design.md). Figure style: figure-style.md. Notion writing: notion-page-format.md.
 ---
 
 # Research experiment workflow
@@ -15,6 +16,8 @@ description: >-
 - 実験ごとにGitでブランチを切って作業を進める。
 - 私が行った課題やあなたと壁打ちした課題、おこなうべき実験などはGihubのイシューを使って記録してほしい。
 - イシューはNotionとも連携してNotionから簡単に見れるようにしたい。
+- 実験内容や方針を実装する際には、ネット上で論文（ロボット汎化やクロスロボット適応などテーマに近いものが望ましい）を
+  5 つ以上調査し、変えるパラメータ・評価指標・正規化などの詳細設計を把握したうえで、妥当な設計を担保する。
 
 `AGENTS.md`（実行はコンテナ内、稼働中プロセスに触れない、共通コードは変更せず実験ディレクトリで差し替える等）は常に優先する。
 
@@ -84,10 +87,20 @@ Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env`
 - 同じエントリを実験ディレクトリの `README.md` 末尾「## 実行ログ」にも追記する（Notion のトグルは Markdown の見出しと箇条書きにする）。
   `REPORT.md` は区切りのまとめとして更新する。
 
-## 5. 実験の 1 サイクル（チェックリスト）
+## 5. 実験設計の文献調査（実装前・必須）
+
+**詳細は [literature-design.md](literature-design.md)。** 要約:
+
+- 新しい実験や方針変更を実装する前に、近いテーマの論文を **ネット上で 5 本以上**調べる
+  （ロボット汎化・クロスロボット適応・形態／質量 DR・評価プロトコルなどが望ましい）。
+- 把握する項目: **何を変えるか**、**評価指標**、**正規化**、試行数・シード、本実験との違い。
+- 調査結果を Issue / README に残し、採否理由を付けてから設計を確定する。文献なしの憶測だけで本番に入らない。
+
+## 6. 実験の 1 サイクル（チェックリスト）
 
 ```
 - [ ] Issue を確認／作成（task / experiment）、RESEARCH_OBJECTIVES.md で目的と記録先を確認
+- [ ] 文献調査 5 本以上（literature-design.md）→ 変える量・指標・正規化の根拠を Issue/README に書く
 - [ ] ブランチ exp/<name> を切る
 - [ ] vintix_go2/<name>/ に README.md（目的・設定・実行方法、Issue 番号、末尾に「実行ログ」）
 - [ ] 実装（共通コードは変更せず import／継承で差し替え）→ コミット
@@ -98,7 +111,8 @@ Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env`
 - [ ] ユーザー確認後に PR → main、Issue close
 ```
 
-## 6. 自律実行（autopilot）
+## 7. 自律実行（autopilot）
 
 `autopilot/README.md` を参照。ON/OFF は `autopilot/autopilot.sh on|off|status`。
 自律実行中も本スキルと `autopilot/PROMPT.md` のガードレールに従う。
+新しい実験方針を自分で決めて実装する場合も、§5 の文献調査を省略しない。
