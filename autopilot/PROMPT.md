@@ -25,9 +25,12 @@
 3. **記録**（スキル §4）: 新しい結果・考察・次の実行内容があれば、毎回次の 3 か所に同じ内容を残す。
    - 研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の page_id）を
      `.cursor/skills/research-experiment-workflow/notion-page-format.md` の構成で更新する: 結果が変わったら上部
-     （結論のコールアウト・主な結果の図と表・いま言えること・次）を書き換え、末尾「実行ログ」に「分かったこと」を見出しにした
+     （結論のコールアウト・主な結果の図と表・いま言えること・次）を**箇条書き・短文中心**で書き換え、
+     長い説明は詳細トグルへ（情報量は落とさない）。末尾「実行ログ」に「分かったこと」を見出しにした
      エントリを 1 つ追記。新しい結果が無い回は Notion に何も書かない（「最終更新」の時刻だけの更新もしない）。実行ごとにページを作らない
-   - 図は `vintix_go2/<実験>/figures/` に保存（Go1 体スケール実験は `python go1_body_scale_zeroshot/make_figures.py`）、
+   - 図は `vintix_go2/<実験>/figures/` に保存（Go1 体スケール実験は `python go1_body_scale_zeroshot/make_figures.py`）。
+     見た目は `.cursor/skills/research-experiment-workflow/figure-style.md` に従う
+     （タイトルなし、平均±帯、大きい文字、1.0 基準の目盛り、記述的ファイル名など）。
      `git add -f` → コミット → push し、SHA 固定の raw.githubusercontent.com URL で Notion に埋め込む
    - 実験ディレクトリの `README.md` 末尾「実行ログ」に同じエントリを追記
    - 関連 Issue に進捗コメント（`issue-templates.md` の形式、数値と図のパス付き）
