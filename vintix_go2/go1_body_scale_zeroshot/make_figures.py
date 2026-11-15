@@ -128,7 +128,11 @@ def plot_axis(data, axis: str, out: Path) -> Path:
             if not xs:
                 continue
             n = [len(pts[x]) for x in xs]
-            seeds = (f"{min(n)}-{max(n)}" if min(n) != max(n) else f"{n[0]}")
+            # Spell out "Seeds" so the count is self-explanatory (not just "Vintix (10)").
+            if min(n) != max(n):
+                seeds = f"{min(n)}-{max(n)} Seeds"
+            else:
+                seeds = f"{n[0]} Seeds" if n[0] != 1 else "1 Seed"
             xp = np.array([pos[x] for x in xs], dtype=float)
             for ax, key in ((ax_c, "completion"), (ax_r, "reward")):
                 vals = [np.array([v[key] for v in pts[x]]) for x in xs]
