@@ -117,7 +117,7 @@ def plot_axis(data, axis: str, out: Path) -> Path:
                 ax.axvline(pos[1.0], color="black", lw=1.3, ls="--", alpha=0.5)
             ax.grid(True, alpha=0.3)
             ax.tick_params(width=1.3, length=6)
-        ax_c.set_ylabel("Completed episodes [%]\n(no fall in 1000 steps)")
+        ax_c.set_ylabel("Success rate [%]\n(no fall in 1000 steps)")
         ax_c.set_ylim(-5, 105)
         ax_r.set_ylabel("Episode return")
         tick_idx = list(range(0, len(all_scales), 5))
