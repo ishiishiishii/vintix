@@ -26,8 +26,9 @@
    - 研究の目的ごとの Notion ページ（`RESEARCH_OBJECTIVES.md` の page_id）を
      `.cursor/skills/research-experiment-workflow/notion-page-format.md` の構成で更新する: 結果が変わったら上部
      （結論のコールアウト・主な結果の図と表・いま言えること・次）を**箇条書き・短文中心**で書き換え、
-     長い説明は詳細トグルへ（情報量は落とさない）。末尾「実行ログ」に「分かったこと」を見出しにした
-     エントリを 1 つ追記。新しい結果が無い回は Notion に何も書かない（「最終更新」の時刻だけの更新もしない）。実行ごとにページを作らない
+     長い説明は詳細トグルへ（情報量は落とさない）。末尾の **「実行ログ」親トグルの中**に
+     「分かったこと」を見出しにした入れ子トグルを 1 つ追記（ページ直下にログを並べない）。
+     新しい結果が無い回は Notion に何も書かない（「最終更新」の時刻だけの更新もしない）。実行ごとにページを作らない
    - 図は `vintix_go2/<実験>/figures/` に保存（Go1 体スケール実験は `python go1_body_scale_zeroshot/make_figures.py`）。
      見た目は `.cursor/skills/research-experiment-workflow/figure-style.md` に従う
      （タイトルなし、平均±帯、大きい文字、1.0 基準の目盛り、記述的ファイル名など）。
