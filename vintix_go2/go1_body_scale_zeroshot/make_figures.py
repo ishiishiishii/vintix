@@ -70,8 +70,9 @@ def plot_axis(data, axis: str, out: Path) -> Path:
     """Completion rate and episode return vs body scale (mean line + std band).
 
     X range stops at the largest scale where the from-scratch PPO was evaluated, so the
-    three policies share the same horizontal span. Tick labels show the scale multiplier
-    every 5 ticks (no kg/cm). No figure title — the filename carries the meaning.
+    three policies share the same horizontal span. Tick labels always include the 1.0
+    baseline and the ends, then every few ticks outward from 1.0 (multiplier only, no
+    kg/cm). No figure title — the filename carries the meaning.
     """
     import matplotlib
 
@@ -85,6 +86,24 @@ def plot_axis(data, axis: str, out: Path) -> Path:
         xmax = max(ppo_scales)
         all_scales = [x for x in all_scales if x <= xmax + 1e-12]
     pos = {x: i for i, x in enumerate(all_scales)}
+
+    def tick_label_indices(scales: List[float], step: int = 3) -> List[int]:
+        """Always label 1.0 (if present) and the ends; then every ``step`` ticks from 1.0."""
+        n = len(scales)
+        if n == 0:
+            return []
+        labeled = {0, n - 1}
+        base = next((i for i, s in enumerate(scales) if abs(s - 1.0) < 1e-12), None)
+        if base is None:
+            labeled.update(range(0, n, step))
+        else:
+            labeled.add(base)
+            for i in range(base - step, -1, -step):
+                labeled.add(i)
+            for i in range(base + step, n, step):
+                labeled.add(i)
+        return sorted(labeled)
+
     with plt.rc_context({
         "font.size": 16,
         "axes.labelsize": 18,
@@ -120,9 +139,7 @@ def plot_axis(data, axis: str, out: Path) -> Path:
         ax_c.set_ylabel("Success rate [%]\n(no fall in 1000 steps)")
         ax_c.set_ylim(-5, 105)
         ax_r.set_ylabel("Episode return")
-        tick_idx = list(range(0, len(all_scales), 5))
-        if all_scales and (len(all_scales) - 1) not in tick_idx:
-            tick_idx.append(len(all_scales) - 1)
+        tick_idx = set(tick_label_indices(all_scales, step=3))
         ax_r.set_xticks(range(len(all_scales)))
         ax_r.set_xticklabels([f"{all_scales[i]:g}" if i in tick_idx else "" for i in range(len(all_scales))])
         ax_r.set_xlabel(f"{axis.capitalize()} scale (× Go1; equally spaced, not to scale)")
