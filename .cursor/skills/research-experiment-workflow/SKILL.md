@@ -4,7 +4,8 @@ description: >-
   Branch-per-experiment git workflow and GitHub Issue tracking (mirrored to Notion) for this
   quadruped RL research repo. Use when starting, resuming or finishing an experiment, when the
   user raises a research task / question / experiment idea, when discussing what to try next,
-  or when the autopilot (autopilot/) runs a scheduled tick.
+  when making or updating experiment summary figures / Notion reports, or when the autopilot
+  (autopilot/) runs a scheduled tick. Figure style: figure-style.md. Notion writing: notion-page-format.md.
 ---
 
 # Research experiment workflow
@@ -68,8 +69,13 @@ Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env`
 
 ユーザーの方針（原文）: 自立実行の際はその都度結果、考察、次の実行内容などを実験内容ごとにページを用意してNotionに記録しつつ（各実行ごとにページを変える必要はなく、大まかな実験の目的ごとにページを作れば良い。今回のようにどれくらい体が違うとアルゴリズム蒸留だけではうまく適応できないかを調べるという一つの目的として複数の実験がある際は、1ページにどんどん記録していく）、実験ファイルにReadmeとしても残しておいてほしい
 
-- **ページの構成・書き方・図と動画の載せ方は [notion-page-format.md](notion-page-format.md) に従う**
-  （結論のコールアウト → 図 → いま言えること → 次 → 詳細はトグル → 実行ログ。図は GitHub の SHA 固定 URL で埋め込む）。
+- **ページの構成・書き方は [notion-page-format.md](notion-page-format.md) に従う**
+  （結論のコールアウト → 図 → いま言えること → 次 → 詳細はトグル → 実行ログ。
+  上部は箇条書き・短文で直感的に。長い説明は詳細トグルへ情報量を落とさず移す。
+  図は GitHub の SHA 固定 URL で埋め込む）。
+- **要約図・論文転載用図の見た目は [figure-style.md](figure-style.md) に従う**
+  （図中タイトルなし／平均=実線・標準偏差=帯／文字大きめ／基準 1.0 を必ず目盛り表示／
+  kg・cm は目盛りに書かない／系列の横軸範囲をそろえる／記述的ファイル名／Success rate 表記）。
 - 目的と記録先の対応はリポジトリ直下の `RESEARCH_OBJECTIVES.md`（台帳）。まずここで該当する目的を探す。
   無い目的なら台帳に行を足し、Notion「研究進捗」の M1 配下（`REPORT_FORMAT.md` §7.1 の位置）にページを 1 つ作る。
 - 実験や実行が増えてもページは増やさない。同じ目的のページの末尾「## 実行ログ」に、新しいものが下になる順で
