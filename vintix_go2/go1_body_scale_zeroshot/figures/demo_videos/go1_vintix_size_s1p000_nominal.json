@@ -1,0 +1,15 @@
+{
+  "policy": "vintix",
+  "axis": "size",
+  "scale": 1.0,
+  "role": "nominal",
+  "label": "1.0×（基準）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/vintix_go2/models/go1_without/go1_without/0001_epoch",
+  "mp4": "go1_vintix_size_s1p000_nominal.mp4",
+  "gif": "go1_vintix_size_s1p000_nominal.gif",
+  "gif_mb": 4.68
+}

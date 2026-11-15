@@ -78,6 +78,19 @@ setsid nohup python -u go1_body_scale_zeroshot/pipeline.py > go1_body_scale_zero
 python go1_body_scale_zeroshot/pipeline.py --dry_run   # 段階ごとの完了数
 ```
 
+## Notion 用デモ動画
+
+転倒判定（roll/pitch）を**録画時だけ無効化**して、歩ける／ギリギリ／歩けない様子を見せる（数値評価の条件は変えない）。
+出力: `figures/demo_videos/go1_{vintix|expert}_{mass|size}_s…_{role}.gif`
+
+```bash
+cd /workspace/vintix_go2
+python go1_body_scale_zeroshot/record_demo_videos.py --policy vintix   # 先に Vintix
+python go1_body_scale_zeroshot/record_demo_videos.py --policy expert  # 流用 PPO（後回し可）
+```
+
+下限の「全く歩けない」点は #13 後に撮り足す。
+
 ## 実行方法（第 1 段階、コンテナ内）
 
 ```bash

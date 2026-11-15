@@ -1,0 +1,15 @@
+{
+  "policy": "vintix",
+  "axis": "size",
+  "scale": 1.1,
+  "role": "upper_ok",
+  "label": "上限 1.1×（余裕）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/vintix_go2/models/go1_without/go1_without/0001_epoch",
+  "mp4": "go1_vintix_size_s1p100_upper_ok.mp4",
+  "gif": "go1_vintix_size_s1p100_upper_ok.gif",
+  "gif_mb": 4.61
+}

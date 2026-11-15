@@ -1,0 +1,15 @@
+{
+  "policy": "vintix",
+  "axis": "mass",
+  "scale": 1.3,
+  "role": "upper_fail",
+  "label": "上限 1.3×（歩けない）",
+  "steps": 240,
+  "fps": 30,
+  "seed": 0,
+  "resets": "disabled (demo only)",
+  "model": "/workspace/vintix_go2/models/go1_without/go1_without/0001_epoch",
+  "mp4": "go1_vintix_mass_s1p300_upper_fail.mp4",
+  "gif": "go1_vintix_mass_s1p300_upper_fail.gif",
+  "gif_mb": 4.27
+}
