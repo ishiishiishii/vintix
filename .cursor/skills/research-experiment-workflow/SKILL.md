@@ -72,7 +72,7 @@ Fine-grained token（`gh` にログイン済み。同じ値が `/workspace/.env`
 - **ページの構成・書き方は [notion-page-format.md](notion-page-format.md) に従う**
   （結論のコールアウト → 図 → いま言えること → 次 → 詳細はトグル → 実行ログ。
   上部は箇条書き・短文で直感的に。長い説明は詳細トグルへ情報量を落とさず移す。
-  図は GitHub の SHA 固定 URL で埋め込む）。
+  表では強調したい数値・箇所を太字。図は GitHub の SHA 固定 URL で埋め込む）。
 - **要約図・論文転載用図の見た目は [figure-style.md](figure-style.md) に従う**
   （図中タイトルなし／平均=実線・標準偏差=帯／文字大きめ／基準 1.0 を必ず目盛り表示／
   kg・cm は目盛りに書かない／系列の横軸範囲をそろえる／記述的ファイル名／Success rate 表記）。
