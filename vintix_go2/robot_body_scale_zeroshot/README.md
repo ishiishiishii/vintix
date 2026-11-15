@@ -6,7 +6,7 @@
 - 研究の目的: どれくらい体が違うとアルゴリズム蒸留（Vintix）だけではうまく適応できないかを調べる（`RESEARCH_OBJECTIVES.md`）
 - 記録ページ（Notion）: [体の違いとゼロショット適応の限界](https://app.notion.com/p/40cd65e6123f81b3be04fe61479b7c70)
 - ブランチ: `exp/robot-body-scale-zeroshot`（`exp/go1-body-scale-zeroshot` から分岐）
-- Issue: #10（この実験）、質量の軽い側追試は #13、その後のデータ収集は #11（`vintix_go2/dr_robots_multiseed_history/`）
+- Issue: #10（この実験）、質量・大きさの下限追試は #13、その後のデータ収集は #11（`vintix_go2/dr_robots_multiseed_history/`）
 
 ## ゴール
 
@@ -50,7 +50,7 @@ python robot_body_scale_zeroshot/run_experiment.py --stage report --tag 20261112
 
 本番 2100 件のうち、歩ける点の Vintix 評価が 1 件 20〜60 分（4 並列）、すぐ転ぶ点は 1〜2 分、専門家は約 5 分。
 ISCIIA では Go2・Mini Cheetah の元の体のゼロショットが転倒しているので、その 2 台は短く終わる点が多い見込み。
-全体で 3〜5 日。終わったら先に **#13（質量 約 0.1 倍までの軽い側・4 台）** で下限の崖を閉じてグラフ更新し、その後 `dr_robots_multiseed_history`（#11）のデータ収集へ。
+全体で 3〜5 日。終わったら先に **#13（質量 ≈0.1 倍・大きさ ≈0.2 倍までの下限・4 台）** で軽い／小さい側の崖を閉じてグラフ更新し、その後 `dr_robots_multiseed_history`（#11）のデータ収集へ。
 
 ## 実行ログ
 
