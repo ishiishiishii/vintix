@@ -274,61 +274,119 @@ def write_results_csv(data) -> Path:
     return path
 
 
-def plot_robot(data, robot: str, tag: str) -> Optional[Path]:
+def _tick_label_indices(scales: List[float], step: int = 3) -> List[int]:
+    """Always label 1.0 (if present) and the ends; then every ``step`` ticks from 1.0."""
+    n = len(scales)
+    if n == 0:
+        return []
+    labeled = {0, n - 1}
+    base = next((i for i, s in enumerate(scales) if abs(s - 1.0) < 1e-12), None)
+    if base is None:
+        labeled.update(range(0, n, step))
+    else:
+        labeled.add(base)
+        for i in range(base - step, -1, -step):
+            labeled.add(i)
+        for i in range(base + step, n, step):
+            labeled.add(i)
+    return sorted(labeled)
+
+
+def plot_robot_axis(data, robot: str, axis: str, tag: str) -> Optional[Path]:
+    """Success rate + return vs scale for one robot×axis (mean line + std band).
+
+    No in-figure title; filename carries meaning. Matches figure-style.md.
+    """
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    axes_present = [a for a in AXES if any(k[0] == robot and k[2] == a for k in data)]
-    if not axes_present:
+    scales = sorted({k[3] for k in data if k[0] == robot and k[2] == axis})
+    if not scales:
         return None
-    fig, grid = plt.subplots(2, len(axes_present), figsize=(5.2 * len(axes_present), 7.5), squeeze=False)
-    for j, axis in enumerate(axes_present):
-        scales = sorted({k[3] for k in data if k[0] == robot and k[2] == axis})
-        pos = {x: i for i, x in enumerate(scales)}
+    # Align x-range to Body-PPO upper end only when that upper end exists (scale > 1.0).
+    # Incomplete lower-only PPO (e.g. 0.5× still running) must not clip Vintix/Expert.
+    ppo_scales = [k[3] for k in data if k[0] == robot and k[1] == "ppo" and k[2] == axis]
+    if ppo_scales:
+        xmax = max(ppo_scales)
+        if xmax > 1.0 + 1e-12:
+            scales = [x for x in scales if x <= xmax + 1e-12]
+    pos = {x: i for i, x in enumerate(scales)}
+    legend_names = {"vintix": "Vintix", "expert": "Expert", "ppo": "Body PPO"}
+    axis_xlabel = {
+        "mass": f"Mass scale (× {robot}; equally spaced, not to scale)",
+        "size": f"Size scale (× {robot}; mass fixed; equally spaced, not to scale)",
+        "size_density": f"Size scale (× {robot}; density fixed; equally spaced, not to scale)",
+    }[axis]
+
+    with plt.rc_context({
+        "font.size": 16,
+        "axes.labelsize": 18,
+        "xtick.labelsize": 15,
+        "ytick.labelsize": 15,
+        "legend.fontsize": 12,
+        "axes.linewidth": 1.4,
+    }):
+        fig, (ax_c, ax_r) = plt.subplots(2, 1, figsize=(10.5, 8.6), sharex=True)
         for policy in POLICIES:
             xs = [x for x in scales if (robot, policy, axis, x) in data]
             if not xs:
                 continue
             n = [len(data[(robot, policy, axis, x)]) for x in xs]
-            label = LABELS[policy].replace("<robot>", robot) + (f" [{min(n)}-{max(n)} seeds]" if min(n) != max(n) else f" [{n[0]} seeds]")
-            for i, key in enumerate(("completion", "reward")):
+            if min(n) != max(n):
+                seeds = f"{min(n)}-{max(n)} Seeds"
+            else:
+                seeds = f"{n[0]} Seeds" if n[0] != 1 else "1 Seed"
+            xp = np.array([pos[x] for x in xs], dtype=float)
+            for ax, key in ((ax_c, "completion"), (ax_r, "reward")):
                 vals = [np.array([v[key] for v in data[(robot, policy, axis, x)]]) for x in xs]
-                grid[i][j].errorbar([pos[x] for x in xs], [v.mean() for v in vals], yerr=[v.std() for v in vals],
-                                    fmt="o-", color=COLORS[policy], lw=2, ms=4, capsize=3, label=label if j == 0 else None)
-        for i in range(2):
-            ax = grid[i][j]
+                mean = np.array([v.mean() for v in vals])
+                std = np.array([v.std() for v in vals])
+                ax.plot(xp, mean, "o-", color=COLORS[policy],
+                        label=f"{legend_names[policy]} ({seeds})",
+                        lw=2.8, ms=6, zorder=3)
+                ax.fill_between(xp, mean - std, mean + std, color=COLORS[policy], alpha=0.25, lw=0, zorder=2)
+        for ax in (ax_c, ax_r):
             if 1.0 in pos:
-                ax.axvline(pos[1.0], color="black", lw=1, ls="--", alpha=0.5)
+                ax.axvline(pos[1.0], color="black", lw=1.3, ls="--", alpha=0.5)
             ax.grid(True, alpha=0.3)
-            ax.set_xticks(range(len(scales)))
-            ax.set_xticklabels([f"{s:g}" for s in scales], fontsize=8)
-        grid[0][j].set_ylim(-5, 105)
-        grid[0][j].set_title(AXIS_TITLES[axis], fontsize=10)
-        grid[1][j].set_xlabel("scale (equally spaced, not to scale)")
-    grid[0][0].set_ylabel("Completed episodes [%]")
-    grid[1][0].set_ylabel("Episode return")
-    fig.legend(loc="upper center", ncol=3, fontsize=8, frameon=False)
-    fig.suptitle(f"{robot}: mean ± std over seeds ({time.strftime('%Y-%m-%d')})", y=1.03, fontsize=11)
-    fig.tight_layout()
-    out = FIG_DIR / f"{robot}_body_scale_{tag}.png"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out, dpi=100, bbox_inches="tight")
-    plt.close(fig)
+            ax.tick_params(width=1.3, length=6)
+        ax_c.set_ylabel("Success rate [%]\n(no fall in 1000 steps)")
+        ax_c.set_ylim(-5, 105)
+        ax_r.set_ylabel("Episode return")
+        tick_idx = set(_tick_label_indices(scales, step=3))
+        ax_r.set_xticks(range(len(scales)))
+        ax_r.set_xticklabels([f"{scales[i]:g}" if i in tick_idx else "" for i in range(len(scales))])
+        ax_r.set_xlabel(axis_xlabel)
+        fig.subplots_adjust(left=0.14, right=0.99, top=0.99, bottom=0.14, hspace=0.12)
+        handles, labels = ax_c.get_legend_handles_labels()
+        axes_mid = 0.5 * (0.14 + 0.99)
+        fig.legend(handles, labels, loc="upper center", ncol=3, frameon=False,
+                   bbox_to_anchor=(axes_mid, 0.055),
+                   handlelength=2.0, columnspacing=1.6, handletextpad=0.5)
+        out = FIG_DIR / f"{robot}_{axis}_scale_completion_return_mean_std_{tag}.png"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        fig.savefig(out, dpi=160)
+        plt.close(fig)
     return out
 
 
 def stage_report(tag: Optional[str] = None) -> None:
     data = collect()
     path = write_results_csv(data)
-    tag = tag or "latest"
-    figs = [plot_robot(data, r, tag) for r in ROBOTS]
+    tag = tag or time.strftime("%Y%m%d")
+    figs: List[Path] = []
+    for robot in ROBOTS:
+        for axis in AXES:
+            p = plot_robot_axis(data, robot, axis, tag)
+            if p:
+                figs.append(p)
     with open(EXP_DIR / "summary.json", "w") as f:
         json.dump({"updated": time.strftime("%Y-%m-%d %H:%M:%S"), "n_points": len(data),
                    "results_csv": str(path.relative_to(EXP_DIR)),
-                   "figures": [str(p.relative_to(EXP_DIR)) for p in figs if p]}, f, indent=2)
-    print(f"[report] {len(data)} (robot, policy, axis, scale) points", flush=True)
+                   "figures": [str(p.relative_to(EXP_DIR)) for p in figs]}, f, indent=2)
+    print(f"[report] {len(data)} (robot, policy, axis, scale) points → {len(figs)} figures", flush=True)
 
 
 def main() -> None:
