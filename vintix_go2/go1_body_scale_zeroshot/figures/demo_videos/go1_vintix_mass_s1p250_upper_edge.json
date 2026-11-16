@@ -6,10 +6,15 @@
   "label": "上限 1.25×（ギリギリ）",
   "steps": 240,
   "fps": 30,
-  "seed": 0,
+  "seed": 9,
+  "perturb": true,
+  "warmup_resets": 0,
+  "walk_ok": true,
+  "min_z_last_half": 0.281,
+  "dx": 1.649,
   "resets": "disabled (demo only)",
   "model": "/workspace/vintix_go2/models/go1_without/go1_without/0001_epoch",
   "mp4": "go1_vintix_mass_s1p250_upper_edge.mp4",
   "gif": "go1_vintix_mass_s1p250_upper_edge.gif",
-  "gif_mb": 4.32
+  "gif_mb": 4.51
 }

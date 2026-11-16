@@ -153,7 +153,28 @@ def _stem(policy: str, axis: str, scale: float, role: str) -> str:
     return f"go1_{policy}_{axis}_{scale_tag(scale)}_{role}"
 
 
-def record_vintix(axis: str, scale: float, role: str, label: str, steps: int, seed: int, force: bool) -> Path:
+def _walk_ok(zs: List[float], xs: List[float], size_scale: float) -> bool:
+    """Heuristic: stayed upright in the last half and moved forward."""
+    if len(zs) < 10:
+        return False
+    half = zs[len(zs) // 2 :]
+    min_z = float(np.min(half))
+    dx = float(xs[-1] - xs[0])
+    z_floor = 0.18 * max(float(size_scale), 0.5)
+    return min_z >= z_floor and dx >= 0.35 * max(float(size_scale), 0.5)
+
+
+def record_vintix(
+    axis: str,
+    scale: float,
+    role: str,
+    label: str,
+    steps: int,
+    seed: int,
+    force: bool,
+    perturb: bool = True,
+    warmup_resets: int = 0,
+) -> Path:
     from save_vintix import (
         VintixHistoryBuffer,
         _compute_averaged_stats_from_known_tasks,
@@ -189,46 +210,73 @@ def record_vintix(axis: str, scale: float, role: str, label: str, steps: int, se
         model.add_task(task_name, "quadruped_locomotion", stats, rew_scale=1.0)
 
     history = VintixHistoryBuffer(max_len=2048, task_name=task_name, body_param=None)
-    obs, _ = env.reset()
-    obs = obs[:, :-12]
-    _perturb_initial_state(env)
-    zero = torch.zeros(1, env.num_actions, device=gs.device)
-    obs, _, _, _ = env.step(zero)
-    obs = obs[:, :-12]
-    history.add(obs[0].cpu().numpy(), np.zeros(env.num_actions), 0.0)
+
+    def _boot() -> torch.Tensor:
+        obs, _ = env.reset()
+        obs = obs[:, :-12]
+        if perturb:
+            _perturb_initial_state(env)
+        zero = torch.zeros(1, env.num_actions, device=gs.device)
+        obs, rewards, _, _ = env.step(zero)
+        obs = obs[:, :-12]
+        history.add(obs[0].cpu().numpy(), np.zeros(env.num_actions), float(rewards.cpu().numpy()[0]))
+        return obs
+
+    def _act(obs: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        context = history.get_context(2048)
+        if context is None:
+            action = torch.zeros(1, env.num_actions, device=gs.device)
+        else:
+            for key in context[0]:
+                if isinstance(context[0][key], torch.Tensor):
+                    context[0][key] = context[0][key].to(gs.device)
+            with torch.amp.autocast("cuda", dtype=torch.bfloat16):
+                pred, _ = model(context)
+            if isinstance(pred, list):
+                pred = pred[0]
+            if pred.dim() == 3:
+                action = pred[0, -1, :].unsqueeze(0).float()
+            elif pred.dim() == 2:
+                action = pred[-1, :].unsqueeze(0).float()
+            else:
+                raise ValueError(pred.shape)
+        obs, rewards, _, _ = env.step(action)
+        obs = obs[:, :-12]
+        history.add(obs[0].cpu().numpy(), action[0].cpu().numpy(), float(rewards.cpu().numpy()[0]))
+        return obs, rewards
+
+    obs = _boot()
+    # At 1.25×, many walkable envs fall on ep1 then walk from ep2. Optional soft
+    # resets keep Vintix history and re-pose so the recorded clip shows walking.
+    with torch.no_grad():
+        for wi in range(max(int(warmup_resets), 0)):
+            for _ in range(steps):
+                obs, _ = _act(obs)
+                z = float(_as_row(env.robot.get_pos())[2])
+                if z < 0.12 * max(size_scale, 0.5):
+                    break
+            print(f"  warmup reset {wi + 1}/{warmup_resets} (history kept)")
+            obs = _boot()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     smooth = {"pos": None}
+    zs: List[float] = []
+    xs: List[float] = []
     env.cam.start_recording()
     with torch.no_grad():
         for step in range(steps):
             follow_camera(env, smooth, size_scale)
-            context = history.get_context(2048)
-            if context is None:
-                action = torch.zeros(1, env.num_actions, device=gs.device)
-            else:
-                for key in context[0]:
-                    if isinstance(context[0][key], torch.Tensor):
-                        context[0][key] = context[0][key].to(gs.device)
-                with torch.amp.autocast("cuda", dtype=torch.bfloat16):
-                    pred, _ = model(context)
-                if isinstance(pred, list):
-                    pred = pred[0]
-                if pred.dim() == 3:
-                    action = pred[0, -1, :].unsqueeze(0).float()
-                elif pred.dim() == 2:
-                    action = pred[-1, :].unsqueeze(0).float()
-                else:
-                    raise ValueError(pred.shape)
-            obs, rewards, _, _ = env.step(action)
-            obs = obs[:, :-12]
+            obs, _ = _act(obs)
+            pos = _as_row(env.robot.get_pos())
+            zs.append(float(pos[2]))
+            xs.append(float(pos[0]))
             env.cam.render()
-            history.add(obs[0].cpu().numpy(), action[0].cpu().numpy(), float(rewards.cpu().numpy()[0]))
             if (step + 1) % 60 == 0:
                 print(f"  vintix {axis} x{scale:g} step {step + 1}/{steps}")
 
     env.cam.stop_recording(save_to_filename=str(out_mp4), fps=FPS)
     _mp4_to_gif(out_mp4, out_gif)
+    walked = _walk_ok(zs, xs, size_scale)
     meta = {
         "policy": "vintix",
         "axis": axis,
@@ -238,6 +286,11 @@ def record_vintix(axis: str, scale: float, role: str, label: str, steps: int, se
         "steps": steps,
         "fps": FPS,
         "seed": seed,
+        "perturb": perturb,
+        "warmup_resets": int(warmup_resets),
+        "walk_ok": walked,
+        "min_z_last_half": round(float(np.min(zs[len(zs) // 2 :])), 3) if zs else None,
+        "dx": round(float(xs[-1] - xs[0]), 3) if xs else None,
         "resets": "disabled (demo only)",
         "model": str(GO1_WITHOUT_CKPT),
         "mp4": out_mp4.name,
@@ -245,7 +298,7 @@ def record_vintix(axis: str, scale: float, role: str, label: str, steps: int, se
         "gif_mb": round(out_gif.stat().st_size / 1e6, 2),
     }
     out_mp4.with_suffix(".json").write_text(json.dumps(meta, ensure_ascii=False, indent=2))
-    print(f"saved {out_gif} ({meta['gif_mb']} MB)")
+    print(f"saved {out_gif} ({meta['gif_mb']} MB) walk_ok={walked} min_z={meta['min_z_last_half']} dx={meta['dx']}")
     return out_gif
 
 
@@ -323,6 +376,12 @@ def main() -> None:
     p.add_argument("--steps", type=int, default=DEFAULT_STEPS)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--force", action="store_true")
+    p.add_argument("--no-perturb", action="store_true",
+                   help="Skip initial pose noise (helps edge clips stay upright).")
+    p.add_argument("--warmup-resets", type=int, default=0,
+                   help="Soft-reset N times before recording (keeps Vintix history).")
+    p.add_argument("--require-walk", action="store_true",
+                   help="Exit 2 if the clip does not stay upright and move forward.")
     p.add_argument("--one", type=str, default=None,
                    help="Record a single clip: axis:scale:role e.g. mass:1.25:upper_edge")
     args = p.parse_args()
@@ -357,9 +416,22 @@ def main() -> None:
 
     axis, scale, role, label = clips[0]
     policy = policies[0]
-    print(f"Recording {policy} {axis} x{scale:g} ({role}) steps={args.steps} seed={args.seed}")
+    print(
+        f"Recording {policy} {axis} x{scale:g} ({role}) steps={args.steps} "
+        f"seed={args.seed} perturb={not args.no_perturb} warmup_resets={args.warmup_resets}"
+    )
     if policy == "vintix":
-        record_vintix(axis, scale, role, label, args.steps, args.seed, args.force)
+        out = record_vintix(
+            axis, scale, role, label, args.steps, args.seed, args.force,
+            perturb=not args.no_perturb, warmup_resets=args.warmup_resets,
+        )
+        meta_path = OUT_DIR / f"{_stem('vintix', axis, scale, role)}.json"
+        if args.require_walk and meta_path.exists():
+            meta = json.loads(meta_path.read_text())
+            if not meta.get("walk_ok", False):
+                print("require-walk failed")
+                raise SystemExit(2)
+        _ = out
     else:
         record_expert(axis, scale, role, label, args.steps, args.seed, args.force)
 
