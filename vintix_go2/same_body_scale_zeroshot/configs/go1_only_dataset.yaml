@@ -1,0 +1,7 @@
+# Same-body-only Vintix (#18): Go1 AD data only. Group name mirrors go2_data1M_5epochs.
+go1_walking_ad:
+  type: "default"
+  path: "go1_trajectories"
+  group: "go1_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1

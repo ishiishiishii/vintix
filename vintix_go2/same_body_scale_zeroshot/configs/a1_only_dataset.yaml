@@ -1,0 +1,7 @@
+# Same-body-only Vintix (#18): A1 AD data only.
+a1_walking_ad:
+  type: "default"
+  path: "a1_trajectories"
+  group: "a1_locomotion"
+  reward_scale: 1.0
+  episode_sparsity: 1

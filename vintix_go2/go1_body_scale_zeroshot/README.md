@@ -1388,3 +1388,43 @@ Notion の記録ページの「実行ログ」と同じ内容。新しいもの�
   - 軽い側〜0.7×は MC（8.3 kg）の方向だがピークは MC ちょうどではない（0.6×では完走低下）→ 方向のみ
   - 大きさの小さい側は胴長が A1/MC に近づく → 対応しやすい。大きい側 1.1×は訓練に大きい体が無く説明しにくい
 - 次: 因果の切り分けは未実施（#8 と関連）
+
+### 2026-11-15 シード差のログ再分析と評価指標の文献調査
+
+- 実行内容: `results/vintix/*/s*_seed*/..._episodes.csv` を再集計。関連論文 22 本の評価指標を集計して Notion に追記（Issue #14、#8 コメント）。
+- 結果: シードぶれは境界帯（1.15–1.25×）のみ。環境は二極化し、1 本目完走が残りを 100% 予測（質量/大きさ 1.2×）。seed1 の転ぶ env は両軸で [2,3,6,8,9]。
+- 指標調査: 完走/Survival 16/22、前進速度 14/22、return 11/22、追従誤差 8/22。推奨は完走率＋前進速度＋追従誤差（return は補助）。
+- 次: #8 の文脈切断対照。主結果図を速度・追従寄りに（#14）。
+
+### 2026-11-15 流用PPOの崖数直線を追加し、シード説明を簡潔化
+- 図: `figures/go1_train_robot_vs_expert_cliff_numberline.png`（訓練=Go1のみ、崖 1.1→1.2×）。Notionで Vintix 数直線の右に横並び。
+
+### 2026-11-16 Notion数直線の下に Go2 基準の外挿を追記
+- 実行内容: 数直線下の箇条書きに、歩けなくなる地点を訓練最大の **Go2（15.0 kg・脚42 cm）** 比で表記
+- 結果: Vintix 崖は質量 **約 1.09×→1.13× Go2**（16.4→17.0 kg）、大きさ **1.25×→1.30× Go2**。Go1用PPO は質量 **約 0.96×→1.05× Go2**
+- 次: 変更なし（#10 継続）
+
+### 2026-11-16 下限も Mini Cheetah 基準で追記
+- 実行内容: 軽い／小さい側の検証下限を訓練最小の **Mini Cheetah（8.3 kg・脚42 cm・胴28 cm）** 比で Notion に追記（崖未到達である旨も明記）
+- 結果: 質量 0.25× Go1 = **約 0.39× Mini Cheetah**（まだ歩ける）。大きさ 0.5× Go1 = 脚 **0.50×**・胴 **約 0.68× Mini Cheetah**（完走するが速度低下）
+- 次: #13 でさらに下げるまで下限崖は未確定
+- シード説明を「初期姿勢のずれだけが変わる／境界帯だけぶれる」に短縮。
+
+### 2026-11-16 評価指標の文献調査を再確認・詳細化
+
+- 実行内容: 前回（#14）の集計だけだった指標調査を、MorFiC / Rapid Embodiment の PDF と RMA・DreamWaQ・GenLoco・Vintix・URMA・Multi-Loco 等の arXiv を再確認し、論文ごとの内訳表を作成。
+- 結果: 確認済みコア11本では return 6、Survival/速度/TTF 各4、追従3。前回の「Survival 16/22」は数え方が緩く高めだった。推奨（完走率＋速度＋追従）は変更なし。
+- 記録: Notion 評価指標節、`metrics_literature_survey.md` / `.csv`、Issue #14 コメント。
+
+### 2026-11-16 評価指標調査を40本に拡大し定義を具体化（#14）
+- 実行内容: テーマ近傍（形態転移・質量/ペイロード・ゼロショット・ICRL・敏捷）を再検索し、曖昧な二次集約行を名前付き論文に差し替え。CARO / MetaLoco / GRoQ-LoCO / LocoFormer / DMLoco / DiffuseLoco / PPAL 等を追加。
+- 結果: Success 22 / 速度距離 19 / return 19 / 追従 14 / TTF 5 / エネルギー 3（N=40）。表は定義列（Success・速度・追従・return）に更新。
+- 記録: Notion 評価指標節、`metrics_literature_survey.md` / `.csv`、Issue #14 コメント。
+- 推奨: 完走率＋前進速度＋速度追従（returnは補助）は変更なし。
+
+### 2026-11-17 #15 完了（エピソード単位 loco + スモーク）
+
+- 実行内容: `LocomotionMetrics.compute_env` / `reset_env` / `clone_fresh` を追加。`save_vintix.py` / `save_expert.py` の parallel 評価で `*_episodes.csv` に速度・距離・CoT・追従列を追加（先頭列は非破壊）。集計は従来どおり `*_mean_reward.txt` + `*_metrics.json`。
+- スモーク: Go2 expert・1 env・1 ep → `smoke_metrics_20261117/go2_smoke_metrics.json`（completion 1.0、CoT≈0.58、tracking≈0.999）、episodes.csv に loco 列あり。
+- 任意の体スケール `results.csv` 列追加は見送り（主表は既存完走率で足りる）。算出不能指標は Issue #15 にリスト済み。
+- 次: #18（同体のみ学習 Vintix）
