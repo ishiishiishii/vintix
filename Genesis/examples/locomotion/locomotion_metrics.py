@@ -149,6 +149,73 @@ class LocomotionMetrics:
         )
 
     # ----------------------------------------------------------------- compute
+    def compute_env(self, env_idx: int) -> Dict[str, float]:
+        """Per-env metrics from the current accumulators (one episode if reset between eps)."""
+        i = int(env_idx)
+        mg = self.robot_mass * self.gravity
+        distance = float(self._distance[i].item())
+        energy = float(self._energy[i].item())
+        steps = float(self._active_steps[i].item())
+        track_steps = float(self._track_steps[i].item())
+
+        if distance > (self.min_cmd_speed * self.dt) and (mg * distance) > self.eps:
+            cot = energy / (mg * distance)
+        else:
+            cot = float("nan")
+
+        if track_steps > 0:
+            lin_rmse = float((self._lin_err_sq[i] / track_steps).sqrt().item())
+            ang_rmse = float((self._ang_err_sq[i] / track_steps).sqrt().item())
+            success_rate = float((self._track_success[i] / track_steps).item())
+        else:
+            lin_rmse = float("nan")
+            ang_rmse = float("nan")
+            success_rate = float("nan")
+
+        avg_speed = float((self._speed_sum[i] / max(steps, 1.0)).item())
+        out = {
+            "cost_of_transport": cot,
+            "tracking_success_rate": success_rate,
+            "lin_vel_rmse": lin_rmse,
+            "ang_vel_rmse": ang_rmse,
+            "mean_distance_m": distance,
+            "avg_forward_speed_mps": avg_speed,
+            "active_steps": steps,
+            "robot_mass_kg": float(self.robot_mass),
+        }
+        if self.leg_length_m:
+            out["froude_number"] = (avg_speed ** 2) / (self.gravity * float(self.leg_length_m))
+        return out
+
+    def reset_env(self, env_idx: int) -> None:
+        """Clear per-env accumulators after an episode ends (keeps global step clock `_t`)."""
+        i = int(env_idx)
+        self._energy[i] = 0.0
+        self._distance[i] = 0.0
+        self._speed_sum[i] = 0.0
+        self._active_steps[i] = 0.0
+        self._lin_err_sq[i] = 0.0
+        self._ang_err_sq[i] = 0.0
+        self._track_success[i] = 0.0
+        self._track_steps[i] = 0.0
+        self._alive[i] = True
+        self._fall_step[i] = -1
+
+    def clone_fresh(self) -> "LocomotionMetrics":
+        """Same config, empty accumulators (for per-episode tracking alongside a run-level one)."""
+        return LocomotionMetrics(
+            num_envs=self.num_envs,
+            robot_mass=self.robot_mass,
+            dt=self.dt,
+            device=self.device,
+            gravity=self.gravity,
+            warmup_steps=self.warmup_steps,
+            cmd_tol=self.cmd_tol,
+            min_cmd_speed=self.min_cmd_speed,
+            leg_length_m=self.leg_length_m,
+            eps=self.eps,
+        )
+
     def compute(self) -> Dict[str, float]:
         mg = self.robot_mass * self.gravity
         moved = self._distance > (self.min_cmd_speed * self.dt)  # envs that actually moved

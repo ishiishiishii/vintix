@@ -294,6 +294,11 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         device=gs.device,
         leg_length_m=env_cfg.get("leg_length_m"),
     )
+    # Per-episode loco (Issue #15): separate accumulator so run-level summary stays intact.
+    # warmup_steps=0 so each episode's tracking counts from step 0 after reset_env.
+    loco_ep = loco_metrics.clone_fresh()
+    loco_ep.warmup_steps = 0
+    env_episode_loco = [[] for _ in range(NUM_ENVS)]
 
     model_metadata = vintix_model.metadata if hasattr(vintix_model, 'metadata') else {}
     print(f"Available task names in model: {list(model_metadata.keys())}")
@@ -438,6 +443,7 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
                 [not c for c in env_completed], device=gs.device, dtype=torch.bool
             )
             loco_metrics.update_from_env(env, dones=None, active=active_mask)
+            loco_ep.update_from_env(env, dones=None, active=active_mask)
 
             obs = obs[:, :-12]
             
@@ -475,6 +481,8 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
                     env_episode_rewards[env_idx].append(env_current_episode_rewards[env_idx])
                     env_episode_lengths[env_idx].append(env_episode_steps[env_idx])
                     env_episode_cumulative_steps[env_idx].append(env_total_steps[env_idx])
+                    env_episode_loco[env_idx].append(loco_ep.compute_env(env_idx))
+                    loco_ep.reset_env(env_idx)
                     
                     env_episode_counts[env_idx] += 1
                     if env_episode_counts[env_idx] >= MAX_EPISODES:
@@ -637,14 +645,27 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
     
     episode_csv_path = graph_path.parent / f"{graph_path.stem}_episodes.csv"
     with open(episode_csv_path, 'w') as f:
-        f.write("episode_number,env_index,cumulative_steps,cumulative_reward,episode_length\n")
+        f.write(
+            "episode_number,env_index,cumulative_steps,cumulative_reward,episode_length,"
+            "avg_forward_speed_mps,mean_distance_m,cost_of_transport,"
+            "tracking_success_rate,lin_vel_rmse,ang_vel_rmse\n"
+        )
         for env_idx in range(NUM_ENVS):
             for ep_idx, (cum_steps, cum_reward, ep_length) in enumerate(zip(
                 env_episode_cumulative_steps[env_idx],
                 env_episode_rewards[env_idx],
                 env_episode_lengths[env_idx]
             )):
-                f.write(f"{ep_idx},{env_idx},{cum_steps},{cum_reward:.6f},{ep_length}\n")
+                loco = env_episode_loco[env_idx][ep_idx] if ep_idx < len(env_episode_loco[env_idx]) else {}
+                def _fmt(key):
+                    v = loco.get(key, float("nan"))
+                    return f"{v:.6f}" if v == v else "nan"
+                f.write(
+                    f"{ep_idx},{env_idx},{cum_steps},{cum_reward:.6f},{ep_length},"
+                    f"{_fmt('avg_forward_speed_mps')},{_fmt('mean_distance_m')},"
+                    f"{_fmt('cost_of_transport')},{_fmt('tracking_success_rate')},"
+                    f"{_fmt('lin_vel_rmse')},{_fmt('ang_vel_rmse')}\n"
+                )
     print(f"✓ Episode CSV saved: {episode_csv_path}")
     
     final_mean_reward = np.mean(mean_rewards)

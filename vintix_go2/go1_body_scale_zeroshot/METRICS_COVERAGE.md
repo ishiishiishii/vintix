@@ -9,10 +9,10 @@
 | Success/Survival | 完走率（1000 step 未転倒） | `*_episodes.csv` の `episode_length` から集計、`*_metrics.json` の `completion_rate`、体スケール `results.csv` | 既存 |
 | TTF / episode 長 | episode length (steps) | `*_episodes.csv`、`*_mean_reward.txt`、`*_metrics.json` | 既存 |
 | return | episode / step return | `*_episodes.csv`、step CSV、`*_mean_reward.txt`、`*_metrics.json` | 既存 |
-| 速度/距離 | avg forward speed, mean distance | `*_mean_reward.txt`（Locomotion）、`*_metrics.json` → `locomotion` | `LocomotionMetrics` |
+| 速度/距離 | avg forward speed, mean distance | **エピソード:** `*_episodes.csv` 列 / **集計:** `*_mean_reward.txt`（Locomotion）、`*_metrics.json` → `locomotion` | `LocomotionMetrics` |
 | 指令追従 | lin/ang vel RMSE、tracking success ±15% | 同上 | 同上 |
 | エネルギー | Cost of Transport | 同上 | トルク×角速度の近似 |
-| 形態正規化 | Froude number（脚長があるとき） | 同上（任意） | `env_cfg.leg_length_m` が必要 |
+| 形態正規化 | Froude number（脚長があるとき） | 集計の `*_mean_reward.txt` / `*_metrics.json`（任意） | `env_cfg.leg_length_m` が必要 |
 
 ## 現状では算出不能（勝手に近似しない）
 
@@ -26,6 +26,7 @@
 
 ## 成果物の互換
 
-- 既存の `*.csv` / `*_episodes.csv` / `*_mean_reward.txt` の列は壊さない。
+- 既存の `*.csv` / `*_episodes.csv` / `*_mean_reward.txt` の先頭列は壊さない（loco 列は `episode_length` の後ろに追加）。
 - 追加: `*_metrics.json`（集計単位の機械可読）。
-- エピソード単位の loco 列（速度・距離・CoT）は未実装 → 次の一手。
+- エピソード単位の loco 列（速度・距離・CoT・追従）: **実装済み**（`save_vintix.py` / `save_expert.py` の parallel 評価）。
+- 体スケール `results.csv` への集計 loco 列追加は任意・非破壊で後回し（既存完走率・return で論文主表は足りる）。
