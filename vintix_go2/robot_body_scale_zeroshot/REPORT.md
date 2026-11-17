@@ -23,7 +23,7 @@ Go1 以外では「通常体で高完走」が成り立たない。ゼロショ�
 | 指標 | Success rate（完走率）、episode return |
 | 実験 dir | `vintix_go2/robot_body_scale_zeroshot/`（ブランチ `exp/robot-body-scale-zeroshot`） |
 | Issue | [#10](https://github.com/ishiishiishii/vintix/issues/10) |
-| Notion | [4台体スケールのゼロショット限界](https://app.notion.com/p/41ad65e6123f819e9cabee1835c71c90)（`41ad65e6-123f-819e-9cab-ee1835c71c90`） |
+| Notion | [4台体スケールのゼロショット限界](https://app.notion.com/p/41ad65e6123f816093d0ebc4bb281f25)（`41ad65e6-123f-8160-93d0-ebc4bb281f25`） |
 
 ### 結果
 
@@ -85,7 +85,7 @@ Body PPO 端点の切り分け（完走率 % / return）:
 - `results.csv`（339 点）
 - `pipeline_status.json`（probe/main/ppo 全 done、failed 空）
 - `figures/*_20261117.png`（12 枚）
-- Notion: `41ad65e6-123f-819e-9cab-ee1835c71c90`
+- Notion: `41ad65e6-123f-8160-93d0-ebc4bb281f25`
 
 ## 2. パイプライン完了時刻
 

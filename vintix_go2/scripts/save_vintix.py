@@ -745,6 +745,35 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg):
         f.write(f"{'=' * 60}\n")
     print(f"✓ Mean reward summary saved: {mean_reward_path}")
     print(LocomotionMetrics.format_summary(loco_summary))
+
+    # Machine-readable sidecar for Issue #15 (additive; existing CSVs unchanged).
+    import json
+    metrics_json_path = graph_path.parent / f"{graph_path.stem}_metrics.json"
+    with open(metrics_json_path, "w") as f:
+        json.dump(
+            {
+                "policy": "vintix",
+                "robot_type": args.robot_type,
+                "num_envs": NUM_ENVS,
+                "total_episodes": total_episodes,
+                "mean_reward_per_step": float(final_mean_reward),
+                "std_reward_per_step": float(final_std_reward),
+                "mean_reward_per_episode": float(mean_episode_reward),
+                "std_reward_per_episode": float(std_episode_reward),
+                "mean_episode_length": float(mean_episode_length),
+                "std_episode_length": float(std_episode_length),
+                "completion_rate": float(
+                    (np.array(all_episode_lengths_flat) >= 1000).mean()
+                )
+                if all_episode_lengths_flat
+                else 0.0,
+                "locomotion": loco_summary,
+            },
+            f,
+            indent=2,
+            allow_nan=True,
+        )
+    print(f"✓ Metrics JSON saved: {metrics_json_path}")
     
     print(f"\n{'=' * 80}")
     print(f"✓ Parallel evaluation completed!")

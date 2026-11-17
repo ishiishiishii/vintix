@@ -198,6 +198,16 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
     runner.load(str(expert_path))
     expert_policy = runner.get_inference_policy(device=gs.device)
     print("✓ PPO expert model loaded")
+
+    # Locomotion metrics (same set as save_vintix; Issue #15).
+    from locomotion_metrics import LocomotionMetrics, robot_total_mass
+    loco_metrics = LocomotionMetrics(
+        num_envs=NUM_ENVS,
+        robot_mass=robot_total_mass(env),
+        dt=env.dt,
+        device=gs.device,
+        leg_length_m=env_cfg.get("leg_length_m"),
+    )
     
     # 環境リセット
     obs, _ = env.reset()
@@ -291,6 +301,17 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
             # 環境ステップ
             obs, rewards, dones, infos = env.step(actions)
             # PPOポリシーは観測値から行動を除外しない（45次元のまま）
+
+            # Accumulate locomotion metrics for envs still collecting episodes.
+            if use_episode_limit:
+                active_mask = torch.tensor(
+                    [c < MAX_EPISODES for c in env_episode_counts],
+                    device=gs.device,
+                    dtype=torch.bool,
+                )
+            else:
+                active_mask = None
+            loco_metrics.update_from_env(env, dones=None, active=active_mask)
             
             # 各環境の報酬を更新
             step_rewards = []
@@ -522,6 +543,7 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
     total_episodes = len(all_episode_rewards_flat)
     
     # 平均報酬のテキストファイルを保存
+    loco_summary = loco_metrics.compute()
     mean_reward_path = graph_path.parent / f"{graph_path.stem}_mean_reward.txt"
     with open(mean_reward_path, 'w') as f:
         f.write(f"Expert Policy Evaluation Summary\n")
@@ -534,12 +556,53 @@ def _run_parallel_evaluation(args, env_cfg, obs_cfg, reward_cfg, command_cfg, tr
         f.write(f"Mean Reward per Step: {final_mean_reward:.6f}\n")
         f.write(f"Std Reward per Step: {final_std_reward:.6f}\n")
         f.write(f"\n")
+        f.write(f"=== Locomotion Metrics (scale-invariant) ===\n")
+        f.write(f"Cost of Transport (CoT): {loco_summary['cost_of_transport']:.6f}\n")
+        f.write(f"Tracking Success Rate (±15%): {loco_summary['tracking_success_rate']:.6f}\n")
+        f.write(f"Lin-vel RMSE (m/s): {loco_summary['lin_vel_rmse']:.6f}\n")
+        f.write(f"Ang-vel RMSE (rad/s): {loco_summary['ang_vel_rmse']:.6f}\n")
+        f.write(f"Mean Distance (m): {loco_summary['mean_distance_m']:.6f}\n")
+        f.write(f"Avg Forward Speed (m/s): {loco_summary['avg_forward_speed_mps']:.6f}\n")
+        if "froude_number" in loco_summary:
+            f.write(f"Froude Number: {loco_summary['froude_number']:.6f}\n")
+        f.write(f"Robot Mass (kg): {loco_summary['robot_mass_kg']:.6f}\n")
+        f.write(f"\n")
         f.write(f"Mean Reward per Episode: {mean_episode_reward:.6f}\n")
         f.write(f"Std Reward per Episode: {std_episode_reward:.6f}\n")
         f.write(f"Mean Episode Length: {mean_episode_length:.2f}\n")
         f.write(f"Std Episode Length: {std_episode_length:.2f}\n")
         f.write(f"{'=' * 60}\n")
     print(f"✓ Mean reward summary saved: {mean_reward_path}")
+
+    # Machine-readable sidecar for Issue #15 (do not break existing CSV columns).
+    import json
+    metrics_json_path = graph_path.parent / f"{graph_path.stem}_metrics.json"
+    with open(metrics_json_path, "w") as f:
+        json.dump(
+            {
+                "policy": "expert",
+                "robot_type": args.robot_type,
+                "num_envs": NUM_ENVS,
+                "total_episodes": total_episodes,
+                "mean_reward_per_step": float(final_mean_reward),
+                "std_reward_per_step": float(final_std_reward),
+                "mean_reward_per_episode": float(mean_episode_reward),
+                "std_reward_per_episode": float(std_episode_reward),
+                "mean_episode_length": float(mean_episode_length),
+                "std_episode_length": float(std_episode_length),
+                "completion_rate": float(
+                    (np.array(all_episode_lengths_flat) >= 1000).mean()
+                )
+                if all_episode_lengths_flat
+                else 0.0,
+                "locomotion": loco_summary,
+            },
+            f,
+            indent=2,
+            allow_nan=True,
+        )
+    print(f"✓ Metrics JSON saved: {metrics_json_path}")
+    print(LocomotionMetrics.format_summary(loco_summary))
     
     print(f"\n{'=' * 80}")
     print(f"✓ Parallel evaluation completed!")
