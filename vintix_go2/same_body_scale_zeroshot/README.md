@@ -33,21 +33,29 @@ leave-one-out（`<robot>_without`、#10）と、**評価ロボット自身のデ
 
 | 項目 | 値 |
 |------|-----|
-| 対象 | Go1・Go2・A1・Mini Cheetah |
+| 対象（評価の優先） | **まず Go1 同体モデルのみ**（2026-11-18）。他台は学習済み・評価は後続 |
+| 評価 3 軸 | ①質量だけ ②大きさだけ（質量固定）③大きさ＋質量連動（密度一定） |
+| Go1 モデル | `models/go1_data1M_5epochs/.../0004_epoch` |
 | Go2 モデル | 既存 `models/go2_data1M_5epochs/.../0001_epoch` |
-| 不足モデル | 本ディレクトリ `train_missing_models.sh`（Go1→A1→MC、合計見積 ~6 GPU 時） |
-| 評価格子 | #10 と同じ（`robot_body_scale_zeroshot/robots.py`） |
+| 不足モデル | `train_missing_models.sh`（Go1→A1→MC）**学習完了 2026-11-18** |
+| 評価格子 | Go1 mass/size = `go1_body_scale_zeroshot` FULL_GRID。size_density = #10 格子 |
+| 比較 | Vintix 同体のみ再評価。PPO/Expert は過去実験を再利用 |
+| 結果の置き場 | `same_body_scale_zeroshot/results/`（LOO 結果と混在させない） |
 | 指標 | #15 の `*_metrics.json` / episodes loco 列を利用 |
 
 ## 実行
 
 ```bash
 cd /workspace/vintix_go2
+# 学習（完了済み）
 setsid nohup bash same_body_scale_zeroshot/train_missing_models.sh \
   > same_body_scale_zeroshot/logs/train_all.out 2>&1 &
-```
 
-学習完了後に Go2 から順に体スケール評価（オーケストレーションは次 tick）。
+# Go1 同体・3軸 Vintix 評価
+setsid nohup python -u same_body_scale_zeroshot/eval_go1_pipeline.py \
+  > same_body_scale_zeroshot/logs/eval_go1.log 2>&1 < /dev/null &
+python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
+```
 
 ## 実行ログ
 
@@ -55,4 +63,18 @@ setsid nohup bash same_body_scale_zeroshot/train_missing_models.sh \
 
 - 文献調査 6 本を上記表に記録
 - 不足 3 台の dataset YAML と `train_missing_models.sh` を追加し学習を起動
-- 次: 学習完了監視 → Go2 同体モデルで #10 格子の評価 → leave-one-out 差分図
+- 次: 学習完了監視 → 評価
+
+### 2026-11-18: 学習完了 → Go1 3軸評価を起動
+
+- Go1/A1/MC 同体モデル 5 epoch 完了
+- 方針: 評価は Go1・質量／大きさ／密度一定の 3 条件、Vintix のみ（#18 コメント）
+- `eval_go1_pipeline.py` 起動（470 jobs、4 並列）。結果は `results/` へ
+- 関連: シード差の「学習データ欠落」仮説は #20
+
+### 2026-11-18 06:15（autopilot）: 評価監視と seed0 質量速報
+
+- 進捗 8/470、failed なし。PID 709234。#21 waiter PID 715125
+- seed0 質量: 0.9×94% / 1.0×92% / 1.1×63% / 1.15×以降 0%（LOO seed0 は 1.25×まで高完走）
+- 暫定考察: 同体の重い側崖が LOO より内側に見えるが 1 シードのみ → 完走まで保留
+- #20: LOO のシード差は「学習にそのシード軌跡が無い」では説明不可（Go1 軌跡自体がゼロ）
