@@ -28,7 +28,7 @@ general_locomotion_baselines/
   README.md
   clone_third_party.sh   # shallow clone（third_party は gitignore）
   third_party/           # クローン先（コミットしない）
-  wrappers/              # Genesis 評価への薄いラッパ（MorFiC 骨格あり）
+  wrappers/              # Genesis 評価への薄いラッパ（MorFiC / GenLoco / URMA）
   SOURCE_LICENSES.md     # 出典・ライセンス記録
 ```
 
@@ -66,3 +66,9 @@ bash clone_third_party.sh
 - **実行内容:** pretrained `ac_weights_last.pt` から入力次元を確定。`wrappers/morfic/` に morphology / obs_adapter / policy_loader を追加。`smoke_cpu_check.py` を実行（GPU・Isaac Gym 不要）
 - **結果:** 単ステップ **70**・履歴 **30**（flat 2100）・形態 11→64・adaptation 2・actor 入力 **2166**・行動 12 を確認。合成 Genesis obs(45)→アダプタ→actor まで有限出力。旧対応表の 42×15 は誤りとして訂正
 - **次:** Genesis Go2 Env 接続と評価入口（#18 GPU 空き後）。GenLoco/URMA ラッパは後続
+
+### 2026-11-18 — GenLoco / URMA ラッパ骨格＋CPU スモーク（#22）
+
+- **実行内容:** GenLoco pretrained zip から入力 **451**・MLP 451→1024→512→12 を確定し `wrappers/genloco/` を追加。URMA は Go2 観測内訳（desc23/10 → 合計 **380**）をコードから算出し `wrappers/urma/` を追加（actor は RL-X 依存のため deferred）
+- **結果:** `smoke_cpu_check.py` 両手法 OK。pace/spin/inverse 3 zip とも入力 451。URMA ckpt magic 確認
+- **次:** 低 GPU の配線骨格は一通り完了。Genesis 評価入口と公式再生比較は #18→#21 GPU 空き後。#16 立位レンダも同タイミング

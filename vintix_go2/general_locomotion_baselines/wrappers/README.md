@@ -8,20 +8,22 @@
 ```
 wrappers/
   obs_action_map.md   # 手法ごと観測・行動次元の対応表
-  morfic/             # P0: アダプタ + CPU スモーク（済）
-  genloco/            # （次）
-  urma/
-  mcarl/
+  morfic/             # P0: 70×30 / actor 2166 — CPU スモーク済
+  genloco/            # P0: 451→12 — CPU スモーク済
+  urma/               # P0: Go2 obs 380 — 寸法スモーク済（actor は RL-X 待ち）
+  mcarl/              # P1: コード無し
 ```
 
-## MorFiC（いま動くもの）
+## CPU スモーク（GPU 不要）
 
 ```bash
 cd /workspace/vintix_go2/general_locomotion_baselines
-python wrappers/morfic/smoke_cpu_check.py   # GPU 不要・Isaac Gym 不要
+python wrappers/morfic/smoke_cpu_check.py
+python wrappers/genloco/smoke_cpu_check.py
+python wrappers/urma/smoke_cpu_check.py
 ```
 
-Genesis Env への接続と pretrained 再生は #18 GPU 空き後。
+Genesis Env 接続・pretrained 長時間再生は #18 GPU 空き後。
 
 ## 制約
 
