@@ -16,6 +16,7 @@ import numpy as np
 
 EXP_DIR = Path(__file__).resolve().parent
 SAME_ROOT = EXP_DIR / "results" / "go1" / "vintix" / "size"
+MASS_ROOT = EXP_DIR / "results" / "go1" / "vintix" / "mass"
 LOO_CSV = EXP_DIR.parent / "robot_body_scale_zeroshot" / "results.csv"
 FIG_DIR = EXP_DIR / "figures"
 OUTPUT_STEM = "go1_10envs_10episodes"
@@ -32,6 +33,13 @@ def collect_same_body() -> dict[float, list[float]]:
             continue
         cr = float(json.load(open(metrics))["completion_rate"]) * 100.0
         by_scale[scale].append(cr)
+    # Nominal 1.0 lives under mass axis for same-body.
+    if 1.0 not in by_scale:
+        for meta in MASS_ROOT.glob("s1p000_seed*/point.json"):
+            metrics = meta.parent / f"{OUTPUT_STEM}_metrics.json"
+            if not metrics.exists():
+                continue
+            by_scale[1.0].append(float(json.load(open(metrics))["completion_rate"]) * 100.0)
     return dict(by_scale)
 
 

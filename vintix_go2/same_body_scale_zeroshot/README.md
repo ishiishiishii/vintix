@@ -104,3 +104,14 @@ python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
 - **密度一定（暫定・8 seeds）:** 0.9× ~98% / 0.8×・1.1× は 0%（崖点）。seed8–9 が残り
 - **図:** `figures/go1_mass_samebody_vs_loo_completion_mean_std_20261119.png` / `figures/go1_size_samebody_vs_loo_completion_mean_std_20261119.png`
 - **次:** 残り 16 完走 → size_density 確定図 → Notion 上部確定 → #21 自動学習
+
+### 2026-11-19 11:12（autopilot change）: Go1 3軸評価完了・#21 学習起動
+
+- **実行内容:** #18 は `done=416 + skipped=54 = 470` で完了（early-stop）。#21 waiter が skipped 未計上で永久待機していたため `wait_and_run.sh` を修正して再起動 → dataset 65 tasks → `train_vintix` 開始（PID 親 1056988 / train 1057017）
+- **質量（同体・10 seeds・確定）:** 0.6–1.0× 高完走（1.0× **91.2±0.7%**）→ 1.1× **61.0±4.6%** → **1.15× 全 0%**。≤0.5× も全 0%
+- **大きさ（10 seeds・確定）:** 0.65–0.9× 高完走 → 1.1× **58.9±2.9%** → **1.15× 全 0%**。0.55× 以下 0%。LOO より崖が内側
+- **密度一定（10 seeds・確定）:** **0.9× 98.2±1.2%** のみ高完走。**0.8×・1.1× は全 0%**（LOO は 0.8× で 91.9%）。帯が最も狭い
+- **考察:** Go1 では「同体学習でスケール帯が広がる」仮説は 3 軸とも不支持。LOO の多様性優位。特に密度一定 0.8× の差が大きい
+- **図:** `figures/go1_{mass,size,size_density}_samebody_vs_loo_completion_mean_std_20261119.png`
+- **次:** #21 学習完了 → Go1 3 軸評価 → 数直線レポート。他台の同体評価は後続
+
