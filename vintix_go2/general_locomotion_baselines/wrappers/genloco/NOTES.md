@@ -23,10 +23,11 @@ Stable-Baselines PPO1 形式。`parameters` NPZ:
 
 ## 接続ステップ
 
-1. ~~次元を zip から確定~~（本 tick・CPU スモーク通過）
-2. Genesis Go2 env から `GenesisToGenlocoObs.step` を呼ぶ評価入口（GPU 空き後）
-3. 公式 PyBullet 再生と比較し、差分を記録
-4. 本線指標（完走・速度追従）へマッピングする評価スクリプト
+1. ~~次元を zip から確定~~（CPU スモーク通過）
+2. ~~評価入口 dry-run~~（`run_genloco_genesis_eval.py --dry_run`）
+3. Genesis Go2 env から `GenesisToGenlocoObs.step` を呼ぶ `--run`（GPU 空き後）
+4. 公式 PyBullet 再生と比較し、差分を記録（`EVAL_PROTOCOL.md`）
+5. 本線指標（完走・速度追従）へマッピングする評価スクリプト
 
 ## ファイル
 
@@ -35,8 +36,10 @@ Stable-Baselines PPO1 形式。`parameters` NPZ:
 | `obs_adapter.py` | Genesis 45 → GenLoco 451（履歴＋位相） |
 | `policy_loader.py` | zip NPZ 次元 assert + 最小 actor |
 | `smoke_cpu_check.py` | GPU 不要スモーク |
+| `run_genloco_genesis_eval.py` | 評価入口（既定 dry-run / `--run` は GPU 待ち） |
 
 ```bash
 cd /workspace/vintix_go2/general_locomotion_baselines
 python wrappers/genloco/smoke_cpu_check.py
+python wrappers/genloco/run_genloco_genesis_eval.py --dry_run
 ```

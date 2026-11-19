@@ -52,6 +52,7 @@ setsid nohup bash same_body_scale_zeroshot/train_missing_models.sh \
   > same_body_scale_zeroshot/logs/train_all.out 2>&1 &
 
 # Go1 同体・3軸 Vintix 評価
+# 早期打ち切り: 完走≈0% の崖より遠い倍率は起動しない（2026-11-19）
 setsid nohup python -u same_body_scale_zeroshot/eval_go1_pipeline.py \
   > same_body_scale_zeroshot/logs/eval_go1.log 2>&1 < /dev/null &
 python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
@@ -87,3 +88,19 @@ python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
 - **#20:** 同体は崖付近のシード分散がほぼゼロ（1.15× 全 0%）。LOO の 1.15–1.25× 大ばらつきは評価ノイズ一般では説明しにくい
 - 図: `figures/go1_mass_samebody_vs_loo_completion_mean_std_20261119.png` / 表 `figures/go1_mass_samebody_vs_loo_table_20261119.md`
 - 次: size / size_density 完走 → 3 軸図・Notion 上部の確定更新 → #21 自動学習
+
+### 2026-11-19 — 早期打ち切り方針をパイプラインに反映
+
+- **実行内容:** ユーザー指示どおり、完走≈0% の崖より遠い倍率をスキップ。`eval_go1_pipeline.py` 更新、`STOP` で旧ランチャ停止
+- **結果:** dry-run で mass 0.5/1.15・size 0.55/1.15・size_density 0.8/1.1 が cliff。skip≈54・残り≈41
+- **次:** 稼働ワーカー完了後に early-stop 版を再起動 → 残り近傍シード消化 → #21
+
+### 2026-11-19 09:04（autopilot change）: 質量 10 シード確定・size 中間・残り 16
+
+- **実行内容:** early-stop 再起動後の進捗を集計（PID 996590）。質量図を 10 シードで更新、size 比較図を新規作成。稼働ジョブには非介入
+- **進捗:** **400/470**（skipped 54・remaining **16**）。cliffs mass 0.5/1.15・size 0.55/1.15・size_density 0.8/1.1。ETA ≈+1.5–2h
+- **質量（同体・10 seeds）:** 0.6–1.0× 高完走（1.0× **91.2±0.7%**）→ 1.1× **61.0±4.6%** → **1.15× 全 0%**。≤0.5× も全 0%（0.55× 17.3±5.0%）
+- **大きさ（暫定・8–10 seeds）:** 0.65–0.9× 高完走 → 1.1× ~59% → **1.15× 全 0%**。0.55× 以下は 0%。LOO より崖が内側（質量と同型）
+- **密度一定（暫定・8 seeds）:** 0.9× ~98% / 0.8×・1.1× は 0%（崖点）。seed8–9 が残り
+- **図:** `figures/go1_mass_samebody_vs_loo_completion_mean_std_20261119.png` / `figures/go1_size_samebody_vs_loo_completion_mean_std_20261119.png`
+- **次:** 残り 16 完走 → size_density 確定図 → Notion 上部確定 → #21 自動学習

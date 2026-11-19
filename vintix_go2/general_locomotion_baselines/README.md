@@ -78,3 +78,9 @@ bash clone_third_party.sh
 - **実行内容:** `wrappers/morfic/run_morfic_genesis_eval.py` を追加。既定は `--dry_run`（Genesis / GPU 非起動）。checkpoint 寸法＋合成 obs→actor を再利用
 - **結果:** dry-run OK（obs 70 / hist 2100 / action 12）。`--run` は #18/#21 解放まで明示拒否
 - **次:** GPU 空き後に `--run` 本体（Go2 Env 接続）と公式 play 差分
+
+### 2026-11-19 09:04（autopilot）: GenLoco 評価入口 dry-run + 公式評価手順書
+
+- **実行内容:** `wrappers/genloco/run_genloco_genesis_eval.py`（`--dry_run` 既定）と `EVAL_PROTOCOL.md`（MorFiC/GenLoco/URMA の公式入口・本線指標対応）を追加。#18 GPU には非介入
+- **結果:** GenLoco dry-run OK（obs 451 → action 12）。`--run` は明示拒否のまま
+- **次:** GPU 空き後に MorFiC/GenLoco `--run`。URMA は RL-X 待ち
