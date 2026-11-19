@@ -21,10 +21,10 @@ Genesis 側は速度コマンド 3 のみ → 残り gait コマンドは 0 埋�
 
 ## 接続ステップ
 
-1. ~~次元を checkpoint から確定~~（本 tick で完了・CPU スモーク通過）
-2. Genesis Go2 env から `GenesisToMorficObs.step` を呼ぶ評価入口（GPU 空き後）
-3. 公式 `scripts/play.py`（Isaac Gym）での holdout 再生と比較し、差分を記録
-4. 本線指標（完走・速度追従）で `run_morfic_genesis_eval.py` を用意
+1. ~~次元を checkpoint から確定~~（CPU スモーク通過）
+2. ~~評価入口の dry-run 骨格~~（`run_morfic_genesis_eval.py`・Genesis 非起動）
+3. Genesis Go2 env から `GenesisToMorficObs.step` を呼ぶ `--run`（GPU 空き後）
+4. 公式 `scripts/play.py`（Isaac Gym）での holdout 再生と比較し、差分を記録
 
 ## ファイル
 
@@ -34,8 +34,10 @@ Genesis 側は速度コマンド 3 のみ → 残り gait コマンドは 0 埋�
 | `obs_adapter.py` | Genesis 45 → MorFiC 70 + history |
 | `policy_loader.py` | checkpoint 次元 assert + 最小 actor パス |
 | `smoke_cpu_check.py` | GPU 不要スモーク |
+| `run_morfic_genesis_eval.py` | 評価入口（既定 dry-run。`--run` は GPU 待ち） |
 
 ```bash
 cd /workspace/vintix_go2/general_locomotion_baselines
 python wrappers/morfic/smoke_cpu_check.py
+python wrappers/morfic/run_morfic_genesis_eval.py --dry_run
 ```

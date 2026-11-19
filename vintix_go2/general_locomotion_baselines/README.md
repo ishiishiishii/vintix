@@ -72,3 +72,9 @@ bash clone_third_party.sh
 - **実行内容:** GenLoco pretrained zip から入力 **451**・MLP 451→1024→512→12 を確定し `wrappers/genloco/` を追加。URMA は Go2 観測内訳（desc23/10 → 合計 **380**）をコードから算出し `wrappers/urma/` を追加（actor は RL-X 依存のため deferred）
 - **結果:** `smoke_cpu_check.py` 両手法 OK。pace/spin/inverse 3 zip とも入力 451。URMA ckpt magic 確認
 - **次:** 低 GPU の配線骨格は一通り完了。Genesis 評価入口と公式再生比較は #18→#21 GPU 空き後。#16 立位レンダも同タイミング
+
+### 2026-11-19 — MorFiC Genesis 評価入口の dry-run 骨格（#22）
+
+- **実行内容:** `wrappers/morfic/run_morfic_genesis_eval.py` を追加。既定は `--dry_run`（Genesis / GPU 非起動）。checkpoint 寸法＋合成 obs→actor を再利用
+- **結果:** dry-run OK（obs 70 / hist 2100 / action 12）。`--run` は #18/#21 解放まで明示拒否
+- **次:** GPU 空き後に `--run` 本体（Go2 Env 接続）と公式 play 差分

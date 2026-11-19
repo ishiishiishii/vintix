@@ -24,6 +24,7 @@ python wrappers/urma/smoke_cpu_check.py
 ```
 
 Genesis Env 接続・pretrained 長時間再生は #18 GPU 空き後。
+MorFiC 評価入口の骨格: `python wrappers/morfic/run_morfic_genesis_eval.py --dry_run`（GPU 非使用）。
 
 ## 制約
 
