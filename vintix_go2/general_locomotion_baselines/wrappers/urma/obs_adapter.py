@@ -5,28 +5,54 @@ per-foot description (10) + contact features (2), then trunk/goal/gravity/
 height/context (20). Multi-robot training pads to the max over robot types;
 standalone Go2 is **380** (no padding).
 
-Description / contact / height are *placeholders* here (zeros or nominal
-constants). Full fidelity needs MuJoCo kinematics + URMA DR state
-(see NOTES.md). Purpose: wiring / shape tests without RL-X.
+Joint **mass** and **joint_range** are filled from
+`go2_urdf_description_fields.json` when present. Other description slots
+(rel_pos, PD, torque, …) and contact / height remain placeholders until
+MuJoCo / Env-side values are available (see NOTES.md).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
+from pathlib import Path
 
 import torch
 
 from .joint_description import (
     FOOT_DESCRIPTION_SIZE,
+    FOOT_DESC_LAYOUT,
     GENERAL_OBS_SIZE,
     GO2_ACTION_DIM,
     GO2_NUM_FEET,
     GO2_NUM_JOINTS,
     GO2_OBS_DIM,
+    JOINT_DESC_LAYOUT,
     JOINT_DESCRIPTION_SIZE,
     SINGLE_FOOT_OBS,
     SINGLE_JOINT_OBS,
 )
+
+_FIELDS_JSON = Path(__file__).resolve().parent / "go2_urdf_description_fields.json"
+
+# Slot offsets inside the 23-dim joint description
+_JOINT_SLOT_OFFSET: dict[str, int] = {}
+_off = 0
+for _name, _n in JOINT_DESC_LAYOUT:
+    _JOINT_SLOT_OFFSET[_name] = _off
+    _off += _n
+
+_FOOT_SLOT_OFFSET: dict[str, int] = {}
+_off = 0
+for _name, _n in FOOT_DESC_LAYOUT:
+    _FOOT_SLOT_OFFSET[_name] = _off
+    _off += _n
+
+
+def _load_urdf_fields(path: Path = _FIELDS_JSON) -> dict:
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text())
 
 GENESIS_SLICES = {
     "ang_vel": slice(0, 3),
@@ -52,12 +78,38 @@ class GenesisToUrmaGo2Obs:
     robot_width: float = 0.3
     robot_height: float = 0.4
     standing_height: float = 0.3
+    urdf_fields_path: Path | None = None
+    # Filled in __post_init__ from JSON when available.
+    _joint_mass: list[float] = field(default_factory=list, repr=False)
+    _joint_range: list[tuple[float, float]] = field(default_factory=list, repr=False)
+    _foot_mass: list[float] = field(default_factory=list, repr=False)
+    _urdf_fields_loaded: bool = field(default=False, repr=False)
 
     def __post_init__(self):
         self.device = torch.device(self.device)
         self._prev_action = torch.zeros(
             self.batch_size, GO2_ACTION_DIM, device=self.device, dtype=self.dtype
         )
+        path = Path(self.urdf_fields_path) if self.urdf_fields_path else _FIELDS_JSON
+        data = _load_urdf_fields(path)
+        if not data:
+            return
+        self._urdf_fields_loaded = True
+        if "total_mass_kg" in data:
+            self.mass_kg = float(data["total_mass_kg"])
+        joints = data.get("joints") or []
+        self._joint_mass = [float(j.get("mass_kg", 0.0)) for j in joints[:GO2_NUM_JOINTS]]
+        self._joint_range = [
+            tuple(j.get("joint_range") or (0.0, 0.0)) for j in joints[:GO2_NUM_JOINTS]
+        ]
+        # Pad if JSON is short
+        while len(self._joint_mass) < GO2_NUM_JOINTS:
+            self._joint_mass.append(0.0)
+            self._joint_range.append((0.0, 0.0))
+        feet = data.get("feet") or []
+        self._foot_mass = [float(f.get("mass_kg", 0.0)) for f in feet[:GO2_NUM_FEET]]
+        while len(self._foot_mass) < GO2_NUM_FEET:
+            self._foot_mass.append(0.0)
 
     def reset(self, batch_idx: slice | None = None):
         if batch_idx is None:
@@ -91,15 +143,31 @@ class GenesisToUrmaGo2Obs:
         return ctx.unsqueeze(0).expand(b, -1)
 
     def _joint_desc_placeholder(self, b: int) -> torch.Tensor:
-        # Zeros keep shape; real vectors need MuJoCo trunk-relative kinematics.
-        return torch.zeros(
+        # Mostly zeros; fill mass + joint_range from URDF JSON when loaded.
+        desc = torch.zeros(
             b, GO2_NUM_JOINTS, JOINT_DESCRIPTION_SIZE, device=self.device, dtype=self.dtype
         )
+        if not self._urdf_fields_loaded:
+            return desc
+        mass_i = _JOINT_SLOT_OFFSET["mass"]
+        range_i = _JOINT_SLOT_OFFSET["joint_range"]
+        for j in range(GO2_NUM_JOINTS):
+            lo, hi = self._joint_range[j]
+            desc[:, j, range_i] = float(lo)
+            desc[:, j, range_i + 1] = float(hi)
+            desc[:, j, mass_i] = float(self._joint_mass[j])
+        return desc
 
     def _foot_desc_placeholder(self, b: int) -> torch.Tensor:
-        return torch.zeros(
+        desc = torch.zeros(
             b, GO2_NUM_FEET, FOOT_DESCRIPTION_SIZE, device=self.device, dtype=self.dtype
         )
+        if not self._urdf_fields_loaded or not self._foot_mass:
+            return desc
+        mass_i = _FOOT_SLOT_OFFSET["mass"]
+        for f in range(GO2_NUM_FEET):
+            desc[:, f, mass_i] = float(self._foot_mass[f])
+        return desc
 
     def step(self, genesis_obs: torch.Tensor) -> dict[str, torch.Tensor]:
         if genesis_obs.ndim != 2 or genesis_obs.shape[-1] != 45:

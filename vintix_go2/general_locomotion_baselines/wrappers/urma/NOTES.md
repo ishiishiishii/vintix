@@ -22,11 +22,13 @@
 
 ## 接続ステップ
 
-1. ~~Go2 観測寸法をコードから確定・CPU スモーク~~（本 tick）
+1. ~~Go2 観測寸法をコードから確定・CPU スモーク~~
 2. ~~URDF から取れる subset（mass / joint_range）を抽出~~ → `extract_go2_urdf_fields.py` /
-   `go2_urdf_description_fields.json`（total ≈15.0 kg）。rel_pos / PD / torque 等は MuJoCo 待ち
-3. GPU 空き後: 公式 `experiments/test.sh` で pretrained 再生、または RL-X を pin して actor を読む
-4. Genesis 評価入口は description が揃ってから
+   `go2_urdf_description_fields.json`（total ≈15.0 kg）
+3. ~~`obs_adapter` に mass / joint_range / context mass を注入~~（2026-11-20）。
+   rel_pos / PD / torque / 接触等は MuJoCo 待ち
+4. GPU 空き後: 公式 `experiments/test.sh` で pretrained 再生、または RL-X を pin して actor を読む
+5. Genesis 評価入口は description が揃ってから
 
 ## ファイル
 
