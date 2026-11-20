@@ -1,0 +1,382 @@
+{
+  "urdf": "/workspace/Genesis/genesis/assets/urdf/go2/urdf/go2.urdf",
+  "total_mass_kg": 15.018999999999997,
+  "n_links_with_mass": 21,
+  "note": "Subset of URMA description; rel_pos/axis/PD/torque etc. still need MuJoCo or Env-side values. Use to replace placeholder mass/range in obs_adapter.",
+  "joints": [
+    {
+      "joint": "FR_hip_joint",
+      "child_link": "FR_hip",
+      "mass_kg": 0.678,
+      "joint_range": [
+        -1.0472,
+        1.0472
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "FR_thigh_joint",
+      "child_link": "FR_thigh",
+      "mass_kg": 1.152,
+      "joint_range": [
+        -1.5708,
+        3.4907
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "FR_calf_joint",
+      "child_link": "FR_calf",
+      "mass_kg": 0.154,
+      "joint_range": [
+        -2.7227,
+        -0.83776
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "FL_hip_joint",
+      "child_link": "FL_hip",
+      "mass_kg": 0.678,
+      "joint_range": [
+        -1.0472,
+        1.0472
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "FL_thigh_joint",
+      "child_link": "FL_thigh",
+      "mass_kg": 1.152,
+      "joint_range": [
+        -1.5708,
+        3.4907
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "FL_calf_joint",
+      "child_link": "FL_calf",
+      "mass_kg": 0.154,
+      "joint_range": [
+        -2.7227,
+        -0.83776
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RR_hip_joint",
+      "child_link": "RR_hip",
+      "mass_kg": 0.678,
+      "joint_range": [
+        -1.0472,
+        1.0472
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RR_thigh_joint",
+      "child_link": "RR_thigh",
+      "mass_kg": 1.152,
+      "joint_range": [
+        -0.5236,
+        4.5379
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RR_calf_joint",
+      "child_link": "RR_calf",
+      "mass_kg": 0.154,
+      "joint_range": [
+        -2.7227,
+        -0.83776
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RL_hip_joint",
+      "child_link": "RL_hip",
+      "mass_kg": 0.678,
+      "joint_range": [
+        -1.0472,
+        1.0472
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RL_thigh_joint",
+      "child_link": "RL_thigh",
+      "mass_kg": 1.152,
+      "joint_range": [
+        -0.5236,
+        4.5379
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "joint": "RL_calf_joint",
+      "child_link": "RL_calf",
+      "mass_kg": 0.154,
+      "joint_range": [
+        -2.7227,
+        -0.83776
+      ],
+      "urdf_fillable_slots": [
+        "joint_range",
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "rel_axis",
+        "nr_direct_child",
+        "nominal_pos",
+        "torque_limit",
+        "joint_velocity_limit",
+        "damping",
+        "armature",
+        "stiffness",
+        "frictionloss",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    }
+  ],
+  "feet": [
+    {
+      "foot_link": "FR_foot",
+      "mass_kg": 0.04,
+      "urdf_fillable_slots": [
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "foot_link": "FL_foot",
+      "mass_kg": 0.04,
+      "urdf_fillable_slots": [
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "foot_link": "RR_foot",
+      "mass_kg": 0.04,
+      "urdf_fillable_slots": [
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    },
+    {
+      "foot_link": "RL_foot",
+      "mass_kg": 0.04,
+      "urdf_fillable_slots": [
+        "mass"
+      ],
+      "still_need_mujoco_slots": [
+        "rel_pos_norm",
+        "pd_and_scale",
+        "robot_dimensions"
+      ]
+    }
+  ]
+}

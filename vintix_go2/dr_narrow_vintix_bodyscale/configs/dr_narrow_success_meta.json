@@ -1,0 +1,528 @@
+{
+  "reward_min": 15.0,
+  "n_total": 100,
+  "n_success": 65,
+  "group": "quadruped_locomotion",
+  "robots": [
+    {
+      "robot_id": "dr_narrow_seed001",
+      "reward_last": 20.000524520874023,
+      "total_mass_kg": 12.191763844000002,
+      "leg_length_m": 0.205978,
+      "alpha": 0.9668088018810296,
+      "path": "dr_narrow_success/dr_narrow_seed001"
+    },
+    {
+      "robot_id": "dr_narrow_seed002",
+      "reward_last": 17.91153907775879,
+      "total_mass_kg": 12.35747564,
+      "leg_length_m": 0.435708,
+      "alpha": 0.9743979608568015,
+      "path": "dr_narrow_success/dr_narrow_seed002"
+    },
+    {
+      "robot_id": "dr_narrow_seed003",
+      "reward_last": 19.424671173095703,
+      "total_mass_kg": 11.6449827,
+      "leg_length_m": 0.343772,
+      "alpha": 1.0203191610298301,
+      "path": "dr_narrow_success/dr_narrow_seed003"
+    },
+    {
+      "robot_id": "dr_narrow_seed005",
+      "reward_last": 18.794219970703125,
+      "total_mass_kg": 17.41521556,
+      "leg_length_m": 0.267584,
+      "alpha": 0.8887972684358958,
+      "path": "dr_narrow_success/dr_narrow_seed005"
+    },
+    {
+      "robot_id": "dr_narrow_seed007",
+      "reward_last": 19.597702026367188,
+      "total_mass_kg": 15.029084859999998,
+      "leg_length_m": 0.332012,
+      "alpha": 0.8305233157495829,
+      "path": "dr_narrow_success/dr_narrow_seed007"
+    },
+    {
+      "robot_id": "dr_narrow_seed009",
+      "reward_last": 19.022253036499023,
+      "total_mass_kg": 14.284648299999995,
+      "leg_length_m": 0.34112,
+      "alpha": 0.80414966155428,
+      "path": "dr_narrow_success/dr_narrow_seed009"
+    },
+    {
+      "robot_id": "dr_narrow_seed011",
+      "reward_last": 19.122896194458008,
+      "total_mass_kg": 10.628476180000003,
+      "leg_length_m": 0.357852,
+      "alpha": 0.8721078755507077,
+      "path": "dr_narrow_success/dr_narrow_seed011"
+    },
+    {
+      "robot_id": "dr_narrow_seed012",
+      "reward_last": 18.676315307617188,
+      "total_mass_kg": 18.630000659999997,
+      "leg_length_m": 0.28019,
+      "alpha": 0.861665136951869,
+      "path": "dr_narrow_success/dr_narrow_seed012"
+    },
+    {
+      "robot_id": "dr_narrow_seed015",
+      "reward_last": 19.01095962524414,
+      "total_mass_kg": 13.2700578,
+      "leg_length_m": 0.26911,
+      "alpha": 1.1395270789074314,
+      "path": "dr_narrow_success/dr_narrow_seed015"
+    },
+    {
+      "robot_id": "dr_narrow_seed016",
+      "reward_last": 18.364683151245117,
+      "total_mass_kg": 16.719695400000006,
+      "leg_length_m": 0.398056,
+      "alpha": 0.8893164316614156,
+      "path": "dr_narrow_success/dr_narrow_seed016"
+    },
+    {
+      "robot_id": "dr_narrow_seed017",
+      "reward_last": 19.226486206054688,
+      "total_mass_kg": 16.258266600000002,
+      "leg_length_m": 0.270392,
+      "alpha": 0.917866001074844,
+      "path": "dr_narrow_success/dr_narrow_seed017"
+    },
+    {
+      "robot_id": "dr_narrow_seed019",
+      "reward_last": 18.569316864013672,
+      "total_mass_kg": 16.568766819999997,
+      "leg_length_m": 0.26697,
+      "alpha": 0.8390134406997807,
+      "path": "dr_narrow_success/dr_narrow_seed019"
+    },
+    {
+      "robot_id": "dr_narrow_seed021",
+      "reward_last": 17.948436737060547,
+      "total_mass_kg": 13.237185360000002,
+      "leg_length_m": 0.426242,
+      "alpha": 0.819489952323651,
+      "path": "dr_narrow_success/dr_narrow_seed021"
+    },
+    {
+      "robot_id": "dr_narrow_seed022",
+      "reward_last": 18.30039405822754,
+      "total_mass_kg": 12.951171960000002,
+      "leg_length_m": 0.346418,
+      "alpha": 0.883384214943537,
+      "path": "dr_narrow_success/dr_narrow_seed022"
+    },
+    {
+      "robot_id": "dr_narrow_seed023",
+      "reward_last": 17.62784194946289,
+      "total_mass_kg": 12.019442373999997,
+      "leg_length_m": 0.542816,
+      "alpha": 1.0069191535386357,
+      "path": "dr_narrow_success/dr_narrow_seed023"
+    },
+    {
+      "robot_id": "dr_narrow_seed025",
+      "reward_last": 18.891708374023438,
+      "total_mass_kg": 16.685837836,
+      "leg_length_m": 0.380906,
+      "alpha": 1.1480496546508847,
+      "path": "dr_narrow_success/dr_narrow_seed025"
+    },
+    {
+      "robot_id": "dr_narrow_seed026",
+      "reward_last": 17.855253219604492,
+      "total_mass_kg": 12.941916239999998,
+      "leg_length_m": 0.498786,
+      "alpha": 0.9231739810499884,
+      "path": "dr_narrow_success/dr_narrow_seed026"
+    },
+    {
+      "robot_id": "dr_narrow_seed027",
+      "reward_last": 17.80722427368164,
+      "total_mass_kg": 18.56224594,
+      "leg_length_m": 0.510642,
+      "alpha": 0.9702885642075583,
+      "path": "dr_narrow_success/dr_narrow_seed027"
+    },
+    {
+      "robot_id": "dr_narrow_seed028",
+      "reward_last": 18.997285842895508,
+      "total_mass_kg": 12.159622359999998,
+      "leg_length_m": 0.290624,
+      "alpha": 1.0916054969156477,
+      "path": "dr_narrow_success/dr_narrow_seed028"
+    },
+    {
+      "robot_id": "dr_narrow_seed029",
+      "reward_last": 18.856115341186523,
+      "total_mass_kg": 17.06130546,
+      "leg_length_m": 0.27974,
+      "alpha": 1.1455039942280332,
+      "path": "dr_narrow_success/dr_narrow_seed029"
+    },
+    {
+      "robot_id": "dr_narrow_seed033",
+      "reward_last": 18.93699836730957,
+      "total_mass_kg": 10.690454804,
+      "leg_length_m": 0.349024,
+      "alpha": 0.899404050975092,
+      "path": "dr_narrow_success/dr_narrow_seed033"
+    },
+    {
+      "robot_id": "dr_narrow_seed034",
+      "reward_last": 19.55291175842285,
+      "total_mass_kg": 14.357337439999998,
+      "leg_length_m": 0.205888,
+      "alpha": 0.8154246723525639,
+      "path": "dr_narrow_success/dr_narrow_seed034"
+    },
+    {
+      "robot_id": "dr_narrow_seed035",
+      "reward_last": 18.711944580078125,
+      "total_mass_kg": 16.158388580000004,
+      "leg_length_m": 0.306386,
+      "alpha": 0.9832219792896362,
+      "path": "dr_narrow_success/dr_narrow_seed035"
+    },
+    {
+      "robot_id": "dr_narrow_seed037",
+      "reward_last": 18.50372314453125,
+      "total_mass_kg": 11.44540979,
+      "leg_length_m": 0.347604,
+      "alpha": 1.1777986411429227,
+      "path": "dr_narrow_success/dr_narrow_seed037"
+    },
+    {
+      "robot_id": "dr_narrow_seed038",
+      "reward_last": 16.463953018188477,
+      "total_mass_kg": 12.316743299999999,
+      "leg_length_m": 0.586872,
+      "alpha": 0.9539092478066975,
+      "path": "dr_narrow_success/dr_narrow_seed038"
+    },
+    {
+      "robot_id": "dr_narrow_seed041",
+      "reward_last": 17.716079711914062,
+      "total_mass_kg": 12.233836400000001,
+      "leg_length_m": 0.451376,
+      "alpha": 0.900369449497976,
+      "path": "dr_narrow_success/dr_narrow_seed041"
+    },
+    {
+      "robot_id": "dr_narrow_seed042",
+      "reward_last": 17.9483585357666,
+      "total_mass_kg": 11.036718035999998,
+      "leg_length_m": 0.498492,
+      "alpha": 0.949816047538945,
+      "path": "dr_narrow_success/dr_narrow_seed042"
+    },
+    {
+      "robot_id": "dr_narrow_seed043",
+      "reward_last": 19.559234619140625,
+      "total_mass_kg": 16.515706319999996,
+      "leg_length_m": 0.228278,
+      "alpha": 0.8460218265559116,
+      "path": "dr_narrow_success/dr_narrow_seed043"
+    },
+    {
+      "robot_id": "dr_narrow_seed045",
+      "reward_last": 18.108518600463867,
+      "total_mass_kg": 10.950553361999999,
+      "leg_length_m": 0.398012,
+      "alpha": 1.19560460539024,
+      "path": "dr_narrow_success/dr_narrow_seed045"
+    },
+    {
+      "robot_id": "dr_narrow_seed046",
+      "reward_last": 18.7662410736084,
+      "total_mass_kg": 10.899566752000002,
+      "leg_length_m": 0.35532,
+      "alpha": 1.1135329403223002,
+      "path": "dr_narrow_success/dr_narrow_seed046"
+    },
+    {
+      "robot_id": "dr_narrow_seed047",
+      "reward_last": 18.288867950439453,
+      "total_mass_kg": 16.33070774,
+      "leg_length_m": 0.442514,
+      "alpha": 0.8453953887574599,
+      "path": "dr_narrow_success/dr_narrow_seed047"
+    },
+    {
+      "robot_id": "dr_narrow_seed048",
+      "reward_last": 18.878633499145508,
+      "total_mass_kg": 18.30558168,
+      "leg_length_m": 0.26982,
+      "alpha": 0.806996108372461,
+      "path": "dr_narrow_success/dr_narrow_seed048"
+    },
+    {
+      "robot_id": "dr_narrow_seed050",
+      "reward_last": 19.56336212158203,
+      "total_mass_kg": 14.19173004,
+      "leg_length_m": 0.321136,
+      "alpha": 0.9978406582152086,
+      "path": "dr_narrow_success/dr_narrow_seed050"
+    },
+    {
+      "robot_id": "dr_narrow_seed051",
+      "reward_last": 19.311643600463867,
+      "total_mass_kg": 11.93414414,
+      "leg_length_m": 0.3845,
+      "alpha": 1.0702925662014209,
+      "path": "dr_narrow_success/dr_narrow_seed051"
+    },
+    {
+      "robot_id": "dr_narrow_seed052",
+      "reward_last": 19.284622192382812,
+      "total_mass_kg": 10.99891646,
+      "leg_length_m": 0.341922,
+      "alpha": 1.1292441362839167,
+      "path": "dr_narrow_success/dr_narrow_seed052"
+    },
+    {
+      "robot_id": "dr_narrow_seed054",
+      "reward_last": 19.1784725189209,
+      "total_mass_kg": 17.73485012,
+      "leg_length_m": 0.282442,
+      "alpha": 0.9680731868563095,
+      "path": "dr_narrow_success/dr_narrow_seed054"
+    },
+    {
+      "robot_id": "dr_narrow_seed055",
+      "reward_last": 18.34624481201172,
+      "total_mass_kg": 18.2868108,
+      "leg_length_m": 0.35091,
+      "alpha": 0.8372433146687432,
+      "path": "dr_narrow_success/dr_narrow_seed055"
+    },
+    {
+      "robot_id": "dr_narrow_seed057",
+      "reward_last": 19.159204483032227,
+      "total_mass_kg": 17.78639384,
+      "leg_length_m": 0.32405,
+      "alpha": 0.83493985716087,
+      "path": "dr_narrow_success/dr_narrow_seed057"
+    },
+    {
+      "robot_id": "dr_narrow_seed058",
+      "reward_last": 18.699962615966797,
+      "total_mass_kg": 13.296045880000005,
+      "leg_length_m": 0.401426,
+      "alpha": 0.9460422332090775,
+      "path": "dr_narrow_success/dr_narrow_seed058"
+    },
+    {
+      "robot_id": "dr_narrow_seed060",
+      "reward_last": 17.87459373474121,
+      "total_mass_kg": 13.932357439999999,
+      "leg_length_m": 0.322744,
+      "alpha": 0.9203493320186475,
+      "path": "dr_narrow_success/dr_narrow_seed060"
+    },
+    {
+      "robot_id": "dr_narrow_seed063",
+      "reward_last": 20.416824340820312,
+      "total_mass_kg": 12.821000939999998,
+      "leg_length_m": 0.23854,
+      "alpha": 1.0215764090002346,
+      "path": "dr_narrow_success/dr_narrow_seed063"
+    },
+    {
+      "robot_id": "dr_narrow_seed065",
+      "reward_last": 19.531978607177734,
+      "total_mass_kg": 16.815091380000002,
+      "leg_length_m": 0.297578,
+      "alpha": 0.8874580200588824,
+      "path": "dr_narrow_success/dr_narrow_seed065"
+    },
+    {
+      "robot_id": "dr_narrow_seed066",
+      "reward_last": 19.2528133392334,
+      "total_mass_kg": 17.347694960000002,
+      "leg_length_m": 0.316684,
+      "alpha": 0.8617150312525104,
+      "path": "dr_narrow_success/dr_narrow_seed066"
+    },
+    {
+      "robot_id": "dr_narrow_seed067",
+      "reward_last": 17.646499633789062,
+      "total_mass_kg": 12.434098524000003,
+      "leg_length_m": 0.514456,
+      "alpha": 1.0183405719739915,
+      "path": "dr_narrow_success/dr_narrow_seed067"
+    },
+    {
+      "robot_id": "dr_narrow_seed068",
+      "reward_last": 15.837636947631836,
+      "total_mass_kg": 17.7877899,
+      "leg_length_m": 0.416578,
+      "alpha": 0.9037485879793774,
+      "path": "dr_narrow_success/dr_narrow_seed068"
+    },
+    {
+      "robot_id": "dr_narrow_seed069",
+      "reward_last": 18.765361785888672,
+      "total_mass_kg": 11.459292535999998,
+      "leg_length_m": 0.332688,
+      "alpha": 0.9184996646689735,
+      "path": "dr_narrow_success/dr_narrow_seed069"
+    },
+    {
+      "robot_id": "dr_narrow_seed072",
+      "reward_last": 17.780338287353516,
+      "total_mass_kg": 16.96612378,
+      "leg_length_m": 0.37154,
+      "alpha": 0.8426952809021243,
+      "path": "dr_narrow_success/dr_narrow_seed072"
+    },
+    {
+      "robot_id": "dr_narrow_seed073",
+      "reward_last": 17.396034240722656,
+      "total_mass_kg": 12.711895570000005,
+      "leg_length_m": 0.455672,
+      "alpha": 1.0570759663144316,
+      "path": "dr_narrow_success/dr_narrow_seed073"
+    },
+    {
+      "robot_id": "dr_narrow_seed074",
+      "reward_last": 17.955270767211914,
+      "total_mass_kg": 16.94234722,
+      "leg_length_m": 0.510548,
+      "alpha": 0.8808809173720966,
+      "path": "dr_narrow_success/dr_narrow_seed074"
+    },
+    {
+      "robot_id": "dr_narrow_seed076",
+      "reward_last": 18.995439529418945,
+      "total_mass_kg": 18.308596759999997,
+      "leg_length_m": 0.328696,
+      "alpha": 0.9243319199025422,
+      "path": "dr_narrow_success/dr_narrow_seed076"
+    },
+    {
+      "robot_id": "dr_narrow_seed078",
+      "reward_last": 18.08694076538086,
+      "total_mass_kg": 18.00386144,
+      "leg_length_m": 0.453258,
+      "alpha": 0.8192724910000951,
+      "path": "dr_narrow_success/dr_narrow_seed078"
+    },
+    {
+      "robot_id": "dr_narrow_seed080",
+      "reward_last": 17.683284759521484,
+      "total_mass_kg": 12.420605559999997,
+      "leg_length_m": 0.33084,
+      "alpha": 1.008766286600102,
+      "path": "dr_narrow_success/dr_narrow_seed080"
+    },
+    {
+      "robot_id": "dr_narrow_seed082",
+      "reward_last": 18.906049728393555,
+      "total_mass_kg": 19.50157726,
+      "leg_length_m": 0.435734,
+      "alpha": 0.910090267920535,
+      "path": "dr_narrow_success/dr_narrow_seed082"
+    },
+    {
+      "robot_id": "dr_narrow_seed083",
+      "reward_last": 18.402109146118164,
+      "total_mass_kg": 13.998337740000006,
+      "leg_length_m": 0.447536,
+      "alpha": 0.902816970842056,
+      "path": "dr_narrow_success/dr_narrow_seed083"
+    },
+    {
+      "robot_id": "dr_narrow_seed084",
+      "reward_last": 18.484786987304688,
+      "total_mass_kg": 12.07758538,
+      "leg_length_m": 0.258806,
+      "alpha": 0.8184163974525942,
+      "path": "dr_narrow_success/dr_narrow_seed084"
+    },
+    {
+      "robot_id": "dr_narrow_seed085",
+      "reward_last": 18.434120178222656,
+      "total_mass_kg": 13.876789679999995,
+      "leg_length_m": 0.356426,
+      "alpha": 1.0481495258213025,
+      "path": "dr_narrow_success/dr_narrow_seed085"
+    },
+    {
+      "robot_id": "dr_narrow_seed086",
+      "reward_last": 19.372955322265625,
+      "total_mass_kg": 15.822971200000003,
+      "leg_length_m": 0.24495,
+      "alpha": 0.8810427814515562,
+      "path": "dr_narrow_success/dr_narrow_seed086"
+    },
+    {
+      "robot_id": "dr_narrow_seed089",
+      "reward_last": 18.55228614807129,
+      "total_mass_kg": 11.888390727999997,
+      "leg_length_m": 0.322912,
+      "alpha": 0.9998777281875336,
+      "path": "dr_narrow_success/dr_narrow_seed089"
+    },
+    {
+      "robot_id": "dr_narrow_seed090",
+      "reward_last": 18.045989990234375,
+      "total_mass_kg": 13.523587139999998,
+      "leg_length_m": 0.544998,
+      "alpha": 0.8612216795064588,
+      "path": "dr_narrow_success/dr_narrow_seed090"
+    },
+    {
+      "robot_id": "dr_narrow_seed091",
+      "reward_last": 19.00188446044922,
+      "total_mass_kg": 16.391994640000004,
+      "leg_length_m": 0.298728,
+      "alpha": 0.8804014384471897,
+      "path": "dr_narrow_success/dr_narrow_seed091"
+    },
+    {
+      "robot_id": "dr_narrow_seed092",
+      "reward_last": 18.530487060546875,
+      "total_mass_kg": 13.697246779999997,
+      "leg_length_m": 0.454738,
+      "alpha": 1.1543521997750503,
+      "path": "dr_narrow_success/dr_narrow_seed092"
+    },
+    {
+      "robot_id": "dr_narrow_seed093",
+      "reward_last": 18.848804473876953,
+      "total_mass_kg": 19.519088600000003,
+      "leg_length_m": 0.358514,
+      "alpha": 1.0425417351105901,
+      "path": "dr_narrow_success/dr_narrow_seed093"
+    },
+    {
+      "robot_id": "dr_narrow_seed096",
+      "reward_last": 17.552339553833008,
+      "total_mass_kg": 11.345960997999997,
+      "leg_length_m": 0.497102,
+      "alpha": 0.8858747556067307,
+      "path": "dr_narrow_success/dr_narrow_seed096"
+    },
+    {
+      "robot_id": "dr_narrow_seed098",
+      "reward_last": 19.379934310913086,
+      "total_mass_kg": 14.014775765999994,
+      "leg_length_m": 0.373032,
+      "alpha": 1.0929068992275408,
+      "path": "dr_narrow_success/dr_narrow_seed098"
+    },
+    {
+      "robot_id": "dr_narrow_seed100",
+      "reward_last": 18.53322982788086,
+      "total_mass_kg": 16.557689640000003,
+      "leg_length_m": 0.400682,
+      "alpha": 1.0173619767163862,
+      "path": "dr_narrow_success/dr_narrow_seed100"
+    }
+  ]
+}

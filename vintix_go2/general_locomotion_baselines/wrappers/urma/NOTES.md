@@ -23,7 +23,8 @@
 ## 接続ステップ
 
 1. ~~Go2 観測寸法をコードから確定・CPU スモーク~~（本 tick）
-2. MuJoCo／URDF から本物の description ベクトルを生成（#16 機体整備と共有可）
+2. ~~URDF から取れる subset（mass / joint_range）を抽出~~ → `extract_go2_urdf_fields.py` /
+   `go2_urdf_description_fields.json`（total ≈15.0 kg）。rel_pos / PD / torque 等は MuJoCo 待ち
 3. GPU 空き後: 公式 `experiments/test.sh` で pretrained 再生、または RL-X を pin して actor を読む
 4. Genesis 評価入口は description が揃ってから
 

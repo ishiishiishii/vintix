@@ -1,0 +1,143 @@
+{
+  "robots": [
+    {
+      "robot": "aliengo",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/aliengo/urdf/aliengo.urdf",
+      "joint_names": [
+        "FR_hip_joint",
+        "FR_thigh_joint",
+        "FR_calf_joint",
+        "FL_hip_joint",
+        "FL_thigh_joint",
+        "FL_calf_joint",
+        "RR_hip_joint",
+        "RR_thigh_joint",
+        "RR_calf_joint",
+        "RL_hip_joint",
+        "RL_thigh_joint",
+        "RL_calf_joint"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": false,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/aliengo_standing.png"
+    },
+    {
+      "robot": "b1",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/b1/xacro/b1.urdf",
+      "joint_names": [
+        "FR_hip_joint",
+        "FR_thigh_joint",
+        "FR_calf_joint",
+        "FL_hip_joint",
+        "FL_thigh_joint",
+        "FL_calf_joint",
+        "RR_hip_joint",
+        "RR_thigh_joint",
+        "RR_calf_joint",
+        "RL_hip_joint",
+        "RL_thigh_joint",
+        "RL_calf_joint"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": false,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/b1_standing.png"
+    },
+    {
+      "robot": "anymalb",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/anymal_b/urdf/anymal.urdf",
+      "joint_names": [
+        "LF_HAA",
+        "LF_HFE",
+        "LF_KFE",
+        "RF_HAA",
+        "RF_HFE",
+        "RF_KFE",
+        "LH_HAA",
+        "LH_HFE",
+        "LH_KFE",
+        "RH_HAA",
+        "RH_HFE",
+        "RH_KFE"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": true,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/anymalb_standing.png"
+    },
+    {
+      "robot": "anymalc",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/anymal_c/urdf/anymal_c.urdf",
+      "joint_names": [
+        "LF_HAA",
+        "LF_HFE",
+        "LF_KFE",
+        "RF_HAA",
+        "RF_HFE",
+        "RF_KFE",
+        "LH_HAA",
+        "LH_HFE",
+        "LH_KFE",
+        "RH_HAA",
+        "RH_HFE",
+        "RH_KFE"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": true,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/anymalc_standing.png"
+    },
+    {
+      "robot": "spot",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/spot/urdf/spot_simple.urdf",
+      "joint_names": [
+        "fl_hx",
+        "fl_hy",
+        "fl_kn",
+        "fr_hx",
+        "fr_hy",
+        "fr_kn",
+        "hl_hx",
+        "hl_hy",
+        "hl_kn",
+        "hr_hx",
+        "hr_hy",
+        "hr_kn"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": true,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/spot_standing.png"
+    },
+    {
+      "robot": "laikago",
+      "ok": true,
+      "urdf": "/workspace/Genesis/genesis/assets/urdf/laikago/urdf/laikago.urdf",
+      "joint_names": [
+        "FR_hip_motor_2_chassis_joint",
+        "FR_upper_leg_2_hip_motor_joint",
+        "FR_lower_leg_2_upper_leg_joint",
+        "FL_hip_motor_2_chassis_joint",
+        "FL_upper_leg_2_hip_motor_joint",
+        "FL_lower_leg_2_upper_leg_joint",
+        "RR_hip_motor_2_chassis_joint",
+        "RR_upper_leg_2_hip_motor_joint",
+        "RR_lower_leg_2_upper_leg_joint",
+        "RL_hip_motor_2_chassis_joint",
+        "RL_upper_leg_2_hip_motor_joint",
+        "RL_lower_leg_2_upper_leg_joint"
+      ],
+      "n_joints": 12,
+      "missing_in_urdf": [],
+      "needs_explicit_joint_map": true,
+      "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/laikago_standing.png"
+    }
+  ],
+  "mode": "dry_run"
+}

@@ -72,3 +72,12 @@ python dr_narrow_vintix_bodyscale/make_numberline_report.py
 - **修正:** `wait_and_run.sh` で `done+skipped >= total` に変更。stuck waiter を止めて再起動
 - **結果:** dataset 65 tasks 構築後、`train_vintix`（5 epochs）開始。親 PID 1056988 / train PID 1057017
 - **次:** 学習完了 → Go1 3 軸評価 → `make_numberline_report.py`
+
+### 2026-11-20 03:23（autopilot）: 学習完了 → early-stop 評価を再起動
+
+- **学習:** 5/5 epoch 完了 → `models/.../0004_epoch`（85280 steps/ep）
+- **問題:** 初回 `eval_go1_pipeline` に early-stop が無く、ジョブ順も seed→軸 だった（#18 と不一致）
+- **対応:** #18 と同仕様の early-stop＋軸→|log scale|→seed を移植。wait_and_run ツリーを止めて
+  `run_eval_and_report.sh`（PID **1100526**）で評価→数直線まで再開
+- **学習分布（成功 65）:** 質量 10.63–19.52 kg、脚長 0.206–0.587 m
+- **次:** 評価完走 → 数直線・同体/LOO 比較 → Notion 上部更新
