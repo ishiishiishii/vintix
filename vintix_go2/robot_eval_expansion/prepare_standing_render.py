@@ -28,6 +28,42 @@ UNITREE_LIKE = {"go1", "go2", "aliengo", "b1"}
 # Task-1 standing set (new / comparison robots).
 RENDER_SET = ["aliengo", "b1", "anymalb", "anymalc", "spot", "laikago"]
 
+# Standing angles from Genesis/examples/locomotion/train.py get_*_cfgs()
+# (snapshot; keep in sync if train defaults change). Used for non-Unitree --run.
+STANDING_ANGLES: dict[str, dict[str, float]] = {
+    "anymalb": {
+        "LF_HAA": -0.3, "LF_HFE": 0.8, "LF_KFE": -1.3,
+        "RF_HAA": 0.3, "RF_HFE": 0.8, "RF_KFE": -1.3,
+        "LH_HAA": -0.3, "LH_HFE": -0.8, "LH_KFE": 1.3,
+        "RH_HAA": 0.3, "RH_HFE": -0.8, "RH_KFE": 1.3,
+    },
+    "anymalc": {
+        "LF_HAA": -0.3, "LF_HFE": 0.8, "LF_KFE": -1.3,
+        "RF_HAA": 0.3, "RF_HFE": 0.8, "RF_KFE": -1.3,
+        "LH_HAA": -0.3, "LH_HFE": -0.8, "LH_KFE": 1.3,
+        "RH_HAA": 0.3, "RH_HFE": -0.8, "RH_KFE": 1.3,
+    },
+    "spot": {
+        "fl_hx": 0.0, "fr_hx": 0.0, "hl_hx": 0.0, "hr_hx": 0.0,
+        "fl_hy": 0.9, "fr_hy": 0.9, "hl_hy": 0.9, "hr_hy": 0.9,
+        "fl_kn": -1.5, "fr_kn": -1.5, "hl_kn": -1.5, "hr_kn": -1.5,
+    },
+    "laikago": {
+        "FR_hip_motor_2_chassis_joint": 0.0,
+        "FR_upper_leg_2_hip_motor_joint": 0.0,
+        "FR_lower_leg_2_upper_leg_joint": -0.75,
+        "FL_hip_motor_2_chassis_joint": 0.0,
+        "FL_upper_leg_2_hip_motor_joint": 0.0,
+        "FL_lower_leg_2_upper_leg_joint": -0.75,
+        "RR_hip_motor_2_chassis_joint": 0.0,
+        "RR_upper_leg_2_hip_motor_joint": 0.0,
+        "RR_lower_leg_2_upper_leg_joint": -0.75,
+        "RL_hip_motor_2_chassis_joint": 0.0,
+        "RL_upper_leg_2_hip_motor_joint": 0.0,
+        "RL_lower_leg_2_upper_leg_joint": -0.75,
+    },
+}
+
 
 def _joint_list(robot: str) -> list[str]:
     if robot in UNITREE_LIKE:
@@ -46,13 +82,19 @@ def _validate(robot: str) -> dict:
     urdf_joints = {j.get("name") for j in root.findall("joint") if j.get("type") != "fixed"}
     names = _joint_list(robot)
     missing = [n for n in names if n not in urdf_joints]
+    angles = STANDING_ANGLES.get(robot)
+    angle_missing = []
+    if angles is not None:
+        angle_missing = [n for n in names if n not in angles]
     return {
         "robot": robot,
-        "ok": not missing,
+        "ok": not missing and not angle_missing,
         "urdf": str(path),
         "joint_names": names,
         "n_joints": len(names),
         "missing_in_urdf": missing,
+        "missing_standing_angles": angle_missing,
+        "has_standing_angles": angles is not None and not angle_missing,
         "needs_explicit_joint_map": robot not in UNITREE_LIKE,
         "out_png": str(OUT_DIR / f"{robot}_standing.png"),
     }
@@ -72,20 +114,20 @@ def dry_run() -> int:
 
 
 def run_renders() -> int:
-    """GPU path: standing PNG for Unitree-like robots (Go2 default angles).
+    """GPU path: standing PNG for all RENDER_SET robots with known angles.
 
-    Non-Unitree robots need per-Env default_joint_angles; those are left for a
-    follow-up once angles are extracted from Env cfgs (joint aliases are ready).
+    Unitree-like robots use Go2 default angles in render_robot_comparison.
+    Others pass STANDING_ANGLES from train.py get_*_cfgs().
     """
     rows = [_validate(r) for r in RENDER_SET]
     if not all(r["ok"] for r in rows):
         print("validation failed; refusing --run", file=sys.stderr)
         return 1
 
-    runnable = [r for r in rows if r["robot"] in UNITREE_LIKE]
-    deferred = [r["robot"] for r in rows if r["robot"] not in UNITREE_LIKE]
+    runnable = [r for r in rows if r.get("has_standing_angles") or r["robot"] in UNITREE_LIKE]
+    deferred = [r["robot"] for r in rows if r["robot"] not in {x["robot"] for x in runnable}]
     if deferred:
-        print(f"[defer] need Env default angles: {deferred}", file=sys.stderr)
+        print(f"[defer] need standing angles: {deferred}", file=sys.stderr)
 
     sys.path.insert(0, str(ROOT / "Genesis" / "examples" / "locomotion"))
     from render_robot_comparison import RobotRenderSpec, render_robots  # noqa: WPS433
@@ -94,16 +136,16 @@ def run_renders() -> int:
     for r in runnable:
         print(f"[render] {r['robot']} → {r['out_png']}")
         spec = RobotRenderSpec(label=r["robot"], urdf_path=r["urdf"])
-        render_robots(
-            [spec],
-            Path(r["out_png"]),
-            joint_names=r["joint_names"],
-        )
+        kwargs = {"joint_names": r["joint_names"]}
+        if r["robot"] in STANDING_ANGLES:
+            kwargs["default_joint_angles"] = STANDING_ANGLES[r["robot"]]
+        render_robots([spec], Path(r["out_png"]), **kwargs)
     MANIFEST.write_text(json.dumps({
         "robots": rows,
         "mode": "run",
         "rendered": [r["robot"] for r in runnable],
         "deferred_need_default_angles": deferred,
+        "standing_angles_source": "train.py get_*_cfgs (snapshot in STANDING_ANGLES)",
     }, indent=2) + "\n")
     print(f"done → {OUT_DIR} (rendered {len(runnable)}, deferred {len(deferred)})")
     return 0

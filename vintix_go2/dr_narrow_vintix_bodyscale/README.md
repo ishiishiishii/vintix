@@ -90,3 +90,12 @@ python dr_narrow_vintix_bodyscale/make_numberline_report.py
 - **学習分布との対応:** Go1 1.0× ≈13.1 kg。学習質量 10.6–19.5 kg ≈ **0.81–1.49×**。いまの 1.25× は分布内。崖が分布外かは未
 - **図:** `figures/go1_mass_narrow_vs_samebody_loo_completion_mean_std_20261120.png`
 - **次:** 質量崖確定 → size / size_density → 数直線。成功ジョブが長く ETA は伸びやすい（≈4 jobs/h）
+
+### 2026-11-21 11:33（autopilot）: 質量ほぼ確定 — 高側崖 1.5×、1.3× で LOO 超え
+
+- **進捗:** 158+50skip/470。mass hi cliff=**1.5**（1.75×以降スキップ）。size 1.1× 開始。failed なし
+- **質量（ほぼ確定・0.25× は n=8）:** 0.25–1.0× **100%** → 1.15× **98.8%** → 1.25× **87.8%** → **1.3× 57.7%** → 1.35× 10.9% → **1.5× 0%**
+- **比較:** 同体は 1.15×で全滅。LOO は **1.3×で 0%** なのに narrow-DR は **57.7%** → 学習多様性が重い側を LOO より伸ばす（質量軸・暫定確定）
+- **軽い側:** 同体は ≤0.5×で 0%、narrow-DR/LOO は 0.25×でも高完走
+- **図:** `figures/go1_mass_narrow_vs_samebody_loo_completion_mean_std_20261121.png`
+- **次:** size / size_density 完走 → 数直線。並行で #16 立位角配線済（`--run` は GPU 空き後）

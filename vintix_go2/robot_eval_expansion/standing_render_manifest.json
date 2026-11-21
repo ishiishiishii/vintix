@@ -20,6 +20,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": false,
       "needs_explicit_joint_map": false,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/aliengo_standing.png"
     },
@@ -43,6 +45,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": false,
       "needs_explicit_joint_map": false,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/b1_standing.png"
     },
@@ -66,6 +70,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": true,
       "needs_explicit_joint_map": true,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/anymalb_standing.png"
     },
@@ -89,6 +95,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": true,
       "needs_explicit_joint_map": true,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/anymalc_standing.png"
     },
@@ -112,6 +120,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": true,
       "needs_explicit_joint_map": true,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/spot_standing.png"
     },
@@ -135,6 +145,8 @@
       ],
       "n_joints": 12,
       "missing_in_urdf": [],
+      "missing_standing_angles": [],
+      "has_standing_angles": true,
       "needs_explicit_joint_map": true,
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/laikago_standing.png"
     }
