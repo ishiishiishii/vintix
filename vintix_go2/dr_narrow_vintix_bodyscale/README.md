@@ -99,3 +99,12 @@ python dr_narrow_vintix_bodyscale/make_numberline_report.py
 - **軽い側:** 同体は ≤0.5×で 0%、narrow-DR/LOO は 0.25×でも高完走
 - **図:** `figures/go1_mass_narrow_vs_samebody_loo_completion_mean_std_20261121.png`
 - **次:** size / size_density 完走 → 数直線。並行で #16 立位角配線済（`--run` は GPU 空き後）
+
+### 2026-11-22 03:39（autopilot）: size 高側崖 1.35× — 質量と同様に LOO 超え
+
+- **進捗:** 244+90skip/470。cliffs: mass hi=**1.5**、size hi=**1.35**。size 低側 0.7× 走行中 → その後 size_density。failed なし
+- **size（高側ほぼ確定）:** 0.8–1.0× **100%** → 1.15× **98.9%** → 1.25× **82.0%** → **1.3× 34.1%** → **1.35× 0%**（cliff）
+- **比較:** 同体は **1.15×で全滅**。LOO は 1.3× **5.8%** なのに narrow-DR は **34.1%** → 大きさ軸でも多様性が LOO より外側まで残る
+- **学習分布:** 脚長 0.206–0.587 m。崖 1.35×（thigh 代理 ≈0.29 m）は学習脚長範囲の**内側** → 一様スケールの崖 ≠ DR 形態カバーの単純な外縁切れ
+- **図:** `figures/go1_size_narrow_vs_samebody_loo_completion_mean_std_20261122.png`
+- **次:** size 低側 → size_density → 数直線。ETA ≈+25h（崖依存）。#16/#22 の `--run` は GPU 解放後
