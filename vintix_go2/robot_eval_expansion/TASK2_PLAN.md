@@ -60,9 +60,21 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 
 ## 進行中（B1 第1波）
 
-- [ ] PPO: MorFiC URDF 1回目は平均長 ≈5 で失敗 → 退避 `logs/b1-walking_morfic_failed_*`。**unitree URDF + term20 + kp90** で再学習中
-- [ ] Adaptation 用履歴（`wait_collect_b1_ad.sh` 待機）
+- [ ] PPO 試行:
+  1. MorFiC URDF+kp90 → 平均長 ≈5（退避 `b1-walking_morfic_failed_*`）
+  2. unitree+MorFiC角+kp90+term20 → 平均長 ≈12 で頭打ち（退避 `b1-walking_unitree_term20_plateau12_*`）
+  3. **進行中（崩壊リスク高）:** unitree+Go2系角+kp40+z0.66+term20（`logs/train_ppo/b1_seed1_go2like.out`）
+     - 中盤 iter **83** で平均エピソード長 **1001**（一時的に完走）→ iter **89** 以降に急落
+     - iter 140–160 は平均長 ≈15–45。詳細: `results/b1_go2like_midtrain_analysis.json`
+     - `wait_collect_b1_ad.sh` に品質ゲート（最終平均長 ≥200 でないと履歴を取らない）
+- [ ] Adaptation 用履歴（品質ゲート通過時のみ）
 - [ ] 短評価スモーク
+
+### 試行4の方針（3が最終でも歩けない場合）
+
+- 維持: unitree URDF・Go2系角・kp40・転倒判定 20°
+- 変更案: 高さ報酬スケール **-10 → -2**（ピーク時に報酬≈-10で罰が支配していた）
+- 失敗 ckpt からは履歴を取らない（ゲート済み）
 
 ## やらないこと（今）
 

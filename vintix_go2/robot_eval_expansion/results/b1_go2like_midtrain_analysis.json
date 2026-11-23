@@ -1,0 +1,38 @@
+{
+  "robot": "b1",
+  "attempt": 3,
+  "label": "unitree_urdf_go2like_angles_kp40_z066_term20",
+  "log": "logs/train_ppo/b1_seed1_go2like.out",
+  "analyzed_at_utc": "2026-11-23T19:45:00Z",
+  "analyzed_at_iteration": 165,
+  "max_iterations": 301,
+  "peak": {"iteration": 83, "mean_episode_length": 1001.0, "mean_total_reward": -10.13},
+  "collapse": {
+    "first_length_below_100_after_peak": {"iteration": 89, "mean_episode_length": 60.15},
+    "note": "iter 42で長さが急伸→83で完走長→89以降に急落。model_100.ptは崩壊後。"
+  },
+  "window_means": {
+    "iter_0_19": {"length": 38.4, "reward": -0.79},
+    "iter_20_39": {"length": 55.2, "reward": -1.03},
+    "iter_40_59": {"length": 412.9, "reward": -7.69},
+    "iter_60_79": {"length": 356.2, "reward": -4.86},
+    "iter_80_99": {"length": 200.0, "reward": -5.40},
+    "iter_100_119": {"length": 39.2, "reward": -4.50},
+    "iter_120_139": {"length": 105.8, "reward": -5.50},
+    "iter_140_159": {"length": 29.0, "reward": -5.54}
+  },
+  "interpretation": {
+    "can_stand_and_survive": true,
+    "stable_through_301": false,
+    "likely_cause": "中盤で立てるが、高さペナルティ支配（peak時 reward≈-10）のまま更新が続き崩壊。保存間隔100のため最良ckptなし。",
+    "do_not_collect_ad_if_final_length_below": 200
+  },
+  "attempt4_plan": {
+    "keep": ["unitree URDF", "Go2-like default angles", "kp=40", "term 20deg", "z≈0.66"],
+    "change": [
+      "reward base_height scale -10 → -2（長時間生存時の罰の支配を弱める）",
+      "可能なら save_interval を密に（共通コードは触らず実験後に最良を逃さない運用）",
+      "最終平均長 <200 なら履歴収集しない（品質ゲート）"
+    ]
+  }
+}
