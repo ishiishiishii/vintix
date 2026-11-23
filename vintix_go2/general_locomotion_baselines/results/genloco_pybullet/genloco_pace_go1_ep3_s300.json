@@ -1,0 +1,25 @@
+{
+  "ok": true,
+  "mode": "pybullet_official_sim",
+  "robot": "go1",
+  "policy_zip": "pace",
+  "ckpt": "/workspace/vintix_go2/general_locomotion_baselines/third_party/GenLoco/motion_imitation/data/policies/morphology_generator_pace_model.zip",
+  "motion_file": "motion_imitation/data/motions/a1_pace.txt",
+  "num_episodes": 3,
+  "max_steps": 300,
+  "mean_return": 253.88508016176874,
+  "mean_episode_length": 300.0,
+  "mean_alive_frac_of_max_steps": 1.0,
+  "episode_returns": [
+    250.71218591681586,
+    255.10488978909626,
+    255.83816477939408
+  ],
+  "episode_lengths": [
+    300,
+    300,
+    300
+  ],
+  "task": "motion imitation (phase_only)",
+  "notes": "Actor loaded from SB zip NPZ without TensorFlow. Simulator and obs pipeline are GenLoco PyBullet. Not velocity-tracking; compare carefully with Vintix metrics."
+}

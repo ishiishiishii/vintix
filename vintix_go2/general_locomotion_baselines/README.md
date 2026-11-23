@@ -95,6 +95,13 @@ bash clone_third_party.sh
 ### 2026-11-23 06:25（autopilot）: GenLoco Genesis `--run` 初回配線
 
 - **実行内容:** `GenlocoActorPolicy` + `run_genloco_genesis_eval.py --run --policy pace`（Go2、4 env × 500 step）。観測は Genesis45→451 近似
-- **結果:** `results/genloco_genesis/genloco_pace_go2_ne4_s500.json` — completion **0%**、mean episode length **100**、mean reward/step **≈0.004**
-- **考察:** MorFiC（≈11.6）より長く立つが完走は同様 0%。モーション模倣 pretrained × 速度追従 Env × 近似 obs の三重ギャップ。比較表の「未適応・近似配線」行として記録可
-- **次:** URMA は RL-X。公式 PyBullet/Isaac play 差分。本線は #18 他台 or #11
+- **結果:** `results/genloco_genesis/genloco_pace_go2_ne4_s500.json` — 完走率 **0%**、平均エピソード長 **100**
+- **考察:** 動きの模倣用の学習済み重み × 速度追従 Env × 観測の近似、の三重のずれ。比較表では「参考（近似配線）」行
+- **次:** 公式に近い PyBullet 再生
+
+### 2026-11-23: GenLoco を公式に近い PyBullet で再生（TensorFlow なし）
+
+- **実行内容:** `wrappers/genloco/run_genloco_pybullet_eval.py`（Go1、pace、3 エピソード × 最大 300 ステップ）
+- **結果:** 3 エピソードとも **300/300 生存**、平均 return ≈254（`results/genloco_pybullet/...json`）
+- **考察:** 同じ学習済み重みでも公式に近い環境では歩ける。Genesis の 0% は手法自体より配線差が大きい
+- **次:** MorFiC / URMA も公式シミュレータ側の数値。スナップショットは `results/COMPARISON_SNAPSHOT.md`

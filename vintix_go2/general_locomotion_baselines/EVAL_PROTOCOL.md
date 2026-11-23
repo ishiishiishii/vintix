@@ -22,13 +22,17 @@ Vintix と比較するとき、各ベースラインの**公式再生と Genesis
 - 注意: 観測は 70×30 履歴。Genesis 45 からの再構成は近似
 
 ### GenLoco
-- 公式: PyBullet `motion_imitation`（pace / spin / inverse zip）
-- 本リポ: `python wrappers/genloco/run_genloco_genesis_eval.py --dry_run`
-- Genesis `--run`（2026-11-23 初回・pace）: `python wrappers/genloco/run_genloco_genesis_eval.py --run --num_envs 4 --max_steps 500 --policy pace`
-  - 結果 JSON: `results/genloco_genesis/genloco_pace_go2_ne4_s500.json`（completion 0%、mean len **100**）
-  - 次: 公式 PyBullet play と並べて「sim/obs/タスク差」列を埋める
-- **公式はモーション模倣**なので本線の速度追従とはタスク定義が違う → 比較表に「タスク差」列を残す
-- 観測: 451（Motor×15 + IMU6×15 + Act×15 + phase）
+- 公式シミュレータ: PyBullet `motion_imitation`（pace / spin / inverse の学習済み zip）
+- **推奨（公式に近い再生・TensorFlow 不要）:**
+  `python wrappers/genloco/run_genloco_pybullet_eval.py --robot go1 --policy pace --num_episodes 3`
+  - 結果例（2026-11-23）: `results/genloco_pybullet/genloco_pace_go1_ep3_s300.json`
+    — 3 エピソードとも 300/300 ステップ生存、平均 return ≈254
+  - GenLoco のロボット一覧に Go2 は無い（Go1 / A1 など）
+- 参考（Genesis・観測近似）: `python wrappers/genloco/run_genloco_genesis_eval.py --run --num_envs 4 --max_steps 500 --policy pace`
+  - 結果: `results/genloco_genesis/genloco_pace_go2_ne4_s500.json`（完走率 0%、平均長 100）
+- **公式は動きの模倣**なので、本線の速度追従とはタスクが違う → 比較表に「タスクの違い」列を残す
+- 観測: 451（関節角×15 + IMU6×15 + 直前行動×15 + 位相）
+
 
 ### URMA
 - 公式: RL-X（Flax/msgpack）の play
