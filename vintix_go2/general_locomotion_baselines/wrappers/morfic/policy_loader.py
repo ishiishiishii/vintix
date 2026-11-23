@@ -155,6 +155,33 @@ class _ActorBody(nn.Module):
         return self.net(x)
 
 
+class MorficActorPolicy(nn.Module):
+    """Minimal MorFiC actor path (morph + adapt + actor_body) for Genesis eval."""
+
+    def __init__(self, ckpt_path: str | Path | None = None, device: str | torch.device = "cpu"):
+        super().__init__()
+        path = Path(ckpt_path) if ckpt_path else DEFAULT_CKPT
+        self.dims = assert_dims_match_checkpoint(path)
+        state = torch.load(path, map_location="cpu", weights_only=False)
+        self.morph_enc = _MorphEncoder(state)
+        self.adapt = _Adaptation(state)
+        self.actor = _ActorBody(state)
+        self.device = torch.device(device)
+        self.to(self.device)
+        self.eval()
+        morph = normalize_morphology(go2_nominal_morphology(device=self.device))
+        self.register_buffer("z_morph", self.morph_enc(morph.unsqueeze(0)), persistent=False)
+
+    @torch.no_grad()
+    def act(self, obs_history_flat: torch.Tensor) -> torch.Tensor:
+        """(B, 2100) → (B, 12) actions."""
+        x = obs_history_flat.to(self.device)
+        z_a = self.adapt(x)
+        b = x.shape[0]
+        z_m = self.z_morph.expand(b, -1)
+        return self.actor(torch.cat([x, z_m, z_a], dim=-1))
+
+
 def smoke_forward_shapes(
     ckpt_path: str | Path | None = None,
     batch_size: int = 2,
@@ -162,29 +189,19 @@ def smoke_forward_shapes(
 ) -> dict[str, tuple[int, ...]]:
     """CPU smoke: synthetic Genesis obs → adapter → morph/adapt/actor tensors."""
     dims = assert_dims_match_checkpoint(ckpt_path)
-    path = Path(ckpt_path) if ckpt_path else DEFAULT_CKPT
-    state = torch.load(path, map_location="cpu", weights_only=False)
-
     adapter = GenesisToMorficObs(batch_size=batch_size, device="cpu")
-    morph_enc = _MorphEncoder(state).eval()
-    adapt = _Adaptation(state).eval()
-    actor = _ActorBody(state).eval()
+    policy = MorficActorPolicy(ckpt_path=ckpt_path, device="cpu")
 
-    morph = normalize_morphology(go2_nominal_morphology()).unsqueeze(0).expand(batch_size, -1)
     with torch.no_grad():
-        z_m = morph_enc(morph)
         last_action = None
+        packed = None
         for _ in range(steps):
             fake = torch.randn(batch_size, 45)
             # Keep gravity unit-ish and commands small so values are finite.
             fake[:, 3:6] = torch.nn.functional.normalize(fake[:, 3:6], dim=-1)
             fake[:, 6:9] = 0.1 * torch.randn(batch_size, 3)
             packed = adapter.step(fake)
-            z_a = adapt(packed["obs_history_flat"])
-            actor_in = torch.cat([packed["obs_history_flat"], z_m, z_a], dim=-1)
-            if actor_in.shape[-1] != dims.actor_in:
-                raise AssertionError(actor_in.shape)
-            last_action = actor(actor_in)
+            last_action = policy.act(packed["obs_history_flat"])
             if last_action.shape != (batch_size, dims.action_dim):
                 raise AssertionError(last_action.shape)
             if not torch.isfinite(last_action).all():
@@ -193,7 +210,6 @@ def smoke_forward_shapes(
     return {
         "obs": tuple(packed["obs"].shape),
         "obs_history_flat": tuple(packed["obs_history_flat"].shape),
-        "z_morph": tuple(z_m.shape),
-        "z_adapt": tuple(z_a.shape),
+        "z_morph": tuple(policy.z_morph.shape),
         "action": tuple(last_action.shape),
     }

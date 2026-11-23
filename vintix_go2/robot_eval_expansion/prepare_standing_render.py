@@ -28,6 +28,11 @@ UNITREE_LIKE = {"go1", "go2", "aliengo", "b1"}
 # Task-1 standing set (new / comparison robots).
 RENDER_SET = ["aliengo", "b1", "anymalb", "anymalc", "spot", "laikago"]
 
+# Standing-render URDF overrides (Env may still use a different file).
+# Laikago: stock URDF is Y-up; use ``render_laikago_standing.py`` (Env quat)
+# instead of toes_zup (camera/pose empty in practice). Keep overrides empty.
+URDF_OVERRIDES: dict[str, Path] = {}
+
 # Standing angles from Genesis/examples/locomotion/train.py get_*_cfgs()
 # (snapshot; keep in sync if train defaults change). Used for non-Unitree --run.
 STANDING_ANGLES: dict[str, dict[str, float]] = {
@@ -74,8 +79,12 @@ def _joint_list(robot: str) -> list[str]:
     return list(hint["joints"])
 
 
+def _urdf_path(robot: str) -> Path:
+    return URDF_OVERRIDES.get(robot, URDFS[robot])
+
+
 def _validate(robot: str) -> dict:
-    path = URDFS[robot]
+    path = _urdf_path(robot)
     if not path.is_file():
         return {"robot": robot, "ok": False, "error": f"missing {path}"}
     root = ET.parse(path).getroot()
@@ -90,6 +99,7 @@ def _validate(robot: str) -> dict:
         "robot": robot,
         "ok": not missing and not angle_missing,
         "urdf": str(path),
+        "urdf_override": robot in URDF_OVERRIDES,
         "joint_names": names,
         "n_joints": len(names),
         "missing_in_urdf": missing,
@@ -113,13 +123,19 @@ def dry_run() -> int:
     return 0 if ok else 1
 
 
-def run_renders() -> int:
+def run_renders(*, only: list[str] | None = None, force: bool = False) -> int:
     """GPU path: standing PNG for all RENDER_SET robots with known angles.
 
     Unitree-like robots use Go2 default angles in render_robot_comparison.
     Others pass STANDING_ANGLES from train.py get_*_cfgs().
     """
-    rows = [_validate(r) for r in RENDER_SET]
+    targets = list(RENDER_SET) if not only else list(only)
+    unknown = [r for r in targets if r not in RENDER_SET]
+    if unknown:
+        print(f"unknown robots (not in RENDER_SET): {unknown}", file=sys.stderr)
+        return 1
+
+    rows = [_validate(r) for r in targets]
     if not all(r["ok"] for r in rows):
         print("validation failed; refusing --run", file=sys.stderr)
         return 1
@@ -138,11 +154,14 @@ def run_renders() -> int:
     failed: dict[str, str] = {}
     for r in runnable:
         out = Path(r["out_png"])
-        if out.is_file() and out.stat().st_size > 0:
+        if (not force) and out.is_file() and out.stat().st_size > 0:
             print(f"[skip] {r['robot']} already has {out}")
             skipped_existing.append(r["robot"])
             rendered.append(r["robot"])
             continue
+        if force and out.is_file():
+            out.unlink()
+            print(f"[force] removed {out}")
         print(f"[render] {r['robot']} → {out}")
         spec = RobotRenderSpec(label=r["robot"], urdf_path=r["urdf"])
         kwargs = {"joint_names": r["joint_names"]}
@@ -157,11 +176,14 @@ def run_renders() -> int:
     MANIFEST.write_text(json.dumps({
         "robots": rows,
         "mode": "run",
+        "force": force,
+        "only": targets,
         "rendered": rendered,
         "skipped_existing": skipped_existing,
         "failed": failed,
         "deferred_need_default_angles": deferred,
         "standing_angles_source": "train.py get_*_cfgs (snapshot in STANDING_ANGLES)",
+        "urdf_overrides": {k: str(v) for k, v in URDF_OVERRIDES.items()},
     }, indent=2) + "\n")
     print(
         f"done → {OUT_DIR} (rendered {len(rendered)}, "
@@ -173,9 +195,20 @@ def run_renders() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", action="store_true", help="Launch Genesis standing renders (GPU)")
+    ap.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-render even if PNG already exists",
+    )
+    ap.add_argument(
+        "--only",
+        nargs="+",
+        default=None,
+        help="Subset of RENDER_SET (e.g. aliengo laikago)",
+    )
     args = ap.parse_args()
     if args.run:
-        return run_renders()
+        return run_renders(only=args.only, force=args.force)
     return dry_run()
 
 

@@ -477,7 +477,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.dae" scale="0.0254 0.0254 0.0254"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -690,7 +690,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.dae" scale="0.0254 0.0254 0.0254"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -903,7 +903,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.dae" scale="0.0254 0.0254 0.0254"/>
       </geometry>
       <material name="orange"/>
     </visual>
@@ -1116,7 +1116,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="../meshes/calf.dae" scale="1 1 1"/>
+        <mesh filename="../meshes/calf.dae" scale="0.0254 0.0254 0.0254"/>
       </geometry>
       <material name="orange"/>
     </visual>

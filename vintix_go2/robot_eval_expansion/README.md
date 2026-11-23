@@ -14,11 +14,11 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 4. ~~関節命名 QA（CPU）~~ → [`JOINT_NAMING_QA.md`](JOINT_NAMING_QA.md) / `check_joint_names_cpu.py`
 5. ~~立位レンダ準備（CPU）~~ → `prepare_standing_render.py` / `standing_render_manifest.json`
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
-7. **次**: タスク2は本線後（報酬・PPO・AD）。#22 ベースライン `--run` 実装と並行可
+7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
+8. **次**: タスク1 仕上げ完了。タスク2は本線後（報酬・PPO・AD）
 
 ## やらないこと（今）
 - PPO 専門家の本学習（タスク2）
-- 稼働中の #21 評価ジョブへの介入
 
 ## 実行ログ
 
@@ -39,3 +39,12 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - **実行内容:** `#21` 完了後に `--run`。B1/ANYmal-B の `package://` メッシュ参照を相対パスへ修正し再実行
 - **結果:** `figures/standing/{aliengo,b1,anymalb,anymalc,spot,laikago}_standing.png` 全成功（failed 0）
 - **次:** タスク1のレンダ区切り。タスク2（報酬+PPO+AD）は本線後。#22 `--run` 実装へ
+
+### 2026-11-23 05:19（autopilot）: aliengo / laikago 立位 QA 修正
+
+- **実行内容:**
+  - **Aliengo:** `calf.dae` が COLLADA unit=0.0254m（インチ）なのに Genesis が単位を無視 → URDF visual `scale="0.0254"`（4 脚）。`SOURCE.md` に注記
+  - **Laikago:** Y-up URDF。`apply_standing_pose` 後の quat では逆さま → Env と同じ `base_init_quat=[0.5,0.5,0.5,0.5]` + 固定 z=0.50 の専用スクリプト `render_laikago_standing.py`
+  - `prepare_standing_render.py` に `--force` / `--only`
+- **結果:** 両機とも四足立位として認識可能な PNG。b1/anymalb/anymalc/spot は前回どおり OK → **タスク1 視覚 QA 完了**
+- **次:** タスク2（報酬+PPO+AD）は本線後。#22 GenLoco `--run` / URMA RL-X

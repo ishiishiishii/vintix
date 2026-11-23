@@ -23,8 +23,9 @@ Genesis 側は速度コマンド 3 のみ → 残り gait コマンドは 0 埋�
 
 1. ~~次元を checkpoint から確定~~（CPU スモーク通過）
 2. ~~評価入口の dry-run 骨格~~（`run_morfic_genesis_eval.py`・Genesis 非起動）
-3. Genesis Go2 env から `GenesisToMorficObs.step` を呼ぶ `--run`（GPU 空き後）
+3. ~~Genesis Go2 `--run`~~（2026-11-23: 4 env × 500 step → completion 0%、mean len ≈11.6。近似 obs のゼロショット即転倒）
 4. 公式 `scripts/play.py`（Isaac Gym）での holdout 再生と比較し、差分を記録
+5. （任意）gait cmd / clock の再構成改善 → 再評価
 
 ## ファイル
 

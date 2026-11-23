@@ -16,7 +16,9 @@ Vintix と比較するとき、各ベースラインの**公式再生と Genesis
 ### MorFiC
 - 公式: Isaac Gym 系 play（リポ `third_party/morfic-rl`）
 - 本リポ: `python wrappers/morfic/run_morfic_genesis_eval.py --dry_run`（GPU 不要）
-- GPU 空き後: 同スクリプト `--run`（Go2 Env）→ 公式 play と完走・速度を並べる
+- Genesis `--run`（2026-11-23 初回）: `python wrappers/morfic/run_morfic_genesis_eval.py --run --num_envs 4 --max_steps 500`
+  - 結果 JSON: `results/morfic_genesis/morfic_go2_ne4_s500.json`（completion 0%、mean len ≈11.6）
+  - 次: 公式 Isaac play と並べて「sim/obs 差」列を埋める
 - 注意: 観測は 70×30 履歴。Genesis 45 からの再構成は近似
 
 ### GenLoco

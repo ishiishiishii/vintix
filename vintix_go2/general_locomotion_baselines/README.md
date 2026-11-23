@@ -84,3 +84,10 @@ bash clone_third_party.sh
 - **実行内容:** `wrappers/genloco/run_genloco_genesis_eval.py`（`--dry_run` 既定）と `EVAL_PROTOCOL.md`（MorFiC/GenLoco/URMA の公式入口・本線指標対応）を追加。#18 GPU には非介入
 - **結果:** GenLoco dry-run OK（obs 451 → action 12）。`--run` は明示拒否のまま
 - **次:** GPU 空き後に MorFiC/GenLoco `--run`。URMA は RL-X 待ち
+
+### 2026-11-23 05:14（autopilot）: MorFiC Genesis `--run` 初回配線
+
+- **実行内容:** `MorficActorPolicy` + `run_morfic_genesis_eval.py --run`（Go2、4 env × 500 step）。観測は Genesis45→70 近似
+- **結果:** `results/morfic_genesis/morfic_go2_ne4_s500.json` — completion **0%**、mean episode length **≈11.6**、mean reward/step **≈−0.033**（即転倒）。配線自体は通る
+- **考察:** Isaac Gym pretrained を近似 obs でゼロショット再生しても歩けないのは想定内。比較表のベースラインとしては「未適応・近似配線」として記録。公式 play 差分と GenLoco `--run` が次
+- **次:** GenLoco `--run` 実装。URMA は RL-X。必要なら obs 再構成の改善（gait cmd / clock）
