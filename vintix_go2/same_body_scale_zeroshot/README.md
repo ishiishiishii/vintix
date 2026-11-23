@@ -33,12 +33,13 @@ leave-one-out（`<robot>_without`、#10）と、**評価ロボット自身のデ
 
 | 項目 | 値 |
 |------|-----|
-| 対象（評価の優先） | **まず Go1 同体モデルのみ**（2026-11-18）。他台は学習済み・評価は後続 |
+| 対象（評価の優先） | Go1 **完了**（2026-11-19）。次は **A1**（2026-11-23 起動）→ MC → Go2 |
 | 評価 3 軸 | ①質量だけ ②大きさだけ（質量固定）③大きさ＋質量連動（密度一定） |
 | Go1 モデル | `models/go1_data1M_5epochs/.../0004_epoch` |
+| A1 モデル | `models/a1_data1M_5epochs/.../0004_epoch` |
 | Go2 モデル | 既存 `models/go2_data1M_5epochs/.../0001_epoch` |
 | 不足モデル | `train_missing_models.sh`（Go1→A1→MC）**学習完了 2026-11-18** |
-| 評価格子 | Go1 mass/size = `go1_body_scale_zeroshot` FULL_GRID。size_density = #10 格子 |
+| 評価格子 | Go1 mass/size = `go1_body_scale_zeroshot` FULL_GRID。A1/MC/Go2 = #10 `GRIDS`。size_density = #10 格子 |
 | 比較 | Vintix 同体のみ再評価。PPO/Expert は過去実験を再利用 |
 | 結果の置き場 | `same_body_scale_zeroshot/results/`（LOO 結果と混在させない） |
 | 指標 | #15 の `*_metrics.json` / episodes loco 列を利用 |
@@ -51,11 +52,16 @@ cd /workspace/vintix_go2
 setsid nohup bash same_body_scale_zeroshot/train_missing_models.sh \
   > same_body_scale_zeroshot/logs/train_all.out 2>&1 &
 
-# Go1 同体・3軸 Vintix 評価
+# Go1 同体・3軸 Vintix 評価（完了）
 # 早期打ち切り: 完走≈0% の崖より遠い倍率は起動しない（2026-11-19）
 setsid nohup python -u same_body_scale_zeroshot/eval_go1_pipeline.py \
   > same_body_scale_zeroshot/logs/eval_go1.log 2>&1 < /dev/null &
 python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
+
+# A1 同体・3軸（#10 格子・early-stop。停止は STOP_A1）
+setsid nohup python -u same_body_scale_zeroshot/eval_a1_pipeline.py \
+  > same_body_scale_zeroshot/logs/eval_a1.log 2>&1 < /dev/null &
+python same_body_scale_zeroshot/eval_a1_pipeline.py --dry_run
 ```
 
 ## 実行ログ
@@ -114,4 +120,12 @@ python same_body_scale_zeroshot/eval_go1_pipeline.py --dry_run
 - **考察:** Go1 では「同体学習でスケール帯が広がる」仮説は 3 軸とも不支持。LOO の多様性優位。特に密度一定 0.8× の差が大きい
 - **図:** `figures/go1_{mass,size,size_density}_samebody_vs_loo_completion_mean_std_20261119.png`
 - **次:** #21 学習完了 → Go1 3 軸評価 → 数直線レポート。他台の同体評価は後続
+
+### 2026-11-23 07:29（autopilot idle_research）: A1 同体 3軸評価を起動
+
+- **実行内容:** `eval_a1_pipeline.py` / `eval_a1_worker.py` を追加（#10 `GRIDS`・early-stop・`STOP_A1`）。親 PID **1861311**、4 並列で mass 1.0× seed0–3 から開始。モデル `a1_data1M_5epochs/.../0004_epoch`
+- **進捗:** total **320**（done 0）。dry-run OK。GPU ≈100%
+- **LOO 参照（#10 A1・10 seeds）:** 質量 1.0× **59.1±8.0%**・**1.1×〜0%**。大きさも 1.1×〜0%。密度一定は 0.9× 100% / 0.8× 58% / 1.1× 0%
+- **見積もり:** early-stop 込み壁時計 ≈10–14h（崖は LOO どおり重い側 1.1× 付近の見込み）
+- **次:** 質量近傍シード消化 → 崖確定 → size / size_density → 同体 vs LOO 図。MC/Go2 は後続
 
