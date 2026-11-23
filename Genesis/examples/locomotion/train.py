@@ -719,18 +719,17 @@ def get_aliengo_cfgs():
     Aliengo（#16）。関節名は Go2 と同系。質量は URDF Σ≈24.9 kg（公式~21.5 より重い・MASS_QA 参照）。
     thigh は URDF 上 continuous。
 
-    高さ・PD・股関節角は MorFiC ``aliengo_config``（init z=0.36, kp=40）に合わせる。
-    初回 seed=1（2026-11-23）は Go2 流用の z=0.55 / kp=20 で平均エピソード長≈5 のまま
-    301 iter 終了まで学習が進まず失敗 → 再学習用に修正。
+    PD は MorFiC（kp=40）を採用。初期高さは Genesis の Aliengo URDF＋Go2 角では
+    MorFiC の z=0.36 が合わず、z=0.40 再学習は平均エピソード長≈1.7 と悪化。
+    静的立位レンダで使っていた ≈0.55 側に戻し、目標高さを少し下げる（Go2 と同様の落差）。
     """
     env_cfg = {
         "num_actions": 12,
         "default_joint_angles": {
-            # MorFiC: slight hip abduction; thigh/calf same as Go2 standing
-            "FL_hip_joint": 0.1,
-            "FR_hip_joint": -0.1,
-            "RL_hip_joint": 0.1,
-            "RR_hip_joint": -0.1,
+            "FL_hip_joint": 0.0,
+            "FR_hip_joint": 0.0,
+            "RL_hip_joint": 0.0,
+            "RR_hip_joint": 0.0,
             "FL_thigh_joint": 0.8,
             "FR_thigh_joint": 0.8,
             "RL_thigh_joint": 1.0,
@@ -759,7 +758,8 @@ def get_aliengo_cfgs():
         "kd": 1.0,
         "termination_if_roll_greater_than": 10,
         "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.40],
+        # Genesis Aliengo + Go2-like angles: feet reach lower than MorFiC's 0.36
+        "base_init_pos": [0.0, 0.0, 0.55],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -778,7 +778,7 @@ def get_aliengo_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.36,
+        "base_height_target": 0.45,
         "feet_height_target": 0.075,
         "reward_scales": {
             "tracking_lin_vel": 1.0,

@@ -54,8 +54,9 @@ def default_expert_ckpt_for_robot(robot: str) -> Path:
         "minicheetah": logs / "minicheetah-walking" / "model_300.pt",
         "a1": logs / "a1-walking" / "model_300.pt",
         "anymalc": logs / "anymalc-walking" / "model_300.pt",
-        # v2 = MorFiC-aligned height/PD restart (2026-11-23). Do not use aliengo-walking/ (failed).
-        "aliengo": Path("/workspace/vintix_go2/robot_eval_expansion/logs/aliengo-walking-v2")
+        # Failed first run archived as aliengo-walking_kp20_failed_20261123.
+        # Current MorFiC-aligned restart writes here again (2026-11-23).
+        "aliengo": Path("/workspace/vintix_go2/robot_eval_expansion/logs/aliengo-walking")
         / "model_300.pt",
     }
     if robot not in mapping:

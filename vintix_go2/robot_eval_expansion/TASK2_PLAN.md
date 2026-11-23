@@ -52,7 +52,8 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 ## 完了条件（Aliengo 第1波）
 
 - [ ] `logs/aliengo-walking/model_300.pt`（または同等）が存在する
-  - 1回目（15:43 UTC）: **失敗**。平均エピソード長 ≈5（即転倒）のまま 301 iter。原因: Go2 流用の初期高さ z=0.55 / kp=20。MorFiC 準拠へ修正済み（z≈0.40・目標高さ 0.36・kp=40・股関節±0.1）→ **再学習待ち**
+  - 1回目（15:43 UTC）: **失敗**。平均エピソード長 ≈5。退避 `aliengo-walking_kp20_failed_20261123`
+  - 2回目（16:19 UTC）: MorFiC 準拠（z=0.40・kp=40・kd=1）で **再学習中**（`logs/aliengo-walking`）。序盤の平均エピソード長 ≈1.6 → 要観察
 - [ ] Adaptation 用履歴（h5 / trajectories）が実験ディレクトリ配下に保存されている（失敗 ckpt からは取らない）
 - [ ] 短い評価で「歩ける」（完走率またはエピソード長の目安を README に記載）
 - [ ] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録
