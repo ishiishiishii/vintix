@@ -29,9 +29,12 @@
 - 同じ重みを Genesis に近似して載せると完走しない → **「手法が悪い」ではなく配線・観測・タスク差**の可能性が高い
 - 論文比較では、まず公式シミュレータの数値を主にし、Genesis は参考列にする
 
+## 論文用主表
+
+横断比較の固定版は [`MAIN_TABLE.md`](MAIN_TABLE.md)（GenLoco + URMA のみ）。
+
 ## 次
 
-- MorFiC: 公式 Isaac Gym 判断メモ → `MORFIC_ISAAC_DECISION.md`（仮置き: 主表から外し GenLoco+URMA を主）
-- 指標対応 → `METRICS_CROSSWALK.md`（URMA 1000 ステップ生存＝その定義での完走 100%）
-- URMA: 可能なら cuDNN を揃えて GPU 再生（必須ではない）
-- #16 タスク2: Aliengo 専門家＋学習履歴（Adaptation 用データ）
+- #22: 最小完了は文書条件を満たした → ユーザー合意で close 可（`DONE_CRITERIA.md`）
+- MorFiC を主表に戻すなら別環境の Isaac Gym（判断待ち）
+- #16: Aliengo PPO 成功軌道 → 学習履歴（Adaptation 用データ）収集中

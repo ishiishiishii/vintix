@@ -716,21 +716,21 @@ def get_spotmicro_cfgs():
 
 def get_aliengo_cfgs():
     """
-    Aliengo（#16）。関節名は Go2 と同系。質量は URDF Σ≈24.9 kg（公式~21.5 より重い・MASS_QA 参照）。
-    thigh は URDF 上 continuous。
+    Aliengo（#16）。関節名は Go2 と同系。
 
-    高さは robot_standing_pose（Go2 角・Aliengo URDF）の実測に合わせる:
-      base_z_for_standing ≈ 0.4607 m、足は床上 ≈1 cm。
-    試行履歴: z=0.55/kp=20 → 平均長≈5; z=0.40/kp=40（MorFiC寄せ）→≈1.7;
-    予定していた z=0.55/kp=40 は実測より高いので棄却。PD は MorFiC 準拠 kp=40/kd=1。
+    Env 既定 URDF は MorFiC の aliengo_description（ゼロ行動で 80+ step 耐える）。
+    unitree_ros 取り込み URDF は Genesis 上で即ロール転倒するため使わない（MASS_QA / SOURCE.md）。
+
+    試行履歴: unitree URDF + 種々の z/kp/term → 平均長 5 以下のまま失敗。
+    MorFiC URDF + 本設定で立位が安定することを 2026-11-24 に確認。
     """
     env_cfg = {
         "num_actions": 12,
         "default_joint_angles": {
-            "FL_hip_joint": 0.0,
-            "FR_hip_joint": 0.0,
-            "RL_hip_joint": 0.0,
-            "RR_hip_joint": 0.0,
+            "FL_hip_joint": 0.1,
+            "FR_hip_joint": -0.1,
+            "RL_hip_joint": 0.1,
+            "RR_hip_joint": -0.1,
             "FL_thigh_joint": 0.8,
             "FR_thigh_joint": 0.8,
             "RL_thigh_joint": 1.0,
@@ -754,15 +754,11 @@ def get_aliengo_cfgs():
             "RL_thigh_joint",
             "RL_calf_joint",
         ],
-        # Heavier than Go2; MorFiC uses stiffness 40 / damping 1
         "kp": 40.0,
         "kd": 1.0,
-        # Go2 は term=10° でゼロ行動が長く持つが、Aliengo は ≈12 step で pitch>10°。
-        # 学習が進むまで 20° に緩める（診断 2026-11-24）。
-        "termination_if_roll_greater_than": 20,
-        "termination_if_pitch_greater_than": 20,
-        # FK standing ≈0.46; init slightly above so feet clear on reset
-        "base_init_pos": [0.0, 0.0, 0.50],
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        "base_init_pos": [0.0, 0.0, 0.36],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -781,13 +777,12 @@ def get_aliengo_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.46,
+        "base_height_target": 0.36,
         "feet_height_target": 0.075,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
-            # MorFiC Aliengo uses -10; Go2-style -50 is too harsh while stance is unstable
             "base_height": -10.0,
             "action_rate": -0.005,
             "similar_to_default": -0.1,

@@ -16,13 +16,23 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
-9. **タスク2 着手中**: Aliengo 専門家 PPO（301 iter）＋履歴収集配線。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
+9. **タスク2 進行中**: Aliengo 専門家 PPO が MorFiC URDF で成功軌道（平均エピソード長 1001）。`model_300` 後に学習履歴（Adaptation 用）を自動収集。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-23 17:48（autopilot）: Aliengo PPO 完了 → 学習履歴収集を起動
+
+- **分かったこと:** MorFiC URDF の PPO が **301 iter 完了**。最終平均エピソード長 **1001**・報酬 ≈**22.7**・線速度追従 ≈**0.99**。unitree URDF では設定いじりでも平均長 ≈10 止まりだった
+- **実行内容:**
+  - `model_300.pt` 確認。ゾンビ待ちを解除し Adaptation 用履歴収集を起動（PID **1942647**）
+  - 出力 `data/aliengo_ad_parallel/`（10 env × 200k）。待ちスクリプトにゾンビ耐性を追加
+  - #22 論文用主表 `general_locomotion_baselines/results/MAIN_TABLE.md` を固定
+- **結果:** ckpt あり。履歴収集進行中。短評価は並行で完走率 100%（`results/aliengo_smoke_model300.json`）
+- **次:** 履歴 h5 完了 → Aliengo 第1波区切り → B1。#22 は合意で close 可
 
 ### 2026-11-23 15:43: タスク2 開始（Aliengo PPO）
 

@@ -51,14 +51,18 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 
 ## 完了条件（Aliengo 第1波）
 
-- [ ] `logs/aliengo-walking/model_300.pt`（または同等）が存在する
-  - 1回目: z=0.55/kp=20 → 平均長 ≈5。退避 `aliengo-walking_kp20_failed_20261123`
-  - 2回目: z=0.40/kp=40（MorFiC寄せ）→ ≈1.7。退避 `aliengo-walking_kp40_z40_failed_*`
-  - 予定していた 3回目 z=0.55/kp=40 は **棄却**（FK 実測 0.46 より高い）
-  - 4回目（進行中）: FK 実測 **init z=0.50 / 目標 0.46 / kp=40** に加え、転倒判定を **20°** に緩和・高さ報酬を **-10**（MorFiC 寄り）。ゼロ行動でも pitch>10° で即終了していたため。PID は `logs/train_ppo/aliengo_latest.pid`
-- [ ] Adaptation 用履歴（h5 / trajectories）が実験ディレクトリ配下に保存されている（失敗 ckpt からは取らない）
-- [ ] 短い評価で「歩ける」（完走率またはエピソード長の目安を README に記載）
-- [ ] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録
+**進捗 2026-11-24 02:50:** MorFiC URDF で `model_300.pt` 完了。短評価完走率 100%。履歴収集中。
+
+
+- [x] `logs/aliengo-walking/model_300.pt` へ向けて学習成功軌道（2026-11-23）
+  - 1回目: unitree URDF + z=0.55/kp=20 → 平均長 ≈5。退避 `aliengo-walking_kp20_failed_20261123`
+  - 2回目: unitree + z=0.40/kp=40 → ≈1.7。退避 `aliengo-walking_kp40_z40_failed_*`
+  - 3回目案 z=0.55 は **棄却**（FK 実測 0.46 より高い）
+  - 4回目: unitree + z=0.50/term20 → 平均長 ≈9–10 で頭打ち。退避 `aliengo-walking_unitree_urdf_failed_20261123`
+  - **5回目（成功）:** Env 既定 URDF を **MorFiC `aliengo_description`** に切替。cfg: init z=**0.36** / 目標 **0.36** / kp=40 / 転倒判定 **10°**。ゼロ行動 80+ step。iter≈60 で平均エピソード長 **1001** に到達し以降維持。PID **1940460**、ログ `logs/train_ppo/aliengo_seed1_morfic_urdf.out`
+- [ ] Adaptation 用履歴（h5）: 収集中（PID **1942647**、出力 `data/aliengo_ad_parallel/`、10 env × 200k step）
+- [x] 短い評価で「歩ける」: 10 env × 1000 step で完走率 **100%**・mean return ≈22.6（`results/aliengo_smoke_model300.json`）
+- [x] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録（2026-11-23 17:48）
 
 ## やらないこと（今）
 

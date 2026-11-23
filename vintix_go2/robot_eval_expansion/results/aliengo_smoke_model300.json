@@ -1,0 +1,12 @@
+{
+  "robot": "aliengo",
+  "ckpt": "model_300.pt",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "n_episodes": 10,
+  "mean_length": 1000.0,
+  "mean_return": 22.64436727664265,
+  "completion_rate": 1.0,
+  "max_episode_length": 1000,
+  "urdf_note": "MorFiC aliengo_description (via aliengo_env default)"
+}
