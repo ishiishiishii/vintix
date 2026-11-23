@@ -117,3 +117,13 @@ python dr_narrow_vintix_bodyscale/make_numberline_report.py
 - **低側の差（暫定）:** 0.8× で同体 0% / LOO 91.9% / narrow **100%**。0.7× 評価中
 - **図:** `figures/go1_size_narrow_…_20261122.png`（低側更新）、`figures/go1_size_density_narrow_vs_samebody_loo_completion_mean_std_20261122.png`
 - **次:** size_density 低側崖 → 数直線。ETA ≈+8h。#16/#22 `--run` は GPU 解放後
+
+### 2026-11-23 03:47（autopilot）: 3 軸評価完了 — 最終比較図＋数直線
+
+- **完了:** done=350 + skipped=120（failed なし）。PIPELINE_DONE。モデル `0004_epoch`
+- **崖:** mass hi=**1.5** / size hi=**1.35** / size_density hi=**1.1**（低側 cliff なし）
+- **size_density 低側確定:** 0.5× **84.0±2.3%**、0.6–0.9× **100%**（同体は ≤0.8× で 0%、LOO は ≤0.7× で ≈0%）
+- **比較（確定）:** 質量 1.3× **57.7%**（LOO 0%）、size 1.3× **34.1%**（LOO 5.8%）。同体は両軸とも 1.15× で全滅
+- **数直線:** 質量崖 ≈17.7 kg・脚長側の失敗も学習帯の内側 → カバレッジ拡張だけでは足りない可能性
+- **図:** `figures/*_20261123.png`、`train_*_numberline_vs_go1_eval.png`（SHA `237c1588`）
+- **次:** #16 立位レンダ起動済。#22 MorFiC/GenLoco `--run` 実装。Issue #21 は完了条件充足で close
