@@ -1,0 +1,10 @@
+{
+  "checked_at_utc": "2026-11-23T20:05:40Z",
+  "train_log": "/workspace/vintix_go2/robot_eval_expansion/logs/train_ppo/b1_seed1_go2like.out",
+  "final_iteration": 300,
+  "final_mean_episode_length": 13.56,
+  "peak_iteration": 83,
+  "peak_mean_episode_length": 1001.0,
+  "min_required_length": 200.0,
+  "pass": false
+}

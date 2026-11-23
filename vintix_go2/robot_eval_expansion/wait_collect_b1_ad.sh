@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="/workspace/vintix_go2/robot_eval_expansion"
 CKPT="${ROOT}/logs/b1-walking/model_300.pt"
 TRAIN_PID_FILE="${ROOT}/logs/train_ppo/b1_latest.pid"
-TRAIN_LOG="${ROOT}/logs/train_ppo/b1_seed1_go2like.out"
+TRAIN_LOG="${ROOT}/logs/train_ppo/b1_seed1_bh2.out"
 OUT_DIR="${ROOT}/data/b1_ad_parallel"
 LOG="${ROOT}/logs/train_ppo/b1_ad_collect.out"
 GATE_JSON="${ROOT}/results/b1_ad_quality_gate.json"

@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-23（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-23 20:19（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -63,17 +63,17 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 - [ ] PPO 試行:
   1. MorFiC URDF+kp90 → 平均長 ≈5（退避 `b1-walking_morfic_failed_*`）
   2. unitree+MorFiC角+kp90+term20 → 平均長 ≈12 で頭打ち（退避 `b1-walking_unitree_term20_plateau12_*`）
-  3. **進行中（崩壊リスク高）:** unitree+Go2系角+kp40+z0.66+term20（`logs/train_ppo/b1_seed1_go2like.out`）
-     - 中盤 iter **83** で平均エピソード長 **1001**（一時的に完走）→ iter **89** 以降に急落
-     - iter 140–160 は平均長 ≈15–45。詳細: `results/b1_go2like_midtrain_analysis.json`
+  3. unitree+Go2系角+kp40+z0.66+term20+高さ罰**-10** → **不合格**（最終 13.56 / ピーク 1001@83）
+     - 退避: `b1-walking_go2like_bh10_collapsed_20261123T201710Z` / `results/b1_ad_quality_gate.json`
+  4. **進行中:** 3 と同じ角・PD で高さ罰 **-2**（`logs/train_ppo/b1_seed1_bh2.out`、PID は `b1_latest.pid`）
      - `wait_collect_b1_ad.sh` に品質ゲート（最終平均長 ≥200 でないと履歴を取らない）
+     - 序盤 iter≈0–7 の平均長 ≈23→38（試行3と同程度。高さ罰の寄与は小さくなった）
 - [ ] Adaptation 用履歴（品質ゲート通過時のみ）
 - [ ] 短評価スモーク
 
-### 試行4の方針（3が最終でも歩けない場合）
+### 試行4のあと（これも最終で歩けない場合）
 
-- 維持: unitree URDF・Go2系角・kp40・転倒判定 20°
-- 変更案: 高さ報酬スケール **-10 → -2**（ピーク時に報酬≈-10で罰が支配していた）
+- 候補: 保存間隔を短くしてピーク ckpt を取る／目標高さを FK 実測に再合わせ／接触・慣性の診断
 - 失敗 ckpt からは履歴を取らない（ゲート済み）
 
 ## やらないこと（今）

@@ -802,24 +802,27 @@ def get_b1_cfgs():
     Unitree B1（#16）。関節名は Go2 と同系。質量 URDF Σ≈62.6 kg（公式~50 / ManyQ~52.7・MASS_QA）。
 
     Env 既定 URDF は unitree_ros `b1.urdf`（Genesis assets）。
-    MorFiC b1 はゼロ行動で胴体が沈み（z→0.22）、PPO は平均長 ≈5 で失敗（2026-11-23）。
-    unitree + 転倒判定 20° + MorFiC 寄せ PD（kp90）でゼロ行動 100 step・高さ維持。
+    試行履歴（2026-11-23）:
+    - MorFiC URDF+kp90 → 平均長 ≈5
+    - unitree+MorFiC角+kp90+term20 → ≈12 頭打ち
+    - unitree+Go2系角+kp40+高さ罰-10 → 中盤で一時完走(1001@83)後崩壊、最終 ≈14
+    本設定は 3 回目と同じ角・PD で **高さ罰を -10→-2**（ピーク時報酬が高さ罰支配だったため）。
     """
     env_cfg = {
         "num_actions": 12,
         "default_joint_angles": {
-            "FL_hip_joint": 0.1,
-            "FR_hip_joint": -0.1,
-            "RL_hip_joint": 0.1,
-            "RR_hip_joint": -0.1,
+            "FL_hip_joint": 0.0,
+            "FR_hip_joint": 0.0,
+            "RL_hip_joint": 0.0,
+            "RR_hip_joint": 0.0,
             "FL_thigh_joint": 0.8,
             "FR_thigh_joint": 0.8,
-            "RL_thigh_joint": 0.8,
-            "RR_thigh_joint": 0.8,
-            "FL_calf_joint": -1.6,
-            "FR_calf_joint": -1.6,
-            "RL_calf_joint": -1.6,
-            "RR_calf_joint": -1.6,
+            "RL_thigh_joint": 1.0,
+            "RR_thigh_joint": 1.0,
+            "FL_calf_joint": -1.5,
+            "FR_calf_joint": -1.5,
+            "RL_calf_joint": -1.5,
+            "RR_calf_joint": -1.5,
         },
         "joint_names": [
             "FR_hip_joint",
@@ -835,16 +838,16 @@ def get_b1_cfgs():
             "RL_thigh_joint",
             "RL_calf_joint",
         ],
-        "kp": 90.0,
-        "kd": 2.5,
-        # term=10 kills unitree B1 zero-action (~14 step); 20° holds 100 step.
+        "kp": 40.0,
+        "kd": 1.0,
         "termination_if_roll_greater_than": 20,
         "termination_if_pitch_greater_than": 20,
-        "base_init_pos": [0.0, 0.0, 0.60],
+        # FK standing ≈0.64 m (Go2-like angles); slight lift
+        "base_init_pos": [0.0, 0.0, 0.66],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
-        "action_scale": 0.35,
+        "action_scale": 0.25,
         "simulate_action_latency": True,
         "clip_actions": 100.0,
     }
@@ -859,13 +862,13 @@ def get_b1_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.56,
+        "base_height_target": 0.64,
         "feet_height_target": 0.08,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
-            "base_height": -10.0,
+            "base_height": -2.0,
             "action_rate": -0.005,
             "similar_to_default": -0.1,
         },
