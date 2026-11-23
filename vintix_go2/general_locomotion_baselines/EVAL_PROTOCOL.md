@@ -24,7 +24,10 @@ Vintix と比較するとき、各ベースラインの**公式再生と Genesis
 ### GenLoco
 - 公式: PyBullet `motion_imitation`（pace / spin / inverse zip）
 - 本リポ: `python wrappers/genloco/run_genloco_genesis_eval.py --dry_run`
-- GPU 空き後: `--run` で Go2 Env 接続。**公式はモーション模倣**なので本線の速度追従とはタスク定義が違う → 比較表に「タスク差」列を残す
+- Genesis `--run`（2026-11-23 初回・pace）: `python wrappers/genloco/run_genloco_genesis_eval.py --run --num_envs 4 --max_steps 500 --policy pace`
+  - 結果 JSON: `results/genloco_genesis/genloco_pace_go2_ne4_s500.json`（completion 0%、mean len **100**）
+  - 次: 公式 PyBullet play と並べて「sim/obs/タスク差」列を埋める
+- **公式はモーション模倣**なので本線の速度追従とはタスク定義が違う → 比較表に「タスク差」列を残す
 - 観測: 451（Motor×15 + IMU6×15 + Act×15 + phase）
 
 ### URMA
@@ -44,6 +47,6 @@ Vintix と比較するとき、各ベースラインの**公式再生と Genesis
 | notes | 観測再構成・sim 差 |
 
 ## いまやらないこと
-- `--run` 本体（#18 評価が GPU を占有）
 - McARL（コード未収録）
 - 本線 Vintix 学習設定の変更
+- URMA actor forward（RL-X 隔離 venv が必要）

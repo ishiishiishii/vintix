@@ -91,3 +91,10 @@ bash clone_third_party.sh
 - **結果:** `results/morfic_genesis/morfic_go2_ne4_s500.json` — completion **0%**、mean episode length **≈11.6**、mean reward/step **≈−0.033**（即転倒）。配線自体は通る
 - **考察:** Isaac Gym pretrained を近似 obs でゼロショット再生しても歩けないのは想定内。比較表のベースラインとしては「未適応・近似配線」として記録。公式 play 差分と GenLoco `--run` が次
 - **次:** GenLoco `--run` 実装。URMA は RL-X。必要なら obs 再構成の改善（gait cmd / clock）
+
+### 2026-11-23 06:25（autopilot）: GenLoco Genesis `--run` 初回配線
+
+- **実行内容:** `GenlocoActorPolicy` + `run_genloco_genesis_eval.py --run --policy pace`（Go2、4 env × 500 step）。観測は Genesis45→451 近似
+- **結果:** `results/genloco_genesis/genloco_pace_go2_ne4_s500.json` — completion **0%**、mean episode length **100**、mean reward/step **≈0.004**
+- **考察:** MorFiC（≈11.6）より長く立つが完走は同様 0%。モーション模倣 pretrained × 速度追従 Env × 近似 obs の三重ギャップ。比較表の「未適応・近似配線」行として記録可
+- **次:** URMA は RL-X。公式 PyBullet/Isaac play 差分。本線は #18 他台 or #11

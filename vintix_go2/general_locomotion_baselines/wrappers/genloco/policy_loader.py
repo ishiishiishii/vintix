@@ -110,6 +110,25 @@ class GenlocoActor(nn.Module):
         return self.net(obs)
 
 
+class GenlocoActorPolicy(nn.Module):
+    """Mean-actor wrapper for Genesis eval (loads zip → GenlocoActor)."""
+
+    def __init__(self, ckpt_path: str | Path | None = None, device: str | torch.device = "cpu"):
+        super().__init__()
+        path = Path(ckpt_path) if ckpt_path else DEFAULT_CKPT
+        self.dims = assert_dims_match_checkpoint(path)
+        params, _ = _open_policy_zip(path)
+        self.actor = GenlocoActor(params)
+        self.device = torch.device(device)
+        self.to(self.device)
+        self.eval()
+
+    @torch.no_grad()
+    def act(self, obs_flat: torch.Tensor) -> torch.Tensor:
+        """(B, 451) → (B, 12) actions."""
+        return self.actor(obs_flat.to(self.device))
+
+
 def smoke_forward_shapes(
     ckpt_path: str | Path | None = None,
     batch_size: int = 2,
