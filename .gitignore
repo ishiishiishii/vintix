@@ -105,6 +105,9 @@ vintix_go2/experience_decoder_ft_data_fraction_20260517/run.log
 !vintix_go2/ppo_cross_robot_ft_20260517/graphs/
 !vintix_go2/ppo_cross_robot_ft_20260517/graphs/**
 
+# Third-party baseline clones (local only; see clone_third_party.sh)
+vintix_go2/general_locomotion_baselines/third_party/
+
 # Embedded git repositories (track separately or as submodules)
 ad-eps/
 # Genesis 内の埋め込みリポジトリ
@@ -112,4 +115,4 @@ Genesis/genesis/assets/urdf/spotmicro/temp_repo2/
 bullet3/
 laikago_ros/
 mini_cheetah_urdf/
-vintix/
+vintix/autopilot/.notion_issues_views.json
