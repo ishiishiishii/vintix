@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-23 21:10（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-23 21:41（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -66,14 +66,18 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
   3. unitree+Go2系角+kp40+z0.66+term20+高さ罰**-10** → 最終 13.56 / ピーク 1001@83（退避 `*_go2like_bh10_*`）
   4. 高さ罰 **-2**・301 iter → ピーク ≈793@81 の直後に崩壊（退避 `*_bh2_collapsed_*`）。解析: `results/b1_bh2_collapse_analysis.json`
   5. **早期停止 81 iter + 保存間隔 20**（`b1_seed1_earlystop80.out`）→ 学習ログ最終長 123（旧ゲート不合格）だが密 ckpt を確保
-- [x] 短評価スモーク: `model_40/60/80` いずれも完走率 **100%**（10×1000）。return ≈4–6（`results/b1_smoke_ckpt_compare.json`）
-- [ ] Adaptation 用履歴: **収集中**（PID **1960092**、`model_80.pt` → `data/b1_ad_parallel/`）
-  - 学習ログの最終長ゲートではなく、**短評価完走**を合格条件に切り替えた（探索ノイズ下の長さ ≠ 決定論方策の歩行）
+- [x] 短評価スモーク:
+  - 10 env×1000: `model_40/60/80` 完走率 **100%**、return ≈4–6（`results/b1_smoke_ckpt_compare.json`）
+  - 8 env×500 再スモーク: `model_40/80` 完走 100%（return **2.3 / 1.85**）、`model_60` は崩壊（`results/b1_ckpt_smoke_eval.json`）
+- [ ] Adaptation 用履歴: **収集中**（PID **1961754**、**`model_40.pt`** → `data/b1_ad_parallel/`）
+  - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用（`model_80` 向けの誤収集は停止済み）
+  - 中間集計（≈30%・ε≈0.80）: 直近平均長 **≈734**・報酬 ≈−17（`results/b1_ad_collect_mid.json`）。同進捗の Aliengo 履歴収集（平均長 ≈9）より探索耐性が高い
 
 ### メモ（B1）
 
-- 中盤崩壊型。密な保存＋短評価で歩行重みは取れる
-- 速度追従（return）は Aliengo（≈22）より弱い（≈4–6）。履歴の質は収集後に再判断
+- 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。ただし短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
+- 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。履歴の質は収集完了後に短評価で再判断
+- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。履歴収集配線は B1 区切り後）
 - 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
 ## やらないこと（今）

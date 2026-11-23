@@ -1,0 +1,18 @@
+{
+  "checked_at_utc": "2026-11-23T21:40:52Z",
+  "pid": 1961754,
+  "ckpt": "model_40.pt",
+  "target_steps_per_env": 200000,
+  "collected_steps_per_env": 60320,
+  "last_n_eps": 76,
+  "mean_ep_len_recent": 734.0,
+  "mean_reward_recent": -17.1315,
+  "epsilon_approx": 0.7987,
+  "frac_done": 0.3016,
+  "note": "High \u03b5 exploration: ep len <1000 and negative reward expected; gate was inference smoke on model_40.",
+  "selection": {
+    "source": "results/b1_ckpt_smoke_eval.json",
+    "why_not_model_80": "8env\u00d7500 inference: model_40 return 2.3 > model_80 1.85; model_60 collapsed (frac_full=0)",
+    "earlier_10x1000_smoke": "model_40/60/80 all 100% completion; returns 3.96/4.66/5.89 \u2014 protocol mismatch with later smoke on model_60"
+  }
+}
