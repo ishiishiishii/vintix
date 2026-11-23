@@ -40,6 +40,7 @@ from env import A1Env
 from env import ANYmalCEnv
 from env import AliengoEnv
 from env import B1Env
+from env import ANYmalBEnv
 
 
 def default_expert_ckpt_for_robot(robot: str) -> Path:
@@ -60,6 +61,8 @@ def default_expert_ckpt_for_robot(robot: str) -> Path:
         "aliengo": Path("/workspace/vintix_go2/robot_eval_expansion/logs/aliengo-walking")
         / "model_300.pt",
         "b1": Path("/workspace/vintix_go2/robot_eval_expansion/logs/b1-walking")
+        / "model_300.pt",
+        "anymalb": Path("/workspace/vintix_go2/robot_eval_expansion/logs/anymalb-walking")
         / "model_300.pt",
     }
     if robot not in mapping:
@@ -338,6 +341,9 @@ class PerEnvADDataCollector:
         elif self.robot_type == "b1":
             task_name = "b1_walking_ad"
             group_name = "b1_locomotion"
+        elif self.robot_type == "anymalb":
+            task_name = "anymalb_walking_ad"
+            group_name = "anymalb_locomotion"
         else:  # go2
             task_name = "go2_walking_ad"
             group_name = "go2_locomotion"
@@ -383,9 +389,9 @@ def main():
         "-r",
         "--robot_type",
         type=str,
-        choices=["go2", "go1", "a1", "minicheetah", "anymalc", "aliengo", "b1"],
+        choices=["go2", "go1", "a1", "minicheetah", "anymalc", "aliengo", "b1", "anymalb"],
         default="go2",
-        help="Robot type (A1 は ``a1``; #16 Aliengo/B1 追加)",
+        help="Robot type (A1 は ``a1``; #16 Aliengo/B1/ANYmal-B 追加)",
     )
     default_output_dir = "data/go2_trajectories/go2_ad_parallel"
     parser.add_argument("--output_dir", type=str, default=default_output_dir,
@@ -701,6 +707,15 @@ def main():
         )
     elif args.robot_type == "b1":
         env = B1Env(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False,
+        )
+    elif args.robot_type == "anymalb":
+        env = ANYmalBEnv(
             num_envs=args.num_envs,
             env_cfg=env_cfg,
             obs_cfg=obs_cfg,

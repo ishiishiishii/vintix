@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-23 21:41（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-23 22:45（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -36,9 +36,9 @@
 
 ## 学習履歴収集のギャップ（実装メモ）
 
-`collect_ad_data_parallel.py` の `-r` に **`aliengo` を追加済み**（2026-11-23）。
-デフォルト ckpt は `robot_eval_expansion/logs/aliengo-walking/model_300.pt`。
-B1 / Spot / ANYmal-B は同様に後続で足す。
+`collect_ad_data_parallel.py` の `-r` に **`aliengo` / `b1` / `anymalb` を追加済み**（2026-11-23）。
+デフォルト ckpt は各 `robot_eval_expansion/logs/<robot>-walking/model_300.pt`。
+Spot は後続で足す。
 
 ## 見積もり（1 機体）
 
@@ -70,14 +70,14 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
   - 10 env×1000: `model_40/60/80` 完走率 **100%**、return ≈4–6（`results/b1_smoke_ckpt_compare.json`）
   - 8 env×500 再スモーク: `model_40/80` 完走 100%（return **2.3 / 1.85**）、`model_60` は崩壊（`results/b1_ckpt_smoke_eval.json`）
 - [ ] Adaptation 用履歴: **収集中**（PID **1961754**、**`model_40.pt`** → `data/b1_ad_parallel/`）
-  - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用（`model_80` 向けの誤収集は停止済み）
-  - 中間集計（≈30%・ε≈0.80）: 直近平均長 **≈734**・報酬 ≈−17（`results/b1_ad_collect_mid.json`）。同進捗の Aliengo 履歴収集（平均長 ≈9）より探索耐性が高い
+  - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用
+  - **進捗訂正（2026-11-23 22:45）:** ログの `Collected steps (sum/env)` は **全 env 合計**。前回の「≈30%」は誤読（合計を 20万で割っていた）。正しい進捗は合計 ≈**42万 / 200万**（≈**21%**）、env 平均 ≈4.2万 step、ε≈**0.42**、直近平均長 **≈902**、ETA ≈**03:53 UTC**（`results/b1_ad_collect_mid.json`）
 
 ### メモ（B1）
 
 - 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。ただし短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
 - 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。履歴の質は収集完了後に短評価で再判断
-- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。履歴収集配線は B1 区切り後）
+- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。**`-r anymalb` と `wait_collect_anymalb_ad.sh` は配線済み**。PPO は B1 履歴完了後）
 - 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
 ## やらないこと（今）
