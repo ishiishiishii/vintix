@@ -719,9 +719,10 @@ def get_aliengo_cfgs():
     Aliengo（#16）。関節名は Go2 と同系。質量は URDF Σ≈24.9 kg（公式~21.5 より重い・MASS_QA 参照）。
     thigh は URDF 上 continuous。
 
-    PD は MorFiC（kp=40）を採用。初期高さは Genesis の Aliengo URDF＋Go2 角では
-    MorFiC の z=0.36 が合わず、z=0.40 再学習は平均エピソード長≈1.7 と悪化。
-    静的立位レンダで使っていた ≈0.55 側に戻し、目標高さを少し下げる（Go2 と同様の落差）。
+    高さは robot_standing_pose（Go2 角・Aliengo URDF）の実測に合わせる:
+      base_z_for_standing ≈ 0.4607 m、足は床上 ≈1 cm。
+    試行履歴: z=0.55/kp=20 → 平均長≈5; z=0.40/kp=40（MorFiC寄せ）→≈1.7;
+    予定していた z=0.55/kp=40 は実測より高いので棄却。PD は MorFiC 準拠 kp=40/kd=1。
     """
     env_cfg = {
         "num_actions": 12,
@@ -756,10 +757,12 @@ def get_aliengo_cfgs():
         # Heavier than Go2; MorFiC uses stiffness 40 / damping 1
         "kp": 40.0,
         "kd": 1.0,
-        "termination_if_roll_greater_than": 10,
-        "termination_if_pitch_greater_than": 10,
-        # Genesis Aliengo + Go2-like angles: feet reach lower than MorFiC's 0.36
-        "base_init_pos": [0.0, 0.0, 0.55],
+        # Go2 は term=10° でゼロ行動が長く持つが、Aliengo は ≈12 step で pitch>10°。
+        # 学習が進むまで 20° に緩める（診断 2026-11-24）。
+        "termination_if_roll_greater_than": 20,
+        "termination_if_pitch_greater_than": 20,
+        # FK standing ≈0.46; init slightly above so feet clear on reset
+        "base_init_pos": [0.0, 0.0, 0.50],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -778,13 +781,14 @@ def get_aliengo_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.45,
+        "base_height_target": 0.46,
         "feet_height_target": 0.075,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
-            "base_height": -50.0,
+            # MorFiC Aliengo uses -10; Go2-style -50 is too harsh while stance is unstable
+            "base_height": -10.0,
             "action_rate": -0.005,
             "similar_to_default": -0.1,
         },

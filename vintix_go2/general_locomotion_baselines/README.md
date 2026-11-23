@@ -29,6 +29,7 @@ general_locomotion_baselines/
   OFFICIAL_EVAL_SETUP.md      # 公式シミュレータ再生手順
   METRICS_CROSSWALK.md        # 本線指標 ↔ 各手法指標
   MORFIC_ISAAC_DECISION.md    # MorFiC / Isaac Gym の判断メモ
+  DONE_CRITERIA.md            # Issue 完了条件（最小完了＝GenLoco+URMA 主表）
   README.md
   clone_third_party.sh        # shallow clone（third_party は gitignore）
   third_party/                # クローン先（コミットしない）
@@ -59,6 +60,12 @@ bash clone_third_party.sh
 | #22 | 比較用**アルゴリズム**（本ディレクトリ） |
 
 ## 実行ログ
+
+### 2026-11-23 17:04（autopilot）: 完了条件案を固定
+
+- **実行内容:** `DONE_CRITERIA.md` を追加。最小完了＝主表 GenLoco+URMA（公式再生）、MorFiC は主表外
+- **結果:** GPU 不要で閉じられる道筋を明文化。ユーザー合意で close 可
+- **次:** #16 Aliengo 学習の監視と並行。合意が取れれば #22 close
 
 ### 2026-11-18 — 文献調査表と採択優先度を確定、P0/P1 クローン着手
 

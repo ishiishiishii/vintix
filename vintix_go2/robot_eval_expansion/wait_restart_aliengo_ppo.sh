@@ -1,26 +1,38 @@
 #!/usr/bin/env bash
 # After current Aliengo PPO exits, restart with latest get_aliengo_cfgs().
-# Archive note: kp20/z0.55 failed (len≈5); kp40/z0.40 failed worse (len≈1.7).
-# Next try: kp40 / init z=0.55 / height target 0.45.
+# Attempt history:
+#   kp20/z0.55 → len≈5; kp40/z0.40 → len≈1.7; planned z0.55 rejected after FK.
+# Current: kp40 / init z=0.50 / height target 0.46 (FK standing ≈0.4607).
+# Handles zombie PIDs (container init may not reap; kill -0 still succeeds on Z).
 set -euo pipefail
 OLD_PID="${1:?usage: $0 <pid-to-wait>}"
 ROOT=/workspace
 LOGDIR="$ROOT/vintix_go2/robot_eval_expansion/logs"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-OUT="$LOGDIR/train_ppo/aliengo_seed1_kp40_z55_${STAMP}.out"
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] waiting for PID $OLD_PID to exit..."
-while kill -0 "$OLD_PID" 2>/dev/null; do
+OUT="$LOGDIR/train_ppo/aliengo_seed1_fk050_${STAMP}.out"
+
+is_alive_non_zombie() {
+  local pid="$1"
+  [[ -r "/proc/$pid/stat" ]] || return 1
+  # /proc/PID/stat field 3 is state; Z = zombie
+  local state
+  state=$(awk '{print $3}' "/proc/$pid/stat" 2>/dev/null || echo Z)
+  [[ "$state" != "Z" ]]
+}
+
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] waiting for PID $OLD_PID to exit (ignore zombies)..."
+while is_alive_non_zombie "$OLD_PID"; do
   sleep 20
 done
-# If another train already holds the GPU, do not start a third copy.
+
 if pgrep -f "train.py -r aliengo" >/dev/null 2>&1; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] another aliengo train already running; skip"
   exit 0
 fi
-echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] starting kp40/z55 restart"
-# Archive previous attempt if present
-if [ -d "$LOGDIR/aliengo-walking" ] && [ ! -d "$LOGDIR/aliengo-walking_kp40_z40_failed_${STAMP}" ]; then
-  mv "$LOGDIR/aliengo-walking" "$LOGDIR/aliengo-walking_kp40_z40_failed_${STAMP}" || true
+
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] starting kp40/z050 (FK-based) restart"
+if [ -d "$LOGDIR/aliengo-walking" ] && [ ! -d "$LOGDIR/aliengo-walking_prev_${STAMP}" ]; then
+  mv "$LOGDIR/aliengo-walking" "$LOGDIR/aliengo-walking_prev_${STAMP}" || true
 fi
 mkdir -p "$LOGDIR/train_ppo" "$LOGDIR/aliengo-walking"
 cd "$ROOT/Genesis/examples/locomotion"

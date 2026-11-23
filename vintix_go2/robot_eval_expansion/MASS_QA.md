@@ -22,7 +22,7 @@
 - trunk mass: 11.644 kg（DR フォールバック）
 - 関節: Unitree 命名（`FR/FL/RR/RL` × hip/thigh/calf）。**thigh は `continuous`（角度 limit なし）**、hip/calf は revolute+limit
 - Env: `Genesis/examples/locomotion/aliengo_env.py`
-- 立位・PD（2026-11-23 修正）: MorFiC 準拠で `base_init_pos` z=0.40 / `base_height_target` 0.36 / kp=40。旧 z=0.55・kp=20 では PPO が即転倒のまま失敗
+- 立位・PD（2026-11-23 FK 実測）: `robot_standing_pose` で Go2 角・Aliengo URDF → 胴体高さ ≈**0.4607 m**、足は床上 ≈1 cm。採用: init z=**0.50** / 目標高さ **0.46** / kp=40。失敗例: z=0.55/kp=20→平均長≈5、z=0.40/kp=40→≈1.7（低すぎ）、予定 z=0.55 は実測より高く棄却
 - 結論: 質量差は既知。高さ・PD は MorFiC 設定を優先
 
 

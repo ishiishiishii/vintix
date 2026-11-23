@@ -53,8 +53,9 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 
 - [ ] `logs/aliengo-walking/model_300.pt`（または同等）が存在する
   - 1回目: z=0.55/kp=20 → 平均長 ≈5。退避 `aliengo-walking_kp20_failed_20261123`
-  - 2回目: z=0.40/kp=40（MorFiC寄せ）→ 序盤 ≈1.7 と悪化。終了後に退避予定
-  - 3回目（予定）: **z=0.55 / 目標高さ 0.45 / kp=40**。PID 1933196 終了後に `wait_restart_aliengo_ppo.sh` が起動
+  - 2回目: z=0.40/kp=40（MorFiC寄せ）→ ≈1.7。退避 `aliengo-walking_kp40_z40_failed_*`
+  - 予定していた 3回目 z=0.55/kp=40 は **棄却**（FK 実測 0.46 より高い）
+  - 4回目（進行中）: FK 実測 **init z=0.50 / 目標 0.46 / kp=40** に加え、転倒判定を **20°** に緩和・高さ報酬を **-10**（MorFiC 寄り）。ゼロ行動でも pitch>10° で即終了していたため。PID は `logs/train_ppo/aliengo_latest.pid`
 - [ ] Adaptation 用履歴（h5 / trajectories）が実験ディレクトリ配下に保存されている（失敗 ckpt からは取らない）
 - [ ] 短い評価で「歩ける」（完走率またはエピソード長の目安を README に記載）
 - [ ] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録
