@@ -115,14 +115,24 @@ def plot_numberline(
     out: Path,
     eval_points: Optional[List[Tuple[float, float]]] = None,
     train_label: str = "Train robots (success)",
-    cliff_x: Optional[float] = None,
+    fail_x: Optional[float] = None,
+    baseline_x: Optional[float] = None,
+    baseline_label: str = "Go1 base (1.0×)",
 ) -> Path:
-    """Horizontal number line with train ticks + optional eval success markers."""
+    """Horizontal number line: train range, Go1 base, optional eval markers."""
     FIG_DIR.mkdir(parents=True, exist_ok=True)
-    fig, ax = plt.subplots(figsize=(10, 2.8), dpi=150)
+    fig, ax = plt.subplots(figsize=(10, 3.0), dpi=150)
     y0 = 0.0
-    ax.hlines(y0, min(values) * 0.95 if values else 0, max(values) * 1.05 if values else 1,
-              colors="#444444", linewidths=2.0, zorder=1)
+    xs_all = list(values)
+    if eval_points:
+        xs_all.extend(p[0] for p in eval_points)
+    if baseline_x is not None:
+        xs_all.append(baseline_x)
+    if fail_x is not None:
+        xs_all.append(fail_x)
+    x_lo = min(xs_all) * 0.95 if xs_all else 0.0
+    x_hi = max(xs_all) * 1.05 if xs_all else 1.0
+    ax.hlines(y0, x_lo, x_hi, colors="#444444", linewidths=2.0, zorder=1)
     if values:
         ax.scatter(values, [y0] * len(values), s=28, c="#1f77b4", alpha=0.55,
                    label=train_label, zorder=3, edgecolors="none")
@@ -132,18 +142,35 @@ def plot_numberline(
         xs = [p[0] for p in eval_points]
         cs = [p[1] for p in eval_points]
         colors = ["#2ca02c" if c >= SUCCESS_THRESH else "#d62728" for c in cs]
-        ax.scatter(xs, [0.12] * len(xs), s=42, c=colors, marker="D",
-                   label=f"Go1 eval (green>={SUCCESS_THRESH:.0f}%)", zorder=4,
+        ax.scatter(xs, [0.14] * len(xs), s=42, c=colors, marker="D",
+                   label=f"Go1 eval (green ≥ {SUCCESS_THRESH:.0f}% success)", zorder=4,
                    edgecolors="#222222", linewidths=0.4)
-    if cliff_x is not None:
-        ax.axvline(cliff_x, color="#d62728", linestyle="--", linewidth=1.5,
-                   label=f"Cliff ≈ {cliff_x:.3g}", zorder=5)
-    ax.set_ylim(-0.35, 0.45)
+    if baseline_x is not None:
+        ax.axvline(baseline_x, color="#111111", linestyle="-", linewidth=2.0, zorder=6)
+        ax.scatter([baseline_x], [-0.16], s=90, c="#111111", marker="o",
+                   label=f"{baseline_label}", zorder=7,
+                   edgecolors="#ffffff", linewidths=1.0)
+        # value callout just above the axis (readable, not a title)
+        ax.annotate(
+            f"{baseline_x:.3g}",
+            xy=(baseline_x, y0),
+            xytext=(0, -28),
+            textcoords="offset points",
+            ha="center",
+            va="top",
+            fontsize=12,
+            color="#111111",
+        )
+    if fail_x is not None:
+        ax.axvline(fail_x, color="#d62728", linestyle="--", linewidth=1.5,
+                   label=f"Fails near {fail_x:.3g}", zorder=5)
+    ax.set_ylim(-0.42, 0.48)
+    ax.set_xlim(x_lo, x_hi)
     ax.set_yticks([])
     ax.set_xlabel(xlabel, fontsize=16)
     ax.tick_params(axis="x", labelsize=14)
-    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), ncol=2, fontsize=12, frameon=False)
-    fig.subplots_adjust(left=0.08, right=0.98, top=0.92, bottom=0.42)
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.32), ncol=2, fontsize=11, frameon=False)
+    fig.subplots_adjust(left=0.08, right=0.98, top=0.90, bottom=0.48)
     out.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out)
     plt.close(fig)
@@ -283,13 +310,15 @@ def main() -> None:
 
     go1_m = go1_nominal_mass()
     go1_th = go1_thigh_m()
+    # DR meta stores thigh+calf as leg_length; Go1 calf ≈ thigh in the URDF table.
+    go1_leg = 2.0 * go1_th
 
     mass_eval = None
-    cliff_mass = None
+    fail_mass = None
     if eval_comp.get("mass"):
         mass_eval = [(go1_m * s, float(np.mean(vs))) for s, vs in sorted(eval_comp["mass"].items())]
         _ok, fail = cliff_range(eval_comp["mass"])
-        cliff_mass = go1_m * fail if fail is not None else None
+        fail_mass = go1_m * fail if fail is not None else None
 
     if masses:
         figs.append(plot_numberline(
@@ -297,30 +326,33 @@ def main() -> None:
             xlabel="Total mass [kg]",
             out=FIG_DIR / "train_mass_numberline_vs_go1_eval.png",
             eval_points=mass_eval,
-            cliff_x=cliff_mass,
+            fail_x=fail_mass,
+            baseline_x=go1_m,
+            baseline_label=f"Go1 base mass ({go1_m:.2f} kg)",
         ))
 
     size_eval = None
-    cliff_leg = None
-    # map size / size_density scales to Go1 thigh length as a size proxy
+    fail_leg = None
+    # Same physical unit as train: Go1 leg_length ≈ 2 × thigh, then × size scale.
     size_scales = {}
     for axis in ("size", "size_density"):
         for s, vs in eval_comp.get(axis, {}).items():
             size_scales.setdefault(s, []).extend(vs)
     if size_scales:
-        size_eval = [(go1_th * s, float(np.mean(vs))) for s, vs in sorted(size_scales.items())]
+        size_eval = [(go1_leg * s, float(np.mean(vs))) for s, vs in sorted(size_scales.items())]
         _ok, fail = cliff_range(size_scales)
-        cliff_leg = go1_th * fail if fail is not None else None
+        fail_leg = go1_leg * fail if fail is not None else None
 
     if legs:
-        # training uses full leg_length; overlay uses thigh as proxy — annotate in xlabel
         figs.append(plot_numberline(
             legs,
-            xlabel="Train leg length [m]  /  eval markers: Go1 thigh × size scale [m]",
+            xlabel="Leg length [m] (thigh + calf)",
             out=FIG_DIR / "train_leg_numberline_vs_go1_eval.png",
             eval_points=size_eval,
-            cliff_x=cliff_leg,
-            train_label="Train robots leg_length",
+            fail_x=fail_leg,
+            baseline_x=go1_leg,
+            baseline_label=f"Go1 base leg ({go1_leg:.3f} m)",
+            train_label="Train robots (leg length)",
         ))
 
     write_report(meta, eval_comp, figs)
