@@ -24,12 +24,17 @@ Vintix（＋デコーダ FT）を主張するとき、同条件で並べられ�
 
 ```
 general_locomotion_baselines/
-  LITERATURE_SURVEY.md   # 手法／OSS／採否表
+  LITERATURE_SURVEY.md        # 手法／OSS／採否表
+  COMPARISON_PROTOCOL.md      # 比較の約束事
+  OFFICIAL_EVAL_SETUP.md      # 公式シミュレータ再生手順
+  METRICS_CROSSWALK.md        # 本線指標 ↔ 各手法指標
+  MORFIC_ISAAC_DECISION.md    # MorFiC / Isaac Gym の判断メモ
   README.md
-  clone_third_party.sh   # shallow clone（third_party は gitignore）
-  third_party/           # クローン先（コミットしない）
-  wrappers/              # Genesis 評価への薄いラッパ（MorFiC / GenLoco / URMA）
-  SOURCE_LICENSES.md     # 出典・ライセンス記録
+  clone_third_party.sh        # shallow clone（third_party は gitignore）
+  third_party/                # クローン先（コミットしない）
+  wrappers/                   # Genesis 評価への薄いラッパ（MorFiC / GenLoco / URMA）
+  results/COMPARISON_SNAPSHOT.md
+  SOURCE_LICENSES.md          # 出典・ライセンス記録
 ```
 
 ## クローン（低 GPU）
@@ -112,4 +117,11 @@ bash clone_third_party.sh
 - **結果:** 3 エピソードとも **1000 ステップ生存**（公式 20 秒）、平均 return ≈**53.4**（`results/urma_official/urma_go2_ep3_s4000.json`）
 - **考察:** 公式側では歩ける。Genesis 近似 0% との差は配線・観測側。cuDNN 8.9/9 のずれで GPU 未使用
 - **次:** MorFiC は Isaac Gym 判断待ち。#16 タスク2（Aliengo＋学習履歴）へ
+
+### 2026-11-23 16:16（autopilot）: MorFiC 判断メモ＋指標対応表
+
+- **実行内容:** `MORFIC_ISAAC_DECISION.md`（案 A 導入／B 別環境／C 主表から外す）と `METRICS_CROSSWALK.md`（本線完走率 ↔ GenLoco/URMA）を追加
+- **結果:** 仮置き推奨は **C（主表=GenLoco+URMA）**。Isaac Gym はユーザー明示まで入れない
+- **考察:** 公式数値が揃う 2 手法だけで第1波の比較表は書ける。MorFiC は文献枠＋将来オプション
+- **次:** #16 Aliengo 再学習完了後に履歴収集。#22 は公式表の厚み（任意）
 

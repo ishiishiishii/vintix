@@ -22,8 +22,12 @@ from env import MiniCheetahEnv
 from env import LaikagoEnv
 from env import A1Env
 from env import ANYmalCEnv
+from env import ANYmalBEnv
 from spotmicro_env import SpotMicroEnv
 from env import Go1Env
+from env import AliengoEnv
+from env import B1Env
+from env import SpotEnv
 
 
 
@@ -710,6 +714,324 @@ def get_spotmicro_cfgs():
     return env_cfg, obs_cfg, reward_cfg, command_cfg
 
 
+def get_aliengo_cfgs():
+    """
+    Aliengo（#16）。関節名は Go2 と同系。質量は URDF Σ≈24.9 kg（公式~21.5 より重い・MASS_QA 参照）。
+    thigh は URDF 上 continuous。
+
+    高さ・PD・股関節角は MorFiC ``aliengo_config``（init z=0.36, kp=40）に合わせる。
+    初回 seed=1（2026-11-23）は Go2 流用の z=0.55 / kp=20 で平均エピソード長≈5 のまま
+    301 iter 終了まで学習が進まず失敗 → 再学習用に修正。
+    """
+    env_cfg = {
+        "num_actions": 12,
+        "default_joint_angles": {
+            # MorFiC: slight hip abduction; thigh/calf same as Go2 standing
+            "FL_hip_joint": 0.1,
+            "FR_hip_joint": -0.1,
+            "RL_hip_joint": 0.1,
+            "RR_hip_joint": -0.1,
+            "FL_thigh_joint": 0.8,
+            "FR_thigh_joint": 0.8,
+            "RL_thigh_joint": 1.0,
+            "RR_thigh_joint": 1.0,
+            "FL_calf_joint": -1.5,
+            "FR_calf_joint": -1.5,
+            "RL_calf_joint": -1.5,
+            "RR_calf_joint": -1.5,
+        },
+        "joint_names": [
+            "FR_hip_joint",
+            "FR_thigh_joint",
+            "FR_calf_joint",
+            "FL_hip_joint",
+            "FL_thigh_joint",
+            "FL_calf_joint",
+            "RR_hip_joint",
+            "RR_thigh_joint",
+            "RR_calf_joint",
+            "RL_hip_joint",
+            "RL_thigh_joint",
+            "RL_calf_joint",
+        ],
+        # Heavier than Go2; MorFiC uses stiffness 40 / damping 1
+        "kp": 40.0,
+        "kd": 1.0,
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        "base_init_pos": [0.0, 0.0, 0.40],
+        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+        "episode_length_s": 20.0,
+        "resampling_time_s": 4.0,
+        "action_scale": 0.25,
+        "simulate_action_latency": True,
+        "clip_actions": 100.0,
+    }
+    obs_cfg = {
+        "num_obs": 45,
+        "obs_scales": {
+            "lin_vel": 2.0,
+            "ang_vel": 0.25,
+            "dof_pos": 1.0,
+            "dof_vel": 0.05,
+        },
+    }
+    reward_cfg = {
+        "tracking_sigma": 0.25,
+        "base_height_target": 0.36,
+        "feet_height_target": 0.075,
+        "reward_scales": {
+            "tracking_lin_vel": 1.0,
+            "tracking_ang_vel": 0.2,
+            "lin_vel_z": -1.0,
+            "base_height": -50.0,
+            "action_rate": -0.005,
+            "similar_to_default": -0.1,
+        },
+    }
+    command_cfg = {
+        "num_commands": 3,
+        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
+    }
+    return env_cfg, obs_cfg, reward_cfg, command_cfg
+
+
+def get_b1_cfgs():
+    """
+    Unitree B1（#16）。関節名は Go2 と同系。質量 URDF Σ≈62.6 kg（公式~50 / ManyQ~52.7・MASS_QA）。
+    高さは暫定（大型機）。
+    """
+    env_cfg = {
+        "num_actions": 12,
+        "default_joint_angles": {
+            "FL_hip_joint": 0.0,
+            "FR_hip_joint": 0.0,
+            "RL_hip_joint": 0.0,
+            "RR_hip_joint": 0.0,
+            "FL_thigh_joint": 0.8,
+            "FR_thigh_joint": 0.8,
+            "RL_thigh_joint": 1.0,
+            "RR_thigh_joint": 1.0,
+            "FL_calf_joint": -1.5,
+            "FR_calf_joint": -1.5,
+            "RL_calf_joint": -1.5,
+            "RR_calf_joint": -1.5,
+        },
+        "joint_names": [
+            "FR_hip_joint",
+            "FR_thigh_joint",
+            "FR_calf_joint",
+            "FL_hip_joint",
+            "FL_thigh_joint",
+            "FL_calf_joint",
+            "RR_hip_joint",
+            "RR_thigh_joint",
+            "RR_calf_joint",
+            "RL_hip_joint",
+            "RL_thigh_joint",
+            "RL_calf_joint",
+        ],
+        "kp": 40.0,
+        "kd": 1.0,
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        "base_init_pos": [0.0, 0.0, 0.65],
+        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+        "episode_length_s": 20.0,
+        "resampling_time_s": 4.0,
+        "action_scale": 0.25,
+        "simulate_action_latency": True,
+        "clip_actions": 100.0,
+    }
+    obs_cfg = {
+        "num_obs": 45,
+        "obs_scales": {
+            "lin_vel": 2.0,
+            "ang_vel": 0.25,
+            "dof_pos": 1.0,
+            "dof_vel": 0.05,
+        },
+    }
+    reward_cfg = {
+        "tracking_sigma": 0.25,
+        "base_height_target": 0.55,
+        "feet_height_target": 0.08,
+        "reward_scales": {
+            "tracking_lin_vel": 1.0,
+            "tracking_ang_vel": 0.2,
+            "lin_vel_z": -1.0,
+            "base_height": -50.0,
+            "action_rate": -0.005,
+            "similar_to_default": -0.1,
+        },
+    }
+    command_cfg = {
+        "num_commands": 3,
+        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
+    }
+    return env_cfg, obs_cfg, reward_cfg, command_cfg
+
+
+def get_anymalb_cfgs():
+    """
+    ANYmal-B simple_description（#16）。関節名は ANYmal-C と同系。質量 ≈30.4 kg で文献と一致。
+    立位角は C を暫定流用（レンダ後に調整）。
+    """
+    env_cfg = {
+        "num_actions": 12,
+        "default_joint_angles": {
+            "LF_HAA": -0.3,
+            "LF_HFE": 0.8,
+            "LF_KFE": -1.3,
+            "RF_HAA": 0.3,
+            "RF_HFE": 0.8,
+            "RF_KFE": -1.3,
+            "LH_HAA": -0.3,
+            "LH_HFE": -0.8,
+            "LH_KFE": 1.3,
+            "RH_HAA": 0.3,
+            "RH_HFE": -0.8,
+            "RH_KFE": 1.3,
+        },
+        "joint_names": [
+            "RH_HAA",
+            "LH_HAA",
+            "RF_HAA",
+            "LF_HAA",
+            "RH_HFE",
+            "LH_HFE",
+            "RF_HFE",
+            "LF_HFE",
+            "RH_KFE",
+            "LH_KFE",
+            "RF_KFE",
+            "LF_KFE",
+        ],
+        "kp": 20.0,
+        "kd": 0.5,
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        "base_init_pos": [0.0, 0.0, 0.50],
+        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+        "episode_length_s": 20.0,
+        "resampling_time_s": 4.0,
+        "action_scale": 0.25,
+        "simulate_action_latency": True,
+        "clip_actions": 100.0,
+    }
+    obs_cfg = {
+        "num_obs": 45,
+        "obs_scales": {
+            "lin_vel": 2.0,
+            "ang_vel": 0.25,
+            "dof_pos": 1.0,
+            "dof_vel": 0.05,
+        },
+    }
+    reward_cfg = {
+        "tracking_sigma": 0.25,
+        "base_height_target": 0.45,
+        "feet_height_target": 0.075,
+        "reward_scales": {
+            "tracking_lin_vel": 1.0,
+            "tracking_ang_vel": 0.2,
+            "lin_vel_z": -1.0,
+            "base_height": -50.0,
+            "action_rate": -0.005,
+            "similar_to_default": -0.1,
+        },
+    }
+    command_cfg = {
+        "num_commands": 3,
+        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
+    }
+    return env_cfg, obs_cfg, reward_cfg, command_cfg
+
+
+def get_spot_cfgs():
+    """
+    Boston Dynamics Spot（#16, RAI spot_simple）。関節: fl/fr/hl/hr × hx/hy/kn。
+    質量 Σ≈50.3 kg（Isaac Sim 由来・公式~32.5 より重い・MASS_QA）。立位は暫定。
+    """
+    env_cfg = {
+        "num_actions": 12,
+        "default_joint_angles": {
+            "fl_hx": 0.0,
+            "fr_hx": 0.0,
+            "hl_hx": 0.0,
+            "hr_hx": 0.0,
+            "fl_hy": 0.9,
+            "fr_hy": 0.9,
+            "hl_hy": 0.9,
+            "hr_hy": 0.9,
+            "fl_kn": -1.5,
+            "fr_kn": -1.5,
+            "hl_kn": -1.5,
+            "hr_kn": -1.5,
+        },
+        "joint_names": [
+            "fl_hx",
+            "fl_hy",
+            "fl_kn",
+            "fr_hx",
+            "fr_hy",
+            "fr_kn",
+            "hl_hx",
+            "hl_hy",
+            "hl_kn",
+            "hr_hx",
+            "hr_hy",
+            "hr_kn",
+        ],
+        "kp": 40.0,
+        "kd": 1.0,
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        "base_init_pos": [0.0, 0.0, 0.55],
+        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
+        "episode_length_s": 20.0,
+        "resampling_time_s": 4.0,
+        "action_scale": 0.25,
+        "simulate_action_latency": True,
+        "clip_actions": 100.0,
+    }
+    obs_cfg = {
+        "num_obs": 45,
+        "obs_scales": {
+            "lin_vel": 2.0,
+            "ang_vel": 0.25,
+            "dof_pos": 1.0,
+            "dof_vel": 0.05,
+        },
+    }
+    reward_cfg = {
+        "tracking_sigma": 0.25,
+        "base_height_target": 0.48,
+        "feet_height_target": 0.08,
+        "reward_scales": {
+            "tracking_lin_vel": 1.0,
+            "tracking_ang_vel": 0.2,
+            "lin_vel_z": -1.0,
+            "base_height": -50.0,
+            "action_rate": -0.005,
+            "similar_to_default": -0.1,
+        },
+    }
+    command_cfg = {
+        "num_commands": 3,
+        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
+    }
+    return env_cfg, obs_cfg, reward_cfg, command_cfg
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-e", "--exp_name", type=str, default="go2-walking")
@@ -717,7 +1039,20 @@ def main():
         "-r",
         "--robot_type",
         type=str,
-        choices=["go2", "minicheetah", "laikago", "a1", "unitreea1", "anymalc", "go1", "spotmicro"],
+        choices=[
+            "go2",
+            "minicheetah",
+            "laikago",
+            "a1",
+            "unitreea1",
+            "anymalc",
+            "anymalb",
+            "go1",
+            "spotmicro",
+            "aliengo",
+            "b1",
+            "spot",
+        ],
         default="go2",
         help="Robot type to train (``a1`` is an alias for Unitree A1)",
     )
@@ -765,10 +1100,18 @@ def main():
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_unitreea1_cfgs()
     elif robot_type == "anymalc":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalc_cfgs()
+    elif robot_type == "anymalb":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalb_cfgs()
     elif robot_type == "go1":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_go1_cfgs()
     elif robot_type == "spotmicro":
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_spotmicro_cfgs()
+    elif robot_type == "aliengo":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_aliengo_cfgs()
+    elif robot_type == "b1":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_b1_cfgs()
+    elif robot_type == "spot":
+        env_cfg, obs_cfg, reward_cfg, command_cfg = get_spot_cfgs()
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
     
@@ -833,6 +1176,12 @@ def main():
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]
         )
+    elif robot_type == "anymalb":
+        env = ANYmalBEnv(
+            num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"]
+        )
     elif robot_type == "go1":
         env = Go1Env(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
@@ -841,6 +1190,24 @@ def main():
         )
     elif robot_type == "spotmicro":
         env = SpotMicroEnv(
+            num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"]
+        )
+    elif robot_type == "aliengo":
+        env = AliengoEnv(
+            num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"]
+        )
+    elif robot_type == "b1":
+        env = B1Env(
+            num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
+            domain_randomization=dr_cfg["domain_randomization"],
+            mass_range=dr_cfg["mass_range"]
+        )
+    elif robot_type == "spot":
+        env = SpotEnv(
             num_envs=args.num_envs, env_cfg=env_cfg, obs_cfg=obs_cfg, reward_cfg=reward_cfg, command_cfg=command_cfg,
             domain_randomization=dr_cfg["domain_randomization"],
             mass_range=dr_cfg["mass_range"]

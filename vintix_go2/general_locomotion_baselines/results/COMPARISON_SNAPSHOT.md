@@ -31,6 +31,7 @@
 
 ## 次
 
-- MorFiC: 公式 Isaac Gym がこのコンテナに無い → 手順は `OFFICIAL_EVAL_SETUP.md`。入れるか別マシンか判断が必要
-- URMA: 可能なら cuDNN 8.9 を揃えて GPU 再生。本線の完走率定義への対応表
+- MorFiC: 公式 Isaac Gym 判断メモ → `MORFIC_ISAAC_DECISION.md`（仮置き: 主表から外し GenLoco+URMA を主）
+- 指標対応 → `METRICS_CROSSWALK.md`（URMA 1000 ステップ生存＝その定義での完走 100%）
+- URMA: 可能なら cuDNN を揃えて GPU 再生（必須ではない）
 - #16 タスク2: Aliengo 専門家＋学習履歴（Adaptation 用データ）

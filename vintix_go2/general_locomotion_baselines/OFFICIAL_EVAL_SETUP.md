@@ -25,14 +25,21 @@ Genesis への近似配線は参考列。
 - 注意:
   - 公式の `PPO.test` は終了判定が無く止まらない → 本リポのスクリプトが有限ステップに直している
   - このマシンでは JAX の CUDA（cuDNN）が足りず **CPU** で動くことがある
-- 結果例: `results/urma_official/urma_multi_robot_ep1_s100.json`（return ≈5.4、100/100 ステップ）
+- 結果例:
+  - 煙試験: `results/urma_official/urma_multi_robot_ep1_s100.json`（return ≈5.4、100 ステップ）
+  - Go2 厚め: `results/urma_official/urma_go2_ep3_s1000.json`（3 ep × 1000 step 完走、mean return ≈53.37）
 
 ## MorFiC（いま止まっている理由）
 
 - 公式再生: Isaac Gym + 同梱の `scripts/play.py`
 - このコンテナには **Isaac Gym が入っていない**
-- 入れる／別環境で回す／比較から外す、の判断が必要
+- 入れる／別環境で回す／比較から外す、の判断が必要 → 詳細は [`MORFIC_ISAAC_DECISION.md`](MORFIC_ISAAC_DECISION.md)
+- **仮置き推奨:** 主表は GenLoco + URMA。MorFiC 公式は別環境オプション。ユーザーが明示するまで Isaac Gym は入れない
 - それまでは Genesis 近似配線の結果だけを「参考」と明記する
+
+## 指標の揃え方
+
+- 本線の完走率・エピソード長と、各手法の return／生存ステップの対応 → [`METRICS_CROSSWALK.md`](METRICS_CROSSWALK.md)
 
 ## McARL
 

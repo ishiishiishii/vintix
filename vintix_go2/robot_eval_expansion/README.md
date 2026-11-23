@@ -16,13 +16,28 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
-9. **次**: タスク2（専門家 PPO ＋学習履歴）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)。先頭は Aliengo
+9. **タスク2 着手中**: Aliengo 専門家 PPO（301 iter）＋履歴収集配線。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-23 15:43: タスク2 開始（Aliengo PPO）
+
+- **実行内容:**
+  - `collect_ad_data_parallel.py` に `-r aliengo` を追加
+  - `python train.py -r aliengo -e aliengo-walking --log_dir robot_eval_expansion/logs/aliengo-walking --max_iterations 301 --seed 1`
+- **結果:** 学習起動（GPU）。ログ: `logs/train_ppo/aliengo_seed1.out`
+- **次:** （下記 16:16 で失敗確定 → 再学習）
+
+### 2026-11-23 16:16（autopilot）: Aliengo PPO 1回目失敗 → 設定修正・再学習待ち
+
+- **実行内容:** 学習ログを集計。平均エピソード長 ≈**5**・報酬 ≈-0.03 のまま 268+/301 iter。MorFiC `aliengo_config`（初期高さ 0.36・kp=40）と照合し、`get_aliengo_cfgs` を修正（init z=0.40 / 目標高さ 0.36 / kp=40 / 股関節±0.1）。失敗ジョブ終了後に `aliengo-walking-v2` を自動起動する待ちスクリプトをセット
+- **結果:** 1回目 ckpt は**使わない**（歩けない専門家）。デフォルト履歴収集パスも v2 に変更
+- **考察:** 立位レンダは静的で見えても、動力学＋誤った初期高さ／弱い PD だと即転倒する
+- **次:** v2 でエピソード長が伸びたら履歴収集 → 短評価
 
 ### 2026-11-19 09:04（autopilot）: 立位レンダ前の関節命名 QA（CPU）
 

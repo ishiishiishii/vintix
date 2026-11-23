@@ -37,6 +37,8 @@ from env import Go2Env
 from env import MiniCheetahEnv
 from env import Go1Env
 from env import A1Env
+from env import ANYmalCEnv
+from env import AliengoEnv
 
 
 def default_expert_ckpt_for_robot(robot: str) -> Path:
@@ -51,6 +53,10 @@ def default_expert_ckpt_for_robot(robot: str) -> Path:
         "go2": logs / "go2-walking" / "model_300.pt",
         "minicheetah": logs / "minicheetah-walking" / "model_300.pt",
         "a1": logs / "a1-walking" / "model_300.pt",
+        "anymalc": logs / "anymalc-walking" / "model_300.pt",
+        # v2 = MorFiC-aligned height/PD restart (2026-11-23). Do not use aliengo-walking/ (failed).
+        "aliengo": Path("/workspace/vintix_go2/robot_eval_expansion/logs/aliengo-walking-v2")
+        / "model_300.pt",
     }
     if robot not in mapping:
         raise ValueError(
@@ -319,6 +325,12 @@ class PerEnvADDataCollector:
         elif self.robot_type == "a1":
             task_name = "a1_walking_ad"
             group_name = "quadruped_locomotion"
+        elif self.robot_type == "anymalc":
+            task_name = "anymalc_walking_ad"
+            group_name = "anymalc_locomotion"
+        elif self.robot_type == "aliengo":
+            task_name = "aliengo_walking_ad"
+            group_name = "aliengo_locomotion"
         else:  # go2
             task_name = "go2_walking_ad"
             group_name = "go2_locomotion"
@@ -360,8 +372,14 @@ def main():
             "Required for single-run mode. Not required when using --run_all_cross."
         ),
     )
-    parser.add_argument("-r", "--robot_type", type=str, choices=["go2", "go1", "a1", "minicheetah"],
-                        default="go2", help="Robot type (A1 は ``a1``)")
+    parser.add_argument(
+        "-r",
+        "--robot_type",
+        type=str,
+        choices=["go2", "go1", "a1", "minicheetah", "anymalc", "aliengo"],
+        default="go2",
+        help="Robot type (A1 は ``a1``; #16 Aliengo 追加)",
+    )
     default_output_dir = "data/go2_trajectories/go2_ad_parallel"
     parser.add_argument("--output_dir", type=str, default=default_output_dir,
                         help="Output directory for AD data")
@@ -656,6 +674,24 @@ def main():
             command_cfg=command_cfg,
             show_viewer=False
         )
+    elif args.robot_type == "anymalc":
+        env = ANYmalCEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False,
+        )
+    elif args.robot_type == "aliengo":
+        env = AliengoEnv(
+            num_envs=args.num_envs,
+            env_cfg=env_cfg,
+            obs_cfg=obs_cfg,
+            reward_cfg=reward_cfg,
+            command_cfg=command_cfg,
+            show_viewer=False,
+        )
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
     print(f"✓ Created {args.num_envs} parallel {args.robot_type} environments")
@@ -728,45 +764,59 @@ def main():
         f"({'joint-uniform sampling' if bootstrap_policy is None and not args.finerandom else 'optional Gaussian noise on bootstrap actions'})"
     )
     
-    default_joint_angles = torch.tensor([
-        0.0,   # FR_hip
-        0.8,   # FR_thigh
-        -1.5,  # FR_calf
-        0.0,   # FL_hip
-        0.8,   # FL_thigh
-        -1.5,  # FL_calf
-        0.0,   # RR_hip
-        1.0,   # RR_thigh
-        -1.5,  # RR_calf
-        0.0,   # RL_hip
-        1.0,   # RL_thigh
-        -1.5,  # RL_calf
-    ], device=gs.device)
-    
-    joint_limits = torch.tensor([
-        [-1.0472,  1.0472],   # FR_hip
-        [-1.5708,  3.4907],   # FR_thigh
-        [-2.7227, -0.83776],  # FR_calf
-        [-1.0472,  1.0472],   # FL_hip
-        [-1.5708,  3.4907],   # FL_thigh
-        [-2.7227, -0.83776],  # FL_calf
-        [-1.0472,  1.0472],   # RR_hip
-        [-0.5236,  4.5379],   # RR_thigh
-        [-2.7227, -0.83776],  # RR_calf
-        [-1.0472,  1.0472],   # RL_hip
-        [-0.5236,  4.5379],   # RL_thigh
-        [-2.7227, -0.83776],  # RL_calf
-    ], device=gs.device)
-    
     action_scale = env_cfg["action_scale"]
-    action_limits = (joint_limits - default_joint_angles.unsqueeze(1)) / action_scale
-    
-    print(f"✓ Computed action ranges from joint limits (action_scale={action_scale})")
-    print(f"  Action ranges per joint:")
-    joint_names = ["FR_hip", "FR_thigh", "FR_calf", "FL_hip", "FL_thigh", "FL_calf",
-                   "RR_hip", "RR_thigh", "RR_calf", "RL_hip", "RL_thigh", "RL_calf"]
+    # Derive per-joint action limits from the env's ACTUAL DOF limits and default
+    # joint positions, in the env's own DOF ordering. These limits bound the
+    # ε-side (uniform random) actions and also clamp the mixed actions.
+    # NOTE: these were previously hardcoded with a go2-style [hip,thigh,calf]x4
+    # ordering and go2 joint ranges. That is wrong for robots whose DOF layout
+    # differs (e.g. ANYmalC orders DOFs as [HAA x4, HFE x4, KFE x4] with
+    # different ranges): the mismatch clamped a converged expert's actions and
+    # made it fall within ~40 steps during collection, corrupting the dataset.
+    # Reading the limits from the env makes this correct for every robot.
+    dof_lower, dof_upper = env.robot.get_dofs_limit(env.motors_dof_idx)
+    if dof_lower.dim() > 1:
+        dof_lower = dof_lower[0]
+        dof_upper = dof_upper[0]
+    default_dof_pos = env.default_dof_pos.to(dof_lower.dtype)
+    action_limits = torch.stack(
+        [
+            (dof_lower - default_dof_pos) / action_scale,
+            (dof_upper - default_dof_pos) / action_scale,
+        ],
+        dim=1,
+    )
+
+    # ``action_limits`` is used to CLAMP the mixed/expert actions. Where a robot
+    # defines no joint position limit (e.g. ANYmalC's URDF), the env reports
+    # ±inf, so the clamp becomes a no-op there — exactly what we want: a trained
+    # expert must never be clipped by bounds it was not trained against.
+    #
+    # The ε-side UNIFORM RANDOM exploration, however, needs FINITE bounds (uniform
+    # sampling in (±inf) yields NaNs). ``sample_limits`` reuses the finite env
+    # limits and falls back to ±(pi / action_scale) for unbounded joints, i.e. a
+    # random target within ±pi rad of the default joint position.
+    sample_fallback = math.pi / action_scale
+    sample_lower = torch.where(
+        torch.isfinite(action_limits[:, 0]),
+        action_limits[:, 0],
+        torch.full_like(action_limits[:, 0], -sample_fallback),
+    )
+    sample_upper = torch.where(
+        torch.isfinite(action_limits[:, 1]),
+        action_limits[:, 1],
+        torch.full_like(action_limits[:, 1], sample_fallback),
+    )
+    sample_limits = torch.stack([sample_lower, sample_upper], dim=1)
+
+    print(f"✓ Computed action ranges from env DOF limits (action_scale={action_scale})")
+    print(f"  Action ranges per joint (clamp / random-sample):")
+    joint_names = list(env_cfg["joint_names"])
     for i, name in enumerate(joint_names):
-        print(f"    {i:2d}: {name:12s} [{action_limits[i, 0]:7.2f}, {action_limits[i, 1]:7.2f}]")
+        print(
+            f"    {i:2d}: {name:12s} clamp[{action_limits[i, 0]:7.2f}, {action_limits[i, 1]:7.2f}]"
+            f"  sample[{sample_limits[i, 0]:7.2f}, {sample_limits[i, 1]:7.2f}]"
+        )
     print()
     
     f = args.noise_free_fraction
@@ -834,11 +884,11 @@ def main():
             if args.finerandom:
                 rand_uniform = torch.zeros_like(expert_actions)
                 for env_idx in range(args.num_envs):
-                    rand_uniform[env_idx] = action_limits[:, 0] + torch.rand(
+                    rand_uniform[env_idx] = sample_limits[:, 0] + torch.rand(
                         expert_actions[env_idx].shape,
                         device=gs.device,
                         generator=env_generators[env_idx],
-                    ) * (action_limits[:, 1] - action_limits[:, 0])
+                    ) * (sample_limits[:, 1] - sample_limits[:, 0])
                 source_actions = bootstrap_policy(obs)
                 if args.bootstrap_noise_std > 0:
                     noise = torch.zeros_like(source_actions)
@@ -855,11 +905,11 @@ def main():
             elif bootstrap_policy is None:
                 random_actions = torch.zeros_like(expert_actions)
                 for env_idx in range(args.num_envs):
-                    random_actions[env_idx] = action_limits[:, 0] + torch.rand(
+                    random_actions[env_idx] = sample_limits[:, 0] + torch.rand(
                         expert_actions[env_idx].shape,
                         device=gs.device,
                         generator=env_generators[env_idx],
-                    ) * (action_limits[:, 1] - action_limits[:, 0])
+                    ) * (sample_limits[:, 1] - sample_limits[:, 0])
                 actions = eps_expanded * random_actions + (1.0 - eps_expanded) * expert_actions
             else:
                 # Use a pretrained policy as the ε-side action.

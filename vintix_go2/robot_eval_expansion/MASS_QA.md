@@ -21,8 +21,10 @@
 - 置き場: `Genesis/genesis/assets/urdf/aliengo/urdf/aliengo.urdf`
 - trunk mass: 11.644 kg（DR フォールバック）
 - 関節: Unitree 命名（`FR/FL/RR/RL` × hip/thigh/calf）。**thigh は `continuous`（角度 limit なし）**、hip/calf は revolute+limit
-- Env: `Genesis/examples/locomotion/aliengo_env.py`（暫定立位は Go2 角を流用、`base_init_pos` z=0.55 / target 0.50）
-- 結論: 質量差は既知。PPO 本学習前にレンダ確認と必要なら質量スケール補正
+- Env: `Genesis/examples/locomotion/aliengo_env.py`
+- 立位・PD（2026-11-23 修正）: MorFiC 準拠で `base_init_pos` z=0.40 / `base_height_target` 0.36 / kp=40。旧 z=0.55・kp=20 では PPO が即転倒のまま失敗
+- 結論: 質量差は既知。高さ・PD は MorFiC 設定を優先
+
 
 ## B1
 

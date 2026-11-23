@@ -36,10 +36,9 @@
 
 ## 学習履歴収集のギャップ（実装メモ）
 
-`collect_ad_data_parallel.py` の `-r` 選択肢は現状
-`go2 / go1 / a1 / minicheetah / anymalc` のみ。
-**Aliengo 等を足す小改修がタスク2の前提**（実験ディレクトリから呼ぶ薄いラッパでも可）。
-共通スクリプトへ選択肢を足す場合は、稼働中ジョブが読まないことを確認してから。
+`collect_ad_data_parallel.py` の `-r` に **`aliengo` を追加済み**（2026-11-23）。
+デフォルト ckpt は `robot_eval_expansion/logs/aliengo-walking/model_300.pt`。
+B1 / Spot / ANYmal-B は同様に後続で足す。
 
 ## 見積もり（1 機体）
 
@@ -53,7 +52,8 @@
 ## 完了条件（Aliengo 第1波）
 
 - [ ] `logs/aliengo-walking/model_300.pt`（または同等）が存在する
-- [ ] Adaptation 用履歴（h5 / trajectories）が実験ディレクトリ配下に保存されている
+  - 1回目（15:43 UTC）: **失敗**。平均エピソード長 ≈5（即転倒）のまま 301 iter。原因: Go2 流用の初期高さ z=0.55 / kp=20。MorFiC 準拠へ修正済み（z≈0.40・目標高さ 0.36・kp=40・股関節±0.1）→ **再学習待ち**
+- [ ] Adaptation 用履歴（h5 / trajectories）が実験ディレクトリ配下に保存されている（失敗 ckpt からは取らない）
 - [ ] 短い評価で「歩ける」（完走率またはエピソード長の目安を README に記載）
 - [ ] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録
 
