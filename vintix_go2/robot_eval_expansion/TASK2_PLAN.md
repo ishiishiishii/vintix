@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-23 22:45（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-23 23:48（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -71,13 +71,15 @@ Spot は後続で足す。
   - 8 env×500 再スモーク: `model_40/80` 完走 100%（return **2.3 / 1.85**）、`model_60` は崩壊（`results/b1_ckpt_smoke_eval.json`）
 - [ ] Adaptation 用履歴: **収集中**（PID **1961754**、**`model_40.pt`** → `data/b1_ad_parallel/`）
   - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用
-  - **進捗訂正（2026-11-23 22:45）:** ログの `Collected steps (sum/env)` は **全 env 合計**。前回の「≈30%」は誤読（合計を 20万で割っていた）。正しい進捗は合計 ≈**42万 / 200万**（≈**21%**）、env 平均 ≈4.2万 step、ε≈**0.42**、直近平均長 **≈902**、ETA ≈**03:53 UTC**（`results/b1_ad_collect_mid.json`）
+  - **進捗（2026-11-23 23:48）:** 合計 ≈**76万 / 200万**（≈**38%**）、ε≈**0.24**、直近平均長 **≈892**、直近報酬 ≈**+1.74**、ETA ≈**03:43 UTC**（`results/b1_ad_collect_mid.json`）
+  - **連鎖:** `wait_after_b1_ad_start_anymalb.sh`（PID **1970393**）が完了後にサマリ → ANYmal-B PPO → 履歴待ちを起動
 
 ### メモ（B1）
 
 - 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。ただし短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
 - 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。履歴の質は収集完了後に短評価で再判断
-- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。**`-r anymalb` と `wait_collect_anymalb_ad.sh` は配線済み**。PPO は B1 履歴完了後）
+- 収集中は探索ノイズ低下とともに直近報酬がマイナス→プラスへ（≈+1.7）。長さは ≈900 前後を維持
+- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。**`-r anymalb` / `wait_collect_anymalb_ad.sh` / `wait_after_b1_ad_start_anymalb.sh` 配線済み**）
 - 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
 ## やらないこと（今）

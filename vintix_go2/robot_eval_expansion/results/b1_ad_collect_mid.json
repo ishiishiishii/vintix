@@ -1,18 +1,23 @@
 {
-  "checked_at_utc": "2026-11-23T21:40:52Z",
+  "checked_at_utc": "2026-11-23T23:47:59Z",
   "pid": 1961754,
   "ckpt": "model_40.pt",
   "target_steps_per_env": 200000,
-  "collected_steps_per_env": 60320,
-  "last_n_eps": 76,
-  "mean_ep_len_recent": 734.0,
-  "mean_reward_recent": -17.1315,
-  "epsilon_approx": 0.7987,
-  "frac_done": 0.3016,
-  "note": "High \u03b5 exploration: ep len <1000 and negative reward expected; gate was inference smoke on model_40.",
+  "num_envs": 10,
+  "collected_steps_sum": 762770,
+  "collected_steps_per_env_avg": 76277.0,
+  "frac_done_correct": 0.3814,
+  "epsilon_approx": 0.2371,
+  "last_n_eps": 100,
+  "mean_ep_len_recent": 892.1,
+  "mean_reward_recent": 1.7432,
+  "elapsed_s": 8706,
+  "rate_sum_steps_per_s": 87.61,
+  "eta_utc": "2026-11-24T03:43:21Z",
+  "eta_epoch": 1795491801,
+  "note": "sum/env in log = sum across envs. frac = sum/(200k*10).",
   "selection": {
     "source": "results/b1_ckpt_smoke_eval.json",
-    "why_not_model_80": "8env\u00d7500 inference: model_40 return 2.3 > model_80 1.85; model_60 collapsed (frac_full=0)",
-    "earlier_10x1000_smoke": "model_40/60/80 all 100% completion; returns 3.96/4.66/5.89 \u2014 protocol mismatch with later smoke on model_60"
+    "ckpt": "model_40.pt"
   }
 }
