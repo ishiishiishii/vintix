@@ -15,10 +15,12 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 5. ~~立位レンダ準備（CPU）~~ → `prepare_standing_render.py` / `standing_render_manifest.json`
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
-8. **次**: タスク1 仕上げ完了。タスク2は本線後（報酬・PPO・AD）
+8. ~~タスク1仕上げ~~（2026-11-23）
+9. **次**: タスク2（専門家 PPO ＋学習履歴）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)。先頭は Aliengo
 
 ## やらないこと（今）
-- PPO 専門家の本学習（タスク2）
+- 6 機体同時の本学習（1 台ずつ）
+- Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
 
@@ -48,3 +50,10 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
   - `prepare_standing_render.py` に `--force` / `--only`
 - **結果:** 両機とも四足立位として認識可能な PNG。b1/anymalb/anymalc/spot は前回どおり OK → **タスク1 視覚 QA 完了**
 - **次:** タスク2（報酬+PPO+AD）は本線後。#22 GenLoco `--run` / URMA RL-X
+
+### 2026-11-23 15:40（autopilot）: タスク2計画を固定
+
+- **実行内容:** `TASK2_PLAN.md` を追加（Aliengo 先頭、PPO→学習履歴→短評価、1 台ずつ）
+- **結果:** `collect_ad_data_parallel.py` に Aliengo が未対応であるギャップを明記
+- **次:** Aliengo 用の履歴収集配線 → PPO 本学習（GPU 空き時）
+

@@ -1,0 +1,29 @@
+{
+  "method": "URMA",
+  "eval_place": "official RL-X / MuJoCo (bounded wrapper)",
+  "environment": "multi_robot",
+  "robots": [
+    "unitree_go2"
+  ],
+  "num_episodes": 3,
+  "max_steps_cap": 4000,
+  "nr_envs": 1,
+  "seed": 1,
+  "episode_returns": [
+    53.37,
+    53.368,
+    53.368
+  ],
+  "episode_lengths": [
+    1000,
+    1000,
+    1000
+  ],
+  "mean_return": 53.369,
+  "mean_length": 1000.0,
+  "survived_full_episode_frac": 1.0,
+  "device_note": "CPU (jaxlib cudnn8.9 vs pip cudnn9)",
+  "upstream_bug": "PPO.test infinite loop patched by run_urma_official_eval.py",
+  "note_horizon": "All 3 eps hit episode truncation at 1000 control steps (\u224820s). Survived full official episode.",
+  "source_log": "results/urma_official/nohup_ep3_s4000.out"
+}

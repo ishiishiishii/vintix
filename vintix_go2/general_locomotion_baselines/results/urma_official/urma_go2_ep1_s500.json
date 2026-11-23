@@ -1,0 +1,19 @@
+{
+  "method": "URMA",
+  "robots": [
+    "unitree_go2"
+  ],
+  "num_episodes": 1,
+  "max_steps": 500,
+  "episode_returns": [
+    26.378
+  ],
+  "episode_lengths": [
+    500
+  ],
+  "mean_return": 26.378,
+  "mean_length": 500.0,
+  "survived_full_horizon_frac": 1.0,
+  "device_note": "CPU",
+  "source_log": "results/urma_official/nohup_bounded.out"
+}

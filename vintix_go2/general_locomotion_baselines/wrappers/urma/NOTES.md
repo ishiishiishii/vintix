@@ -27,8 +27,9 @@
    `go2_urdf_description_fields.json`（total ≈15.0 kg）
 3. ~~`obs_adapter` に mass / joint_range / context mass を注入~~（2026-11-20）。
    rel_pos / PD / torque / 接触等は MuJoCo 待ち
-4. GPU 空き後: 公式 `experiments/test.sh` で pretrained 再生、または RL-X を pin して actor を読む
-5. Genesis 評価入口は description が揃ってから
+4. ~~公式 pretrained の有限再生~~（2026-11-23）: `run_urma_official_eval.py` が上流
+   `PPO.test` の無限ループを差し替え。Go2 のみ・CPU（cuDNN 版ずれ）
+5. Genesis 評価入口は description が揃ってから。GPU 再生は cuDNN 8.9 整合が次
 
 ## ファイル
 

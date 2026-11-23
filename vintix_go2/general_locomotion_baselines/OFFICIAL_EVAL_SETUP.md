@@ -14,22 +14,25 @@ Genesis への近似配線は参考列。
 - 依存: `pybullet`, `gym`（TensorFlow は不要。学習済み zip を直接読む）
 - 結果例: `results/genloco_pybullet/genloco_pace_go1_ep3_s300.json`
 
+## URMA（短い公式再生までできた）
+
+- シミュレータ: MuJoCo（RL-X）
+- 隔離環境: conda `urma_eval`（Python 3.11.4）
+- コマンド:
+  ```bash
+  bash wrappers/urma/run_urma_official_eval.sh --env multi_robot --num_episodes 1 --max_steps 100 --nr_envs 16
+  ```
+- 注意:
+  - 公式の `PPO.test` は終了判定が無く止まらない → 本リポのスクリプトが有限ステップに直している
+  - このマシンでは JAX の CUDA（cuDNN）が足りず **CPU** で動くことがある
+- 結果例: `results/urma_official/urma_multi_robot_ep1_s100.json`（return ≈5.4、100/100 ステップ）
+
 ## MorFiC（いま止まっている理由）
 
 - 公式再生: Isaac Gym + 同梱の `scripts/play.py`
-- このコンテナには **Isaac Gym が入っていない**（`import isaacgym` 不可）
-- 入れるときは公式の Isaac Gym Preview 手順に従い、隔離環境を推奨
+- このコンテナには **Isaac Gym が入っていない**
+- 入れる／別環境で回す／比較から外す、の判断が必要
 - それまでは Genesis 近似配線の結果だけを「参考」と明記する
-
-## URMA（いま止まっている理由）
-
-- 公式再生: RL-X（Flax）+ `experiments/test.sh`
-- 手順の骨子（公式 README）:
-  1. `conda create -n urma python=3.11.4`
-  2. 指定コミットの RL-X を入れる
-  3. 本手法リポを `pip install -e .`
-  4. `experiments/test.sh` で学習済み重みを再生
-- 本リポ側は観測 380 次元の確認まで完了。行動の実行は上記環境が必要
 
 ## McARL
 

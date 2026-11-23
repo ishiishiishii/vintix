@@ -105,3 +105,11 @@ bash clone_third_party.sh
 - **結果:** 3 エピソードとも **300/300 生存**、平均 return ≈254（`results/genloco_pybullet/...json`）
 - **考察:** 同じ学習済み重みでも公式に近い環境では歩ける。Genesis の 0% は手法自体より配線差が大きい
 - **次:** MorFiC / URMA も公式シミュレータ側の数値。スナップショットは `results/COMPARISON_SNAPSHOT.md`
+
+### 2026-11-23 15:40（autopilot）: URMA 公式 MuJoCo 有限評価（Go2）
+
+- **実行内容:** 上流 `PPO.test` の無限ループを差し替える `wrappers/urma/run_urma_official_eval.py` を追加。Go2 のみ・CPU で学習済み重みを再生
+- **結果:** 3 エピソードとも **1000 ステップ生存**（公式 20 秒）、平均 return ≈**53.4**（`results/urma_official/urma_go2_ep3_s4000.json`）
+- **考察:** 公式側では歩ける。Genesis 近似 0% との差は配線・観測側。cuDNN 8.9/9 のずれで GPU 未使用
+- **次:** MorFiC は Isaac Gym 判断待ち。#16 タスク2（Aliengo＋学習履歴）へ
+
