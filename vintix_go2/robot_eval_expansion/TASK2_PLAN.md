@@ -49,20 +49,20 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 | 評価スモーク | 約 0.2 h |
 | **合計 / 台** | **約 3–6 h**（12 h ガード内） |
 
-## 完了条件（Aliengo 第1波）
+## 完了条件（Aliengo 第1波） — **完了 2026-11-23 18:54**
 
-**進捗 2026-11-24 02:50:** MorFiC URDF で `model_300.pt` 完了。短評価完走率 100%。履歴収集中。
+- [x] `logs/aliengo-walking/model_300.pt`（MorFiC URDF・平均長 1001）
+- [x] Adaptation 用履歴: `data/aliengo_ad_parallel/`（10×h5+json、合計 **2,005,619** transitions）→ `results/aliengo_wave1_summary.json`
+- [x] 短評価完走率 **100%**・mean return ≈22.6（`results/aliengo_smoke_model300.json`）
+- [x] Issue #16 / Notion に数値とパスを記録
 
+試行メモ: unitree URDF では高さ・PD・転倒判定いじりでも平均長 ≈10 止まり。**MorFiC URDF 切替が決定打**。
 
-- [x] `logs/aliengo-walking/model_300.pt` へ向けて学習成功軌道（2026-11-23）
-  - 1回目: unitree URDF + z=0.55/kp=20 → 平均長 ≈5。退避 `aliengo-walking_kp20_failed_20261123`
-  - 2回目: unitree + z=0.40/kp=40 → ≈1.7。退避 `aliengo-walking_kp40_z40_failed_*`
-  - 3回目案 z=0.55 は **棄却**（FK 実測 0.46 より高い）
-  - 4回目: unitree + z=0.50/term20 → 平均長 ≈9–10 で頭打ち。退避 `aliengo-walking_unitree_urdf_failed_20261123`
-  - **5回目（成功）:** Env 既定 URDF を **MorFiC `aliengo_description`** に切替。cfg: init z=**0.36** / 目標 **0.36** / kp=40 / 転倒判定 **10°**。ゼロ行動 80+ step。iter≈60 で平均エピソード長 **1001** に到達し以降維持。PID **1940460**、ログ `logs/train_ppo/aliengo_seed1_morfic_urdf.out`
-- [ ] Adaptation 用履歴（h5）: 収集中（PID **1942647**、出力 `data/aliengo_ad_parallel/`、10 env × 200k step）
-- [x] 短い評価で「歩ける」: 10 env × 1000 step で完走率 **100%**・mean return ≈22.6（`results/aliengo_smoke_model300.json`）
-- [x] Issue #16 / Notion「評価ロボット拡充」に数値とパスを記録（2026-11-23 17:48）
+## 進行中（B1 第1波）
+
+- [ ] PPO: MorFiC URDF 1回目は平均長 ≈5 で失敗 → 退避 `logs/b1-walking_morfic_failed_*`。**unitree URDF + term20 + kp90** で再学習中
+- [ ] Adaptation 用履歴（`wait_collect_b1_ad.sh` 待機）
+- [ ] 短評価スモーク
 
 ## やらないこと（今）
 

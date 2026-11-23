@@ -1,0 +1,14 @@
+{
+  "robot": "aliengo",
+  "urdf": "MorFiC aliengo_description",
+  "expert_ckpt": "logs/aliengo-walking/model_300.pt",
+  "smoke_eval": "results/aliengo_smoke_model300.json",
+  "smoke_completion_rate": 1.0,
+  "smoke_mean_return": 22.64,
+  "smoke_mean_length": 1000,
+  "ad_data_dir": "data/aliengo_ad_parallel",
+  "ad_num_envs": 10,
+  "ad_target_steps_per_env": 200000,
+  "ad_final_steps_sum": 2005619,
+  "status": "wave1_complete"
+}

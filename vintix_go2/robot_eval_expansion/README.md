@@ -16,13 +16,25 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
-9. **タスク2 進行中**: Aliengo 専門家 PPO が MorFiC URDF で成功軌道（平均エピソード長 1001）。`model_300` 後に学習履歴（Adaptation 用）を自動収集。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
+9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
+10. **タスク2 進行中（B1）**: MorFiC URDF 1回目は失敗（平均長 ≈5）。unitree URDF + 転倒判定 20° で再学習。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-23 19:08: Aliengo 第1波完了 → B1 は MorFiC 失敗後に unitree で再学習
+
+- **分かったこと:** Aliengo 履歴は合計 **2,005,619** transitions（10 env）。B1 は Aliengo と逆で **MorFiC URDF が沈む**（ゼロ行動で胴体 z→0.22、学習は平均長 ≈5）。unitree の方が高さ維持が良い
+- **実行内容:**
+  - `results/aliengo_wave1_summary.json` で第1波を固定
+  - 失敗 B1 を `logs/b1-walking_morfic_failed_*` へ退避
+  - `b1_env.py` 既定を unitree に戻し、転倒判定 20°・高さ報酬 -10 で PPO 再起動（`logs/train_ppo/b1_seed1_unitree.out`）
+  - `wait_collect_b1_ad.sh` で `model_300` 後の履歴収集を待機
+- **結果:** Aliengo 第1波完了。B1 再学習中
+- **次:** B1 のエピソード長が伸びるか監視。#22 は合意で close 可
 
 ### 2026-11-23 17:48（autopilot）: Aliengo PPO 完了 → 学習履歴収集を起動
 
