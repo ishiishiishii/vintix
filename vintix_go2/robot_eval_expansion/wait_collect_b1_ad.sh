@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Wait for B1 PPO model_300.pt, quality-gate on final episode length, then collect AD.
+# Wait for B1 PPO to finish, quality-gate on final episode length, then collect AD.
+# Env overrides:
+#   B1_AD_CKPT, B1_AD_TRAIN_LOG, B1_AD_MIN_LENGTH
 # Usage: setsid nohup bash wait_collect_b1_ad.sh > logs/train_ppo/wait_collect_b1_ad.out 2>&1 &
 set -euo pipefail
 ROOT="/workspace/vintix_go2/robot_eval_expansion"
-CKPT="${ROOT}/logs/b1-walking/model_300.pt"
+CKPT="${B1_AD_CKPT:-${ROOT}/logs/b1-walking/model_80.pt}"
 TRAIN_PID_FILE="${ROOT}/logs/train_ppo/b1_latest.pid"
-TRAIN_LOG="${ROOT}/logs/train_ppo/b1_seed1_bh2.out"
+TRAIN_LOG="${B1_AD_TRAIN_LOG:-${ROOT}/logs/train_ppo/b1_seed1_earlystop80.out}"
 OUT_DIR="${ROOT}/data/b1_ad_parallel"
 LOG="${ROOT}/logs/train_ppo/b1_ad_collect.out"
 GATE_JSON="${ROOT}/results/b1_ad_quality_gate.json"
@@ -52,7 +54,7 @@ gate_json = Path(os.environ["GATE_JSON"])
 min_len = float(os.environ["MIN_FINAL_LENGTH"])
 text = log.read_text(errors="replace") if log.exists() else ""
 rows = []
-for m in re.finditer(r"Learning iteration\s+(\d+)/301", text):
+for m in re.finditer(r"Learning iteration\s+(\d+)/\d+", text):
     chunk = text[m.start(): m.start() + 700]
     lm = re.search(r"Mean episode length:\s*([0-9.]+)", chunk)
     rm = re.search(r"Mean total reward:\s*([-0-9.]+)", chunk)

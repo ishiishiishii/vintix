@@ -1127,6 +1127,9 @@ def main():
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
+    # B1: mid-train peak ~iter 80 then policy collapses; denser checkpoints keep a walking expert.
+    if args.robot_type == "b1":
+        train_cfg["save_interval"] = 20
 
     # 既存のログディレクトリがある場合、resumeする場合は削除しない
     # --pretrained_pathが指定されていて、同じディレクトリから続きを訓練する場合は削除しない

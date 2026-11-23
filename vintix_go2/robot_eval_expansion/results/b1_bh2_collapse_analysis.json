@@ -1,0 +1,87 @@
+{
+  "robot": "b1",
+  "attempt": 4,
+  "label": "unitree_go2like_kp40_z066_term20_bh-2_collapsed",
+  "log": "/workspace/vintix_go2/robot_eval_expansion/logs/train_ppo/b1_seed1_bh2_collapsed_nosave_20261123T204809Z.out",
+  "archived_dir": "logs/b1-walking_bh2_collapsed_nosave_20261123T204809Z",
+  "analyzed_at_utc": "2026-11-23T20:51:46Z",
+  "max_iterations": 301,
+  "peak": {
+    "iteration": 81,
+    "mean_episode_length": 792.56,
+    "mean_total_reward": -14.42,
+    "rew_base_height": -0.1153
+  },
+  "collapse_first_len_below_100_after_peak": {
+    "iteration": 85,
+    "mean_episode_length": 56.4,
+    "mean_total_reward": -11.53,
+    "rew_base_height": -0.0091
+  },
+  "final": {
+    "iteration": 191,
+    "mean_episode_length": 16.02,
+    "mean_total_reward": -11.22,
+    "rew_base_height": -0.0
+  },
+  "window_means": {
+    "iter_0_19": {
+      "length": 37.54,
+      "reward": -0.485,
+      "n": 20
+    },
+    "iter_20_39": {
+      "length": 153.84,
+      "reward": -0.713,
+      "n": 20
+    },
+    "iter_40_59": {
+      "length": 440.62,
+      "reward": -0.345,
+      "n": 20
+    },
+    "iter_60_79": {
+      "length": 499.15,
+      "reward": 0.127,
+      "n": 20
+    },
+    "iter_80_99": {
+      "length": 138.82,
+      "reward": -10.525,
+      "n": 20
+    },
+    "iter_100_149": {
+      "length": 16.0,
+      "reward": -11.225,
+      "n": 50
+    },
+    "iter_150_300": {
+      "length": 15.76,
+      "reward": -11.224,
+      "n": 42
+    }
+  },
+  "interpretation": {
+    "height_penalty_change": "-10→-2 did not prevent mid-training collapse",
+    "peak_lower_than_attempt3": true,
+    "peak_attempt3_len": 1001.0,
+    "peak_attempt4_len": 792.56,
+    "save_interval_100_missed_peak": true,
+    "do_not_collect_ad_from_final": true
+  },
+  "attempt5_plan": {
+    "keep": [
+      "unitree URDF",
+      "Go2-like angles",
+      "kp=40",
+      "term20",
+      "z=0.66",
+      "base_height=-2"
+    ],
+    "change": [
+      "max_iterations=81 (stop near historical peak)",
+      "save_interval=20",
+      "collect AD from model_80 if gate passes"
+    ]
+  }
+}

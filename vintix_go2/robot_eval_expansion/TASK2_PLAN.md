@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-23 20:19（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-23 21:10（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -60,21 +60,21 @@ B1 / Spot / ANYmal-B は同様に後続で足す。
 
 ## 進行中（B1 第1波）
 
-- [ ] PPO 試行:
+- [x] PPO 試行（要点）:
   1. MorFiC URDF+kp90 → 平均長 ≈5（退避 `b1-walking_morfic_failed_*`）
   2. unitree+MorFiC角+kp90+term20 → 平均長 ≈12 で頭打ち（退避 `b1-walking_unitree_term20_plateau12_*`）
-  3. unitree+Go2系角+kp40+z0.66+term20+高さ罰**-10** → **不合格**（最終 13.56 / ピーク 1001@83）
-     - 退避: `b1-walking_go2like_bh10_collapsed_20261123T201710Z` / `results/b1_ad_quality_gate.json`
-  4. **進行中:** 3 と同じ角・PD で高さ罰 **-2**（`logs/train_ppo/b1_seed1_bh2.out`、PID は `b1_latest.pid`）
-     - `wait_collect_b1_ad.sh` に品質ゲート（最終平均長 ≥200 でないと履歴を取らない）
-     - 序盤 iter≈0–7 の平均長 ≈23→38（試行3と同程度。高さ罰の寄与は小さくなった）
-- [ ] Adaptation 用履歴（品質ゲート通過時のみ）
-- [ ] 短評価スモーク
+  3. unitree+Go2系角+kp40+z0.66+term20+高さ罰**-10** → 最終 13.56 / ピーク 1001@83（退避 `*_go2like_bh10_*`）
+  4. 高さ罰 **-2**・301 iter → ピーク ≈793@81 の直後に崩壊（退避 `*_bh2_collapsed_*`）。解析: `results/b1_bh2_collapse_analysis.json`
+  5. **早期停止 81 iter + 保存間隔 20**（`b1_seed1_earlystop80.out`）→ 学習ログ最終長 123（旧ゲート不合格）だが密 ckpt を確保
+- [x] 短評価スモーク: `model_40/60/80` いずれも完走率 **100%**（10×1000）。return ≈4–6（`results/b1_smoke_ckpt_compare.json`）
+- [ ] Adaptation 用履歴: **収集中**（PID **1960092**、`model_80.pt` → `data/b1_ad_parallel/`）
+  - 学習ログの最終長ゲートではなく、**短評価完走**を合格条件に切り替えた（探索ノイズ下の長さ ≠ 決定論方策の歩行）
 
-### 試行4のあと（これも最終で歩けない場合）
+### メモ（B1）
 
-- 候補: 保存間隔を短くしてピーク ckpt を取る／目標高さを FK 実測に再合わせ／接触・慣性の診断
-- 失敗 ckpt からは履歴を取らない（ゲート済み）
+- 中盤崩壊型。密な保存＋短評価で歩行重みは取れる
+- 速度追従（return）は Aliengo（≈22）より弱い（≈4–6）。履歴の質は収集後に再判断
+- 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
 ## やらないこと（今）
 
