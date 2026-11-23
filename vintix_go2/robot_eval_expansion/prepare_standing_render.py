@@ -133,22 +133,41 @@ def run_renders() -> int:
     from render_robot_comparison import RobotRenderSpec, render_robots  # noqa: WPS433
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
+    rendered: list[str] = []
+    skipped_existing: list[str] = []
+    failed: dict[str, str] = {}
     for r in runnable:
-        print(f"[render] {r['robot']} → {r['out_png']}")
+        out = Path(r["out_png"])
+        if out.is_file() and out.stat().st_size > 0:
+            print(f"[skip] {r['robot']} already has {out}")
+            skipped_existing.append(r["robot"])
+            rendered.append(r["robot"])
+            continue
+        print(f"[render] {r['robot']} → {out}")
         spec = RobotRenderSpec(label=r["robot"], urdf_path=r["urdf"])
         kwargs = {"joint_names": r["joint_names"]}
         if r["robot"] in STANDING_ANGLES:
             kwargs["default_joint_angles"] = STANDING_ANGLES[r["robot"]]
-        render_robots([spec], Path(r["out_png"]), **kwargs)
+        try:
+            render_robots([spec], out, **kwargs)
+            rendered.append(r["robot"])
+        except Exception as exc:  # noqa: BLE001 — keep remaining robots going
+            failed[r["robot"]] = str(exc)
+            print(f"[fail] {r['robot']}: {exc}", file=sys.stderr)
     MANIFEST.write_text(json.dumps({
         "robots": rows,
         "mode": "run",
-        "rendered": [r["robot"] for r in runnable],
+        "rendered": rendered,
+        "skipped_existing": skipped_existing,
+        "failed": failed,
         "deferred_need_default_angles": deferred,
         "standing_angles_source": "train.py get_*_cfgs (snapshot in STANDING_ANGLES)",
     }, indent=2) + "\n")
-    print(f"done → {OUT_DIR} (rendered {len(runnable)}, deferred {len(deferred)})")
-    return 0
+    print(
+        f"done → {OUT_DIR} (rendered {len(rendered)}, "
+        f"failed {len(failed)}, deferred {len(deferred)})"
+    )
+    return 1 if failed else 0
 
 
 def main() -> int:

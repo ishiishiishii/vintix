@@ -13,7 +13,8 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
    - Aliengo / B1 / ANYmal-B / Spot（`train.py -r {aliengo,b1,anymalb,spot}`）
 4. ~~関節命名 QA（CPU）~~ → [`JOINT_NAMING_QA.md`](JOINT_NAMING_QA.md) / `check_joint_names_cpu.py`
 5. ~~立位レンダ準備（CPU）~~ → `prepare_standing_render.py` / `standing_render_manifest.json`
-6. **次**: GPU 空いたら `prepare_standing_render.py --run`（aliengo/b1）。他機体は Env default angles 後 → タスク2は本線後
+6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
+7. **次**: タスク2は本線後（報酬・PPO・AD）。#22 ベースライン `--run` 実装と並行可
 
 ## やらないこと（今）
 - PPO 専門家の本学習（タスク2）
@@ -32,3 +33,9 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - **実行内容:** `prepare_standing_render.py` で 6 機体の joint alias を URDF 突合しマニフェスト化
 - **結果:** 全 OK。`--run` は Unitree 系のみ即可。他は default angles 未配線で defer
 - **次:** #21 解放後に `--run`
+
+### 2026-11-23 03:56（autopilot）: 立位レンダ 6 機体完了
+
+- **実行内容:** `#21` 完了後に `--run`。B1/ANYmal-B の `package://` メッシュ参照を相対パスへ修正し再実行
+- **結果:** `figures/standing/{aliengo,b1,anymalb,anymalc,spot,laikago}_standing.png` 全成功（failed 0）
+- **次:** タスク1のレンダ区切り。タスク2（報酬+PPO+AD）は本線後。#22 `--run` 実装へ

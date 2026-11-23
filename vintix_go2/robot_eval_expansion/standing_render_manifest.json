@@ -151,5 +151,19 @@
       "out_png": "/workspace/vintix_go2/robot_eval_expansion/figures/standing/laikago_standing.png"
     }
   ],
-  "mode": "dry_run"
+  "mode": "run",
+  "rendered": [
+    "aliengo",
+    "b1",
+    "anymalb",
+    "anymalc",
+    "spot",
+    "laikago"
+  ],
+  "skipped_existing": [
+    "aliengo"
+  ],
+  "failed": {},
+  "deferred_need_default_angles": [],
+  "standing_angles_source": "train.py get_*_cfgs (snapshot in STANDING_ANGLES)"
 }
