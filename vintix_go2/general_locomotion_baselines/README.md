@@ -1,4 +1,4 @@
-> **2026-11-24 03:50 UTC:** Isaac Gym Preview 4 を `isaacgym_py38` に導入（import OK）。MorFiC 公式再生は `wrappers/morfic/run_morfic_official_eval.sh`（GPU 空き待ち）。方針は `SIMULATOR_POLICY.md`。
+> **2026-11-24 04:24 UTC:** MorFiC 公式 Isaac Gym `play.py` 完了 → 主表復帰。#22 必須チェック完了。
 
 # 汎用歩行ベースライン導入（#22）
 
@@ -62,6 +62,13 @@ bash clone_third_party.sh
 | #22 | 比較用**アルゴリズム**（本ディレクトリ） |
 
 ## 実行ログ
+
+### 2026-11-24 04:24 UTC（autopilot）: MorFiC 公式 play 完了・主表復帰
+
+- **分かったこと:** AD 方針訂正で GPU が空き、`run_morfic_official_eval.sh` が完了。Go2・800 step・前進速度平均 ≈1.45 m/s（指令 1.0）、初回 done まで ≈15.3/16 s。公式側で歩行証拠として使える
+- **実行内容:** `MAIN_TABLE.md` / `DONE_CRITERIA.md` を更新（MorFiC 行を主表へ）。必須チェック GenLoco・URMA・MorFiC すべて済
+- **結果:** `results/morfic_isaac_go2_play.json`。#22 完了条件を満たしたため close
+- **次:** （任意）他機体の公式再生。本線は #16 品質評価＋Spot PPO
 
 ### 2026-11-24 03:50 UTC（autopilot）: Isaac Gym 導入・公式評価入口
 

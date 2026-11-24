@@ -9,16 +9,16 @@
 |------|------------------|----------------------|----------|------|
 | GenLoco | PyBullet | Go1（pace）等 | 生存 300/300 ×3 | **済** |
 | URMA | MuJoCo / RL-X | Go2 | 生存 1000/1000 ×3 | **済** |
-| MorFiC | **Isaac Gym** | Go2（学習ソース） | 公式 `play.py` | **導入中**（env `isaacgym_py38`・import OK。公式 play は GPU 空き待ち） |
+| MorFiC | **Isaac Gym** | Go2（学習ソース） | 公式 `play.py` | **済**（`results/morfic_isaac_go2_play.json`・2026-11-24） |
 
 ## やること（残り）
 
 - [x] Isaac Gym Preview を別 conda env に導入（`install_isaac_gym.sh` + `/workspace/IsaacGym_Preview_4_Package.tar`）
-- [ ] MorFiC `scripts/play.py --robot go2` で安定歩行を定量記録し主表へ戻す  
-      （入口: `wrappers/morfic/run_morfic_official_eval.sh`。#16 ANYmal-B 履歴収集が GPU 占有中のため後続）
+- [x] MorFiC `scripts/play.py --robot go2` で安定歩行を定量記録し主表へ戻す  
+      （`wrappers/morfic/run_morfic_official_eval.sh` → `results/morfic_isaac_go2_play.json`）
 - [ ] （任意）Go1 など論文記載の他機体でも再生
 
-Genesis 近似は参考列のみ。完了判定に使わない。
+**必須チェックはすべて済** → #22 を close 可。Genesis 近似は参考列のみ。完了判定に使わない。
 
 ### Isaac Gym 導入メモ（2026-11-24）
 

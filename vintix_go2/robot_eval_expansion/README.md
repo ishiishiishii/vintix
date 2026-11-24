@@ -1,12 +1,11 @@
-> **2026-11-24:** 専門家の完了条件を強化（`EXPERT_QUALITY.md`）。完走＋前進速度＋動画。B1 は追従再チューニング対象。
-
+> **2026-11-24 04:31 UTC:** Aliengo 品質合格（完走100%・速度比≈99%）。ANYmal-B は完走のみ・前進≈0で不合格。Spot PPO 起動中（PID **1990211**）。#22 closed。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
 稼働中 #18 ジョブには非介入。
 
 ## 目的
-他論文で使われる評価ロボットを一通り導入する。報酬・PPO は本線実験後。
+他論文で使われる評価ロボットを一通り導入し、**未知ターゲットとして評価**する。専門家 PPO と品質指標・動画まで。AD データは取らない。
 
 ## 進捗（タスク1）
 1. ~~文献調査~~ → [`ROBOT_SURVEY.md`](ROBOT_SURVEY.md)
@@ -18,15 +17,32 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 6. ~~立位レンダ `--run`~~ → `figures/standing/*_standing.png`（6 機体・2026-11-23）
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
-9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
-10. ~~タスク2 B1 第1波~~（PPO + 履歴 + 短評価）— 合計 **2,005,870** transitions・完走 100%・return ≈2.3
-11. **タスク2 進行中（ANYmal-B）**: PPO 完了（最終平均長 ≈917・品質ゲート PASS）→ 履歴収集 PID **1981084**（`model_300.pt`）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
+9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
+10. ~~タスク2 B1~~（PPO＋完走。追従弱・**要再チューニング**）
+11. ~~タスク2 ANYmal-B PPO~~ → 品質: 完走100%だが前進≈0 → **要再チューニング**
+12. **タスク2 Spot**: PPO 起動中（AD なし）。計画: [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
 
 ## やらないこと（今）
+- 拡充機体の Adaptation 履歴収集
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 04:31 UTC: Aliengo 合格・ANYmal-B 速度不合格・Spot PPO 起動
+
+- **分かったこと:**
+  - Aliengo `model_300`: 完走 **100%**、平均前進 ≈**0.494** m/s（指令 0.5・比 ≈**99%**）、RMSE ≈0.036 → **合格**（`results/aliengo_expert_quality.json`、動画あり）
+  - ANYmal-B `model_300`: 完走 **100%** だが平均前進 ≈**0**（比 ≈0.01%）→ **不合格**。動画もほぼ立位のまま（学習ログの長さだけでは歩けると言えない）
+  - #22 MorFiC 公式 play 完了で close
+- **実行内容:** `eval_expert_quality.py`（anymalb / aliengo）。Spot PPO を密保存（`save_interval=20`）で起動（AD 待ちは起動しない）
+- **次:** Spot 学習監視 → 品質評価。B1 / ANYmal-B 再チューニングは Spot 後または設計メモ並行
+
+### 2026-11-24 04:15 UTC: AD 方針撤回（未知評価のみ）
+
+- **分かったこと:** 拡充ロボットは未知ターゲット評価用。AD は不要
+- **実行内容:** ANYmal-B AD（PID 1981084）と Spot-AD 連鎖待ちを停止。`TASK2_PLAN.md` を PPO＋品質評価に書き換え。GPU 解放後は MorFiC (#22) を優先可
+- **次:** ANYmal 品質評価＋動画。Spot PPO。MorFiC 公式 play
 
 ### 2026-11-24 03:50 UTC: ANYmal-B PPO 完了・履歴収集開始
 
