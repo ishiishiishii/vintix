@@ -1,4 +1,4 @@
-> **2026-11-24 09:05 UTC:** B1 body（指令 0.60）は完走100%・指令比≈**49%**で速度不合格。**B1 mid（指令 0.50）**再学習中（PID **2008858**）。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 10:15 UTC:** B1 mid（指令 0.50）**合格**（完走100%・指令比≈**60%**）。ANYmal-B body PPO 起動中（PID **2012672**）。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -18,8 +18,8 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
-10. **タスク2 B1**: body（0.60）速度不合格 → **mid 0.50 再学習中**（`logs/b1-walking-mid05/`）
-11. ~~タスク2 ANYmal-B PPO~~ → 品質: 完走100%だが前進≈0 → **要再チューニング**
+10. ~~タスク2 B1~~: body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%）
+11. **タスク2 ANYmal-B**: matched 前進≈0 → **body（高さ 0.50・指令 0.60）再学習中**（`logs/anymalb-walking-body/`）
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
 13. ~~タスク2 Laikago 初回~~ → 完走0%・学習崩壊 → **要再チューニング**
 
@@ -29,6 +29,15 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 10:15 UTC: B1 mid 合格（指令比≈60%）→ ANYmal-B body 起動
+
+- **分かったこと:**
+  - B1 mid（\(h=0.55\), \(v_x=0.50\), `model_300`）: 完走 **100%**、平均前進 ≈**0.302** m/s、指令比 ≈**60.4%** → **完走・速度とも合格**（合格線ちょうど超え）
+  - Spot mid と同型の「巡航を抑える」仮説が B1 でも成立。合格は **3 機目**
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.50`＋動画。ANYmal-B body PPO（\(h=0.50\), \(v_x=0.60\)・密保存）を起動（PID **2012672**）
+- **結果:** `results/b1_mid05_expert_quality.json`、`figures/videos/b1_mid05_walk_model300.mp4`。ログ `logs/train_ppo/anymalb_body_seed1.out` / `logs/anymalb-walking-body/`
+- **次:** ANYmal-B body 完了 → 品質評価＋動画。不合格なら PD／高さ 1 要因。合格なら Laikago 再チューン
 
 ### 2026-11-24 09:05 UTC: B1 body は完走のみ・速度比≈49% → mid 0.50 起動
 

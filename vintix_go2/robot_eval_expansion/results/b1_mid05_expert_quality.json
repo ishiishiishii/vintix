@@ -1,0 +1,18 @@
+{
+  "robot": "b1",
+  "model_path": "vintix_go2/robot_eval_expansion/logs/b1-walking-mid05/model_300.pt",
+  "checked_at_utc": "2026-11-24T10:10:12Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.5,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 6.345459584459596,
+  "mean_forward_vx": 0.30205440521240234,
+  "vx_tracking_rmse": 0.23786208033561707,
+  "speed_ratio_vs_cmd": 0.6041088104248047,
+  "pass_completion": true,
+  "pass_speed": true,
+  "video": "vintix_go2/robot_eval_expansion/figures/videos/b1_mid05_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}
