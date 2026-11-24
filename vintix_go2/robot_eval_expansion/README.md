@@ -1,4 +1,4 @@
-> **2026-11-24 07:50 UTC:** Spot mid（指令 0.7）**合格**（完走100%・指令比≈99%）。**B1 body**（h=0.55 / vx=0.60）再学習中。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 09:05 UTC:** B1 body（指令 0.60）は完走100%・指令比≈**49%**で速度不合格。**B1 mid（指令 0.50）**再学習中（PID **2008858**）。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -18,7 +18,7 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
-10. **タスク2 B1**: 旧 matched は追従弱 → **body 再学習中**（`logs/b1-walking-body/`）
+10. **タスク2 B1**: body（0.60）速度不合格 → **mid 0.50 再学習中**（`logs/b1-walking-mid05/`）
 11. ~~タスク2 ANYmal-B PPO~~ → 品質: 完走100%だが前進≈0 → **要再チューニング**
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
 13. ~~タスク2 Laikago 初回~~ → 完走0%・学習崩壊 → **要再チューニング**
@@ -29,6 +29,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 09:05 UTC: B1 body は完走のみ・速度比≈49% → mid 0.50 起動
+
+- **分かったこと:**
+  - B1 body（\(h=0.55\), \(v_x=0.60\), `model_300`）: 完走 **100%**、平均前進 ≈**0.292** m/s、指令比 ≈**49%** → 速度不合格（合格線 60%）
+  - 中間重み（40/80/120/200/280）も最大比 ≈**53%**（`model_200`）。どれも速度合格せず
+  - Spot mid と同型の「完走は取れるが遅すぎ」パターン。絶対速度は ≈0.3 付近で頭打ち
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.60`＋動画。1 要因（指令のみ 0.60→**0.50**）で mid PPO を密保存起動（PID **2008858**）
+- **結果:** `results/b1_body_expert_quality.json`、`figures/videos/b1_body_walk_model300.mp4`。ログ `logs/train_ppo/b1_mid05_seed1.out` / `logs/b1-walking-mid05/`
+- **次:** B1 mid 完了 → 品質評価＋動画。不合格なら PD／高さ 1 要因。合格なら ANYmal-B / Laikago 再チューン
 
 ### 2026-11-24 07:50 UTC: Spot mid 合格 → B1 body 再学習起動
 

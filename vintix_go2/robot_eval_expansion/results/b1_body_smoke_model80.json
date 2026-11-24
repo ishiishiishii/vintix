@@ -1,0 +1,18 @@
+{
+  "robot": "b1",
+  "model_path": "vintix_go2/robot_eval_expansion/logs/b1-walking-body/model_80.pt",
+  "checked_at_utc": "2026-11-24T08:59:40Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.6,
+  "completion_rate": 0.0,
+  "mean_episode_length": 156.0,
+  "mean_return": 0.12692644953527604,
+  "mean_forward_vx": 0.20633497834205627,
+  "vx_tracking_rmse": 0.40887564420700073,
+  "speed_ratio_vs_cmd": 0.3438916305700938,
+  "pass_completion": false,
+  "pass_speed": false,
+  "video": null,
+  "note": "Judge by completion + speed tracking; return is reference only."
+}
