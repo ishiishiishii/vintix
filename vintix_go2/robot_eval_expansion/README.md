@@ -1,4 +1,4 @@
-> **2026-11-24 10:15 UTC:** B1 mid（指令 0.50）**合格**（完走100%・指令比≈**60%**）。ANYmal-B body PPO 起動中（PID **2012672**）。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 11:22 UTC:** ANYmal-B body は完走100%だが前進≈0（指令比≈**0.6%**）→ **立位のまま不合格**。PD 強化（kp40）再学習中（PID **2016379**）。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -19,7 +19,7 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
 10. ~~タスク2 B1~~: body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%）
-11. **タスク2 ANYmal-B**: matched 前進≈0 → **body（高さ 0.50・指令 0.60）再学習中**（`logs/anymalb-walking-body/`）
+11. **タスク2 ANYmal-B**: matched/body とも前進≈0 → **kp40 再学習中**（`logs/anymalb-walking-kp40/`）
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
 13. ~~タスク2 Laikago 初回~~ → 完走0%・学習崩壊 → **要再チューニング**
 
@@ -29,6 +29,15 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 11:22 UTC: ANYmal-B body も立位のまま → kp40 起動
+
+- **分かったこと:**
+  - ANYmal-B body（\(h=0.50\), \(v_x=0.60\), kp=20, `model_300`）: 完走 **100%**、平均前進 ≈**0.0035** m/s、指令比 ≈**0.6%** → **速度不合格**（ほぼ立位。matched と同型）
+  - Spot/B1 の「巡航を抑える」は前進が出てから有効。前進≈0 では指令下げは無効
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.60`＋動画。評価は学習時 `cfgs.pkl` を読むよう修正。1 要因 PD（kp 20→**40**, kd 0.5→**1.0**）で PPO を密保存起動（PID **2016379**）
+- **結果:** `results/anymalb_body_expert_quality.json`、`figures/videos/anymalb_body_walk_model300.mp4`。ログ `logs/train_ppo/anymalb_kp40_seed1.out` / `logs/anymalb-walking-kp40/`
+- **次:** kp40 完了 → 品質評価＋動画。不合格なら転倒判定／高さ罰 1 要因。合格なら Laikago 再チューン
 
 ### 2026-11-24 10:15 UTC: B1 mid 合格（指令比≈60%）→ ANYmal-B body 起動
 

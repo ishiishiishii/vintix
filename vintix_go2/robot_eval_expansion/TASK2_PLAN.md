@@ -27,7 +27,7 @@
 |----|------|------|
 | 1 | Aliengo | PPO＋完走済。動画・速度 RMSE を補強 |
 | 2 | B1 | body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%） |
-| 3 | ANYmal-B | matched 完走100%・前進≈0 → **body（0.60）再学習中**（`logs/anymalb-walking-body/`） |
+| 3 | ANYmal-B | matched/body とも前進≈0 → **kp40 再学習中**（`logs/anymalb-walking-kp40/`） |
 | 4 | Spot | matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%） |
 | 5 | Laikago | 完走 **0%**・学習崩壊 → **要再チューン**（第1波初回不合格） |
 
@@ -47,10 +47,9 @@
 
 ## ANYmal-B
 
-- [x] PPO `model_300.pt`（最終平均長 ≈917、ゲート PASS）
-- [x] `eval_expert_quality.py` ＋動画（2026-11-24）
-  - 完走 **100%**・平均 \(v_x\)≈**0**（指令 0.5 の 0.01%）→ **速度不合格**
-  - 動画でもほぼ立位のまま → **要再チューニング**
+- [x] matched PPO `model_300.pt` → 完走100%・前進≈0（不合格）
+- [x] body PPO（\(h=0.50\), \(v_x=0.60\), kp=20）→ 完走100%・前進≈0.0035（不合格・`results/anymalb_body_expert_quality.json`）
+- [ ] kp40 PPO（高さ・指令は body のまま）学習中（`logs/anymalb-walking-kp40/`）
 - AD: **中止**（方針変更）
 
 ## Spot / Laikago
@@ -62,4 +61,4 @@
 - Laikago: `logs/laikago-walking/model_300.pt` + `results/laikago_expert_quality.json`（完走0%・学習崩壊 → **要再チューン**）
 - B1 body: `logs/b1-walking-body/model_300.pt` + `results/b1_body_expert_quality.json`（完走 PASS / 速度比≈49% FAIL）
 - B1 mid: `logs/b1-walking-mid05/model_300.pt` + `results/b1_mid05_expert_quality.json`（**完走・速度とも PASS**・指令比≈60%）
-- 第1波初回パス完了 → 合格は Aliengo / Spot mid / B1 mid。ANYmal-B body 再学習中。Laikago 再チューンは後続
+- 第1波初回パス完了 → 合格は Aliengo / Spot mid / B1 mid。ANYmal-B kp40 再学習中。Laikago 再チューンは後続

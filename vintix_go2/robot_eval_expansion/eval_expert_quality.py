@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import pickle
 import sys
 import time
 from pathlib import Path
@@ -70,6 +71,12 @@ def main():
     args = ap.parse_args()
 
     env_cfg, obs_cfg, reward_cfg, command_cfg, EnvCls, get_train_cfg = _load_cfgs(args.robot)
+    log_dir = str(Path(args.model_path).resolve().parent)
+    # Prefer training-time cfgs so PD/height retunes match the checkpoint physics.
+    cfgs_pkl = Path(log_dir) / "cfgs.pkl"
+    if cfgs_pkl.is_file():
+        loaded = pickle.load(open(cfgs_pkl, "rb"))
+        env_cfg, obs_cfg, reward_cfg, command_cfg = loaded[0], loaded[1], loaded[2], loaded[3]
     if args.cmd_vx is not None:
         command_cfg = dict(command_cfg)
         command_cfg["lin_vel_x_range"] = [args.cmd_vx, args.cmd_vx]
@@ -87,7 +94,6 @@ def main():
         show_viewer=False,
     )
     train_cfg = get_train_cfg("expert-quality", args.rollout_steps, seed=1)
-    log_dir = str(Path(args.model_path).resolve().parent)
     runner = OnPolicyRunner(env, train_cfg, log_dir, device=gs.device)
     runner.load(args.model_path)
     policy = runner.get_inference_policy(device=gs.device)
