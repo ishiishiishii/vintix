@@ -28,8 +28,8 @@
 | 1 | Aliengo | PPO＋完走済。動画・速度 RMSE を補強 |
 | 2 | B1 | PPO＋完走済。追従弱 → 要再チューニング／動画 |
 | 3 | ANYmal-B | PPO 済（`model_300`）。品質評価＋動画が次 |
-| 4 | Spot | matched (\(v_x=0.5\), h≈0.48) `model_300` 済。完走100%・速度比≈0.50（不合格）。**body** (\(v_x=0.9\), h=0.50) 学習中 |
-| 5 | Laikago | PPO 未。Env 済 |
+| 4 | Spot | matched: 完走100%・速度比≈50%（不合格）。body: 完走0%・速度比≈92%（不合格）。**要再チューン** |
+| 5 | Laikago | **PPO 実行中**（PID **1997767**・body \(v_x=0.40\), h=0.45） |
 
 ## 報酬・設定
 
@@ -57,6 +57,6 @@
 
 - PPO → 品質評価＋動画のみ（AD 連鎖スクリプトは使わない）
 - Spot matched: `logs/spot-walking/model_300.pt` + `results/spot_expert_quality.json`（完走 PASS / 速度 FAIL）
-- Spot body: `logs/spot-walking-body/`（PARAMETER_DESIGN 再監査 OK 後に起動）
-- Laikago: Spot body 後に PPO（h/vx は信頼度「弱」→失敗時再チューン）
-- ANYmal-B 速度不合格の再チューンは Spot body 後でも可
+- Spot body: `logs/spot-walking-body/model_300.pt` + `results/spot_body_expert_quality.json`（完走 FAIL / 速度比≈92%）
+- Laikago: Spot body 品質後に PPO 起動済（h/vx は信頼度「弱」→失敗時再チューン）
+- Spot / B1 / ANYmal-B の再チューンは Laikago 品質のあと（Spot 候補: 中間指令 0.7）

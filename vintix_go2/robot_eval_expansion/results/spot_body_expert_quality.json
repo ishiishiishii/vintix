@@ -1,0 +1,18 @@
+{
+  "robot": "spot",
+  "model_path": "robot_eval_expansion/logs/spot-walking-body/model_300.pt",
+  "checked_at_utc": "2026-11-24T05:56:23Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.9,
+  "completion_rate": 0.0,
+  "mean_episode_length": 71.0,
+  "mean_return": 0.7797771921949475,
+  "mean_forward_vx": 0.8270962834358215,
+  "vx_tracking_rmse": 0.37360742688179016,
+  "speed_ratio_vs_cmd": 0.9189958704842461,
+  "pass_completion": false,
+  "pass_speed": true,
+  "video": "robot_eval_expansion/figures/videos/spot_body_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

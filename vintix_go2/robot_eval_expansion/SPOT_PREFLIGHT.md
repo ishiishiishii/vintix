@@ -11,7 +11,7 @@
 | 質量 QA | Σ≈**50.3 kg**（RAI `spot_simple`）。公式カタログ ≈32.5 kg より重い → メモ付き採用（`MASS_QA.md`） |
 | Adaptation 履歴 | **不要**（2026-11-24） |
 | matched PPO（\(v_x=0.5\)） | **完了** → 完走 PASS / 速度 FAIL（≈50%） |
-| body PPO（\(v_x=0.9\)） | **実行中**（PID **1993541**・`logs/spot-walking-body/`） |
+| body PPO（\(v_x=0.9\)） | **完了** → 完走 FAIL（0%）/ 速度比 ≈92%（`spot_body_expert_quality.json`） |
 
 ## Aliengo / B1 / ANYmal-B から持ち越すルール
 
