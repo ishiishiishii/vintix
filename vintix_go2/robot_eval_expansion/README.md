@@ -1,4 +1,4 @@
-> **2026-11-24 12:30 UTC:** ANYmal-B kp40 **合格**（完走100%・指令比≈**95%**）。合格は **4 機**。Laikago 転倒判定 20° 再学習中（PID **2020338**）。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 13:40 UTC:** Laikago term20 **不合格**（完走0%・平均長≈7）。高さ罰 -50→**-10** で再学習中（PID **2024290**）。合格は引き続き **4 機**。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -21,7 +21,7 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 10. ~~タスク2 B1~~: body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%）
 11. ~~タスク2 ANYmal-B~~: matched/body 立位 → **kp40 合格**（完走100%・指令比≈95%）
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
-13. **タスク2 Laikago**: 初回崩壊 → **term20 再学習中**（`logs/laikago-walking-term20/`）
+13. **タスク2 Laikago**: 初回／term20 とも崩壊 → **高さ罰 -10 再学習中**（`logs/laikago-walking-bh10/`）
 
 ## やらないこと（今）
 - 拡充機体の Adaptation 履歴収集
@@ -29,6 +29,15 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 13:40 UTC: Laikago term20 不合格 → 高さ罰 -10 起動
+
+- **分かったこと:**
+  - Laikago term20（転倒判定 20°・指令 0.4・`model_300`）: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.055** m/s（指令比 ≈**-14%**）→ 完走・速度とも不合格
+  - 転倒判定を緩めるだけでは学習崩壊は直らない（初回 term=10 と同型）
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.4`＋動画。1 要因（高さ罰 -50→**-10**、転倒判定は 20° のまま）で Laikago bh10 PPO を密保存起動（PID **2024290**）
+- **結果:** `results/laikago_term20_expert_quality.json`、`figures/videos/laikago_term20_walk_model300.mp4`。ログ `logs/train_ppo/laikago_bh10_seed1.out` / `logs/laikago-walking-bh10/`
+- **次:** bh10 完了 → 品質評価＋動画。不合格なら PD（kp40）1 要因
 
 ### 2026-11-24 12:30 UTC: ANYmal-B kp40 合格 → Laikago term20 起動
 
