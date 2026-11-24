@@ -1,23 +1,25 @@
 {
-  "checked_at_utc": "2026-11-23T23:47:59Z",
+  "checked_at_utc": "2026-11-24T00:51:42Z",
   "pid": 1961754,
   "ckpt": "model_40.pt",
   "target_steps_per_env": 200000,
   "num_envs": 10,
-  "collected_steps_sum": 762770,
-  "collected_steps_per_env_avg": 76277.0,
-  "frac_done_correct": 0.3814,
-  "epsilon_approx": 0.2371,
+  "collected_steps_sum": 1165330,
+  "collected_steps_per_env_avg": 116533.0,
+  "frac_done_correct": 0.5827,
+  "epsilon_approx": 0.1014,
   "last_n_eps": 100,
-  "mean_ep_len_recent": 892.1,
-  "mean_reward_recent": 1.7432,
-  "elapsed_s": 8706,
-  "rate_sum_steps_per_s": 87.61,
-  "eta_utc": "2026-11-24T03:43:21Z",
-  "eta_epoch": 1795491801,
-  "note": "sum/env in log = sum across envs. frac = sum/(200k*10).",
+  "mean_ep_len_recent": 921.2,
+  "mean_reward_recent": 3.2882,
+  "elapsed_s": 12528,
+  "rate_sum_steps_per_s": 93.02,
+  "rate_recent_steps_per_s": 105.29,
+  "eta_utc": "2026-11-24T03:21:15Z",
+  "eta_epoch": 1795490475,
+  "note": "sum/env in log = sum across envs. frac = sum/(200k*10). eta uses overall rate.",
   "selection": {
     "source": "results/b1_ckpt_smoke_eval.json",
     "ckpt": "model_40.pt"
-  }
+  },
+  "chain_wait_pid": 1970393
 }

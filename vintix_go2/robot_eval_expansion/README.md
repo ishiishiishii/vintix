@@ -17,13 +17,19 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
-10. **タスク2 進行中（B1）**: **`model_40`** から履歴収集中（≈**38%**・PID 1961754）。完了後は `wait_after_b1_ad_start_anymalb.sh`（PID 1970393）が ANYmal-B PPO を自動起動。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md)
+10. **タスク2 進行中（B1）**: **`model_40`** から履歴収集中（≈**58%**・PID 1961754）。完了後は `wait_after_b1_ad_start_anymalb.sh`（PID 1970393）が ANYmal-B PPO を自動起動（密保存・ピークフォールバック済み）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 00:52: B1 履歴≈58%・ANYmal-B に密保存とピークフォールバックを配線
+
+- **分かったこと:** 正しい進捗 ≈**58%**（合計 ≈116万 / 200万）、ε≈**0.10**、直近平均長 **≈921**、直近報酬 ≈**+3.3**。収集は健全。B1 で効いた「密な保存＋ピーク重み」を次機体の連鎖に先入れした
+- **実行内容:** `results/b1_ad_collect_mid.json` 更新。`wait_after_b1_ad_start_anymalb.sh` で `cfgs.pkl` 事前配置（保存間隔 20）。`wait_collect_anymalb_ad.sh` は最終平均長不足でもピーク近傍 ckpt へフォールバック。`ANYMALB_PREFLIGHT.md` 追加。稼働中 B1 収集（PID **1961754**）には未介入
+- **次:** B1 履歴完了（ETA ≈**03:21 UTC**）→ 第1波サマリ → ANYmal-B。#22 は合意で close 可
 
 ### 2026-11-23 23:48: B1 履歴≈38%・報酬がプラスへ／完了後に ANYmal-B を連鎖起動
 

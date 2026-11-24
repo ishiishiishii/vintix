@@ -108,7 +108,26 @@ fi
 if [[ -f "${ANYMALB_LOGDIR}/model_300.pt" ]]; then
   log "ANYmal-B model_300.pt already exists; skip PPO, ensure AD wait is running"
 else
-  log "starting ANYmal-B PPO (301 iter, seed=1) → ${ANYMALB_TRAIN_OUT}"
+  # B1 lesson: mid-train peak then collapse can miss walking weights if save_interval=100.
+  # Pre-seed cfgs.pkl with save_interval=20 so train.py loads it (resume_existing path)
+  # without editing common train.py. Empty log dir except cfgs → fresh run, denser saves.
+  if [[ ! -f "${ANYMALB_LOGDIR}/cfgs.pkl" ]]; then
+    log "pre-seeding ${ANYMALB_LOGDIR}/cfgs.pkl with save_interval=20"
+    "${PY}" - <<'PY'
+import os, pickle, sys
+sys.path.insert(0, "/workspace/Genesis/examples/locomotion")
+from train import get_anymalb_cfgs, get_train_cfg
+log_dir = "/workspace/vintix_go2/robot_eval_expansion/logs/anymalb-walking"
+os.makedirs(log_dir, exist_ok=True)
+env_cfg, obs_cfg, reward_cfg, command_cfg = get_anymalb_cfgs()
+train_cfg = get_train_cfg("anymalb-walking", 301, seed=1)
+train_cfg["save_interval"] = 20
+with open(os.path.join(log_dir, "cfgs.pkl"), "wb") as f:
+    pickle.dump([env_cfg, obs_cfg, reward_cfg, command_cfg, train_cfg], f)
+print("wrote cfgs.pkl save_interval=", train_cfg["save_interval"])
+PY
+  fi
+  log "starting ANYmal-B PPO (301 iter, seed=1, dense save via cfgs) → ${ANYMALB_TRAIN_OUT}"
   (
     cd "${GENESIS_LOCO}"
     exec "${PY}" train.py -r anymalb -e anymalb-walking \

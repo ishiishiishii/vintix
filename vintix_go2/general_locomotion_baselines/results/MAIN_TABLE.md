@@ -16,7 +16,7 @@
 
 | 手法 | シミュレータ | ロボット | タスク | 生存 | その定義での完走 | 平均 return | 出典パス |
 |------|--------------|----------|--------|------|------------------|-------------|---------|
-| **GenLoco**（pace） | PyBullet（公式に近い） | Go1 | 動きの模倣 | **300/300** ×3 | **100%** | ≈254 | `results/genloco_genesis/` / GenLoco PyBullet 再生ログ |
+| **GenLoco**（pace） | PyBullet（公式に近い） | Go1 | 動きの模倣 | **300/300** ×3 | **100%** | ≈254 | `results/genloco_pybullet/genloco_pace_go1_ep3_s300.json` |
 | **URMA** | MuJoCo / RL-X（公式） | Go2 | 速度追従 | **1000/1000** ×3 | **100%** | ≈**53.4** | `results/urma_official/urma_go2_ep3_s1000.json` |
 
 ## 参考列（主表に入れない）

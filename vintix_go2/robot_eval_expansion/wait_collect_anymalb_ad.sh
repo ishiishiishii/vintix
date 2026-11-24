@@ -43,7 +43,11 @@ fi
 sleep 5
 ls -la "${CKPT}"
 
-# Quality gate: do not collect AD from a collapsed / non-walking expert.
+# Quality gate (B1 lesson): train-log final length can look collapsed under exploration
+# noise while a mid-peak checkpoint still walks. Prefer final model_300 if final_len OK;
+# else fall back to nearest dense ckpt around the peak iteration (save_interval≈20).
+export ANYMALB_LOGDIR="${ROOT}/logs/anymalb-walking"
+export DEFAULT_CKPT="${CKPT}"
 set +e
 GATE_OUT="$("${PY}" - <<'PY'
 import json, re, time, os
@@ -51,6 +55,8 @@ from pathlib import Path
 log = Path(os.environ["TRAIN_LOG"])
 gate_json = Path(os.environ["GATE_JSON"])
 min_len = float(os.environ["MIN_FINAL_LENGTH"])
+logdir = Path(os.environ["ANYMALB_LOGDIR"])
+default_ckpt = Path(os.environ["DEFAULT_CKPT"])
 text = log.read_text(errors="replace") if log.exists() else ""
 rows = []
 for m in re.finditer(r"Learning iteration\s+(\d+)/\d+", text):
@@ -62,7 +68,29 @@ for m in re.finditer(r"Learning iteration\s+(\d+)/\d+", text):
 final_len = rows[-1][1] if rows else 0.0
 final_iter = rows[-1][0] if rows else -1
 peak = max(rows, key=lambda x: x[1]) if rows else (0, 0.0, 0.0)
-ok = final_len >= min_len
+selected = default_ckpt
+mode = "final_ckpt"
+ok = False
+if final_len >= min_len and default_ckpt.exists():
+    ok = True
+    mode = "final_ckpt"
+elif peak[1] >= min_len:
+    # Pick closest existing model_*.pt to peak iteration (denser saves = better).
+    cands = []
+    for p in logdir.glob("model_*.pt"):
+        try:
+            it = int(p.stem.split("_")[1])
+            cands.append((abs(it - peak[0]), it, p))
+        except Exception:
+            pass
+    if cands:
+        cands.sort()
+        selected = cands[0][2]
+        ok = True
+        mode = "peak_ckpt_fallback"
+reason = ""
+if not ok:
+    reason = "final and peak episode length both below min; refuse to collect from non-walking expert"
 payload = {
     "checked_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     "train_log": str(log),
@@ -71,10 +99,16 @@ payload = {
     "peak_iteration": peak[0],
     "peak_mean_episode_length": peak[1],
     "min_required_length": min_len,
+    "selected_ckpt": str(selected),
+    "selection_mode": mode,
     "pass": ok,
+    "reason": reason,
+    "note": "B1 lesson: exploration-noise train length can understate deployable skill; peak ckpt fallback when final fails.",
 }
 gate_json.write_text(json.dumps(payload, indent=2) + "\n")
-print(("PASS" if ok else "FAIL") + f" final_len={final_len:.2f} peak={peak[1]:.2f}@{peak[0]}")
+# Print SELECTED_CKPT=... for the shell to parse
+print(("PASS" if ok else "FAIL") + f" final_len={final_len:.2f} peak={peak[1]:.2f}@{peak[0]} mode={mode}")
+print(f"SELECTED_CKPT={selected}")
 raise SystemExit(0 if ok else 2)
 PY
 )"
@@ -85,6 +119,12 @@ if [[ "${GATE_RC}" -ne 0 ]]; then
   echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] SKIP collect (gate failed). See ${GATE_JSON}"
   exit 2
 fi
+# Prefer gate-selected checkpoint (may be peak fallback).
+SELECTED="$(echo "${GATE_OUT}" | sed -n 's/^SELECTED_CKPT=//p' | tail -n1)"
+if [[ -n "${SELECTED}" && -f "${SELECTED}" ]]; then
+  CKPT="${SELECTED}"
+fi
+echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] using ckpt ${CKPT}"
 
 echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] starting AD collect → ${OUT_DIR}"
 exec "${PY}" "${COLLECT}" \

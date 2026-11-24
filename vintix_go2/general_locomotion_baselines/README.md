@@ -61,6 +61,12 @@ bash clone_third_party.sh
 
 ## 実行ログ
 
+### 2026-11-24 00:52（autopilot）: 主表の GenLoco 出典パス訂正
+
+- **実行内容:** `results/MAIN_TABLE.md` の出典を `genloco_pybullet/genloco_pace_go1_ep3_s300.json` に修正
+- **結果:** 数値は変わらず。最小完了の文書条件維持。close はユーザー合意待ち
+- **次:** 合意で close。GPU は #16
+
 ### 2026-11-23 17:04（autopilot）: 完了条件案を固定
 
 - **実行内容:** `DONE_CRITERIA.md` を追加。最小完了＝主表 GenLoco+URMA（公式再生）、MorFiC は主表外
