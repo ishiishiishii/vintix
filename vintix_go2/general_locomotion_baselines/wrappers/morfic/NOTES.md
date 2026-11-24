@@ -24,7 +24,9 @@ Genesis 側は速度コマンド 3 のみ → 残り gait コマンドは 0 埋�
 1. ~~次元を checkpoint から確定~~（CPU スモーク通過）
 2. ~~評価入口の dry-run 骨格~~（`run_morfic_genesis_eval.py`・Genesis 非起動）
 3. ~~Genesis Go2 `--run`~~（2026-11-23: 4 env × 500 step → completion 0%、mean len ≈11.6。近似 obs のゼロショット即転倒）
-4. 公式 `scripts/play.py`（Isaac Gym）での holdout 再生と比較し、差分を記録
+4. 公式 `scripts/play.py`（Isaac Gym）での holdout 再生と比較し、差分を記録  
+   - 2026-11-24: Isaac Gym Preview 4 を `isaacgym_py38` に導入（import OK）  
+   - 入口: `run_morfic_official_eval.sh`（#16 ANYmal-B 履歴が GPU 占有中のため play は後続）
 5. （任意）gait cmd / clock の再構成改善 → 再評価
 
 ## ファイル
@@ -35,10 +37,13 @@ Genesis 側は速度コマンド 3 のみ → 残り gait コマンドは 0 埋�
 | `obs_adapter.py` | Genesis 45 → MorFiC 70 + history |
 | `policy_loader.py` | checkpoint 次元 assert + 最小 actor パス |
 | `smoke_cpu_check.py` | GPU 不要スモーク |
-| `run_morfic_genesis_eval.py` | 評価入口（既定 dry-run。`--run` は GPU 待ち） |
+| `run_morfic_genesis_eval.py` | Genesis 近似評価（参考のみ・完了判定に使わない） |
+| `run_morfic_official_eval.sh` | **公式 Isaac Gym** `play.py` → JSON（完了判定用） |
 
 ```bash
 cd /workspace/vintix_go2/general_locomotion_baselines
 python wrappers/morfic/smoke_cpu_check.py
 python wrappers/morfic/run_morfic_genesis_eval.py --dry_run
+# GPU 空き時（公式・完了判定）:
+bash wrappers/morfic/run_morfic_official_eval.sh --robot go2 --steps 800 --vx 1.0
 ```

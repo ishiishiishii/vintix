@@ -1,29 +1,27 @@
-# #22 完了条件（案）
+# #22 完了条件（更新 2026-11-24）
 
-更新: 2026-11-23（autopilot）。分かりやすい言葉で書く。
+ユーザー合意: シミュレータは手法ごとに公式のものを使ってよい（文献根拠は `SIMULATOR_POLICY.md`）。
+**各ベースラインが、論文で動かしていたロボットで安定歩行できること**が完了条件。
 
-## いま満たしていること
+## 必須チェックリスト
 
-- [x] 代表手法の文献調査表（`LITERATURE_SURVEY.md`）
-- [x] GenLoco / URMA / MorFiC の OSS クローン手順とライセンス記録
-- [x] Genesis への薄い配線（近似評価）と軽量スモーク
-- [x] **公式に近いシミュレータ**での数値:
-  - GenLoco（PyBullet）: Go1 pace・300 ステップ生存 3/3
-  - URMA（MuJoCo / RL-X）: Go2・1000 ステップ生存 3/3、平均 return ≈53.4
-- [x] 本線指標との対応表（`METRICS_CROSSWALK.md`）
-- [x] MorFiC の Isaac Gym は仮置きで主表外（`MORFIC_ISAAC_DECISION.md`・案 C）
+| 手法 | 公式シミュレータ | 検証ロボット（論文） | 安定歩行 | 状態 |
+|------|------------------|----------------------|----------|------|
+| GenLoco | PyBullet | Go1（pace）等 | 生存 300/300 ×3 | **済** |
+| URMA | MuJoCo / RL-X | Go2 | 生存 1000/1000 ×3 | **済** |
+| MorFiC | **Isaac Gym** | Go2（学習ソース） | 公式 `play.py` | **導入中**（env `isaacgym_py38`・import OK。公式 play は GPU 空き待ち） |
 
-## まだ足りない／任意
+## やること（残り）
 
-- [x] 論文用の「同じ見方」の主表を 1 枚に固定 → [`results/MAIN_TABLE.md`](results/MAIN_TABLE.md)（主表 = GenLoco + URMA、MorFiC は参考外）
-- [ ] MorFiC を主表に残すなら別環境で Isaac Gym 再生（ユーザー判断。このマシンへの導入は明示後）
-- [ ] URMA の GPU 再生（cuDNN 揃え）は任意。CPU 数値で主張は足りる
+- [x] Isaac Gym Preview を別 conda env に導入（`install_isaac_gym.sh` + `/workspace/IsaacGym_Preview_4_Package.tar`）
+- [ ] MorFiC `scripts/play.py --robot go2` で安定歩行を定量記録し主表へ戻す  
+      （入口: `wrappers/morfic/run_morfic_official_eval.sh`。#16 ANYmal-B 履歴収集が GPU 占有中のため後続）
+- [ ] （任意）Go1 など論文記載の他機体でも再生
 
-## 閉じ方の提案
+Genesis 近似は参考列のみ。完了判定に使わない。
 
-**最小完了の文書条件は満たした**（2026-11-23）。ユーザー合意があれば #22 を close 可:
+### Isaac Gym 導入メモ（2026-11-24）
 
-1. **最小完了（推奨・文書済）:** 主表 GenLoco + URMA の公式再生、Genesis 近似は参考、MorFiC は主表外
-2. **厚め完了:** 上記 + MorFiC 公式数値（別マシン）まで
-
-GPU は #16 Aliengo 履歴収集を優先。#22 は合意待ちで閉じられる。
+- conda env: `isaacgym_py38`（本線 Genesis と分離）
+- `libpython3.8.so.1.0` は `LD_LIBRARY_PATH=$CONDA_PREFIX/lib` が必要（`activate.d` と公式評価ラッパで設定）
+- MorFiC 側: `gym==0.23.1`（0.21.0 は新 setuptools で metadata 失敗）、`numpy==1.23.5`

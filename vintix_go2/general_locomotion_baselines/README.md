@@ -1,3 +1,5 @@
+> **2026-11-24 03:50 UTC:** Isaac Gym Preview 4 を `isaacgym_py38` に導入（import OK）。MorFiC 公式再生は `wrappers/morfic/run_morfic_official_eval.sh`（GPU 空き待ち）。方針は `SIMULATOR_POLICY.md`。
+
 # 汎用歩行ベースライン導入（#22）
 
 > Issue: [#22](https://github.com/ishiishiishii/vintix/issues/22)  
@@ -60,6 +62,14 @@ bash clone_third_party.sh
 | #22 | 比較用**アルゴリズム**（本ディレクトリ） |
 
 ## 実行ログ
+
+### 2026-11-24 03:50 UTC（autopilot）: Isaac Gym 導入・公式評価入口
+
+- **分かったこと:** Preview 4 tarball から別 conda env を構築。初回は `libpython3.8.so.1.0` 不足 → `LD_LIBRARY_PATH=$CONDA_PREFIX/lib` で import OK。MorFiC 依存も同 env に入れ、import チェーン確認
+- **実行内容:** `install_isaac_gym.sh`、`wrappers/morfic/run_morfic_official_eval.sh`、`DONE_CRITERIA.md` / `MORFIC_ISAAC_DECISION.md` / NOTES 更新。#16 ANYmal-B 履歴収集には未介入
+- **結果:** Isaac 導入チェック完了。公式 `play.py` の定量は GPU 空き後
+- **次:** `bash wrappers/morfic/run_morfic_official_eval.sh` → 主表に MorFiC 行を復帰
+
 
 ### 2026-11-24 00:52（autopilot）: 主表の GenLoco 出典パス訂正
 

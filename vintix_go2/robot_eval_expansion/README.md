@@ -1,3 +1,5 @@
+> **2026-11-24:** 専門家の完了条件を強化（`EXPERT_QUALITY.md`）。完走＋前進速度＋動画。B1 は追従再チューニング対象。
+
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -18,13 +20,19 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
 10. ~~タスク2 B1 第1波~~（PPO + 履歴 + 短評価）— 合計 **2,005,870** transitions・完走 100%・return ≈2.3
-11. **タスク2 進行中（ANYmal-B）**: PPO PID **1981081**（密保存済み）／履歴待ち PID **1981084**。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)
+11. **タスク2 進行中（ANYmal-B）**: PPO 完了（最終平均長 ≈917・品質ゲート PASS）→ 履歴収集 PID **1981084**（`model_300.pt`）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 03:50 UTC: ANYmal-B PPO 完了・履歴収集開始
+
+- **分かったこと:** 学習 301 iter 到達。最終平均長 ≈**917**・平均報酬 ≈**7.0**。品質ゲート PASS（ピーク長 ≈982@210）→ `model_300.pt` で Adaptation 履歴収集開始（PID **1981084**）。序盤は探索ノイズ高く短いエピソード（B1 と同様の序盤挙動）
+- **実行内容:** 監視のみ（稼働中ジョブ未介入）。`EXPERT_QUALITY.md` の ANYmal-B 行を更新。並行で #22 Isaac Gym 導入（別 env）
+- **次:** 履歴完了 → `eval_expert_quality.py`＋動画。B1 再チューニング準備
 
 ### 2026-11-24 03:12: B1 第1波完了・ANYmal-B PPO 起動
 
