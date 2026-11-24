@@ -1,0 +1,18 @@
+{
+  "robot": "laikago",
+  "model_path": "vintix_go2/robot_eval_expansion/logs/laikago-walking/model_300.pt",
+  "checked_at_utc": "2026-11-24T07:05:39Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.4,
+  "completion_rate": 0.0,
+  "mean_episode_length": 7.0,
+  "mean_return": -0.01358765079465917,
+  "mean_forward_vx": -0.06553465873003006,
+  "vx_tracking_rmse": 0.46892255544662476,
+  "speed_ratio_vs_cmd": -0.16383664682507515,
+  "pass_completion": false,
+  "pass_speed": false,
+  "video": "vintix_go2/robot_eval_expansion/figures/videos/laikago_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

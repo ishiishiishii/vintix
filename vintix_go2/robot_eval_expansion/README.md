@@ -1,4 +1,4 @@
-> **2026-11-24 05:59 UTC:** Spot **body** は完走**0%**・速度比≈**92%**で不合格（速いが転倒）。**Laikago** PPO 実行中（PID **1997767**）。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 07:10 UTC:** Laikago 第1波は完走**0%**（学習崩壊）。**Spot mid**（指令 0.7）再学習中。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -20,8 +20,8 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
 10. ~~タスク2 B1~~（PPO＋完走。追従弱・**要再チューニング**）
 11. ~~タスク2 ANYmal-B PPO~~ → 品質: 完走100%だが前進≈0 → **要再チューニング**
-12. **タスク2 Spot**: matched 速度不合格・body 完走不合格 → **要再チューン**。計画: [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
-13. **タスク2 Laikago**: PPO 実行中（PID **1997767**・body \(v_x=0.40\)）
+12. **タスク2 Spot**: matched/body 不合格 → **mid 0.7 再学習中**（`logs/spot-walking-mid07/`）。計画: [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
+13. ~~タスク2 Laikago 初回~~ → 完走0%・学習崩壊 → **要再チューニング**
 
 ## やらないこと（今）
 - 拡充機体の Adaptation 履歴収集
@@ -29,6 +29,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 07:10 UTC: Laikago 第1波不合格 → Spot mid（指令 0.7）起動
+
+- **分かったこと:**
+  - Laikago `model_300`（指令 0.4）: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.066** m/s（指令比 ≈**-16%**）→ 完走・速度とも不合格
+  - 学習中も平均長 ≈5–11 のまま伸びず（学習崩壊）。第1波の初回パスは全機評価済み
+  - 合格は引き続き Aliengo のみ
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.4`＋動画。Spot mid PPO（`--cmd_vx 0.7`・密保存）を起動
+- **結果:** `results/laikago_expert_quality.json`、`figures/videos/laikago_walk_model300.mp4`。ログ `logs/train_ppo/spot_mid07_seed1.out` / `logs/spot-walking-mid07/`
+- **次:** Spot mid 完了 → 品質評価＋動画。不合格なら B1 / ANYmal-B / Laikago 再チューン（Laikago 候補: term20・高さ罰-10・kp）
 
 ### 2026-11-24 05:59 UTC: Spot body は速いがすぐ転倒 → Laikago PPO 起動
 
