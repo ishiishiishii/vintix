@@ -17,13 +17,19 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
-10. **タスク2 進行中（B1）**: **`model_40`** から履歴収集中（≈**58%**・PID 1961754）。完了後は `wait_after_b1_ad_start_anymalb.sh`（PID 1970393）が ANYmal-B PPO を自動起動（密保存・ピークフォールバック済み）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md)
+10. **タスク2 進行中（B1）**: **`model_40`** から履歴収集中（≈**80%**・PID 1961754）。完了後は `wait_after_b1_ad_start_anymalb.sh`（PID 1970393）が ANYmal-B PPO を自動起動（密保存・ピークフォールバック済み）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 01:58: B1 履歴≈80%・Aliengo比較と Spot 事前メモ
+
+- **分かったこと:** 正しい進捗 ≈**80%**（合計 ≈159万 / 200万）、ε≈**0.022**、直近平均長 **≈813**、直近報酬 ≈**+3.25**。完走率は Aliengo と同じ 100% だが平均報酬は ≈2.3 vs ≈22（約10倍弱い追従）。収集は健全（ETA ≈**03:08 UTC**）
+- **実行内容:** `results/b1_ad_collect_mid.json` 更新。`results/wave1_quality_compare.md` と `SPOT_PREFLIGHT.md` を追加。稼働中ジョブ（PID **1961754** / 連鎖 **1970393**）には未介入
+- **次:** B1 履歴完了 → 第1波サマリ → ANYmal-B。#22 は合意で close 可
 
 ### 2026-11-24 00:52: B1 履歴≈58%・ANYmal-B に密保存とピークフォールバックを配線
 

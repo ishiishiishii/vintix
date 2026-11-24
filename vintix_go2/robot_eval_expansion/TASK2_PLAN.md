@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-24 00:52（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-24 01:58（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -71,15 +71,17 @@ Spot は後続で足す。
   - 8 env×500 再スモーク: `model_40/80` 完走 100%（return **2.3 / 1.85**）、`model_60` は崩壊（`results/b1_ckpt_smoke_eval.json`）
 - [ ] Adaptation 用履歴: **収集中**（PID **1961754**、**`model_40.pt`** → `data/b1_ad_parallel/`）
   - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用
-  - **進捗（2026-11-24 00:52）:** 合計 ≈**116万 / 200万**（≈**58%**）、ε≈**0.10**、直近平均長 **≈921**、直近報酬 ≈**+3.29**、ETA ≈**03:21 UTC**（`results/b1_ad_collect_mid.json`）
+  - **進捗（2026-11-24 01:58）:** 合計 ≈**159万 / 200万**（≈**80%**）、ε≈**0.022**、直近平均長 **≈813**、直近報酬 ≈**+3.25**、ETA ≈**03:08 UTC**（`results/b1_ad_collect_mid.json`）
   - **連鎖:** `wait_after_b1_ad_start_anymalb.sh`（PID **1970393**）が完了後にサマリ → ANYmal-B PPO → 履歴待ちを起動
+  - **品質比較:** [`results/wave1_quality_compare.md`](results/wave1_quality_compare.md)（Aliengo return≈22 vs B1 ≈2.3）
 
 ### メモ（B1）
 
 - 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。ただし短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
-- 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。履歴の質は収集完了後に短評価で再判断
-- 収集中は探索ノイズ低下とともに直近報酬がマイナス→プラスへ（いま ≈+3.3）。長さは ≈900 前後を維持
+- 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。完走は同率 100% なので第1波最低ラインは満たす見込み
+- 収集中は ε 低下とともに報酬がプラスを維持（≈+3.2）。長さは ≈920→≈810 とやや下がったが 800 超を維持 → 健全
 - 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。**`-r anymalb` / `wait_collect_anymalb_ad.sh` / `wait_after_b1_ad_start_anymalb.sh` 配線済み**）
+- その次: Spot（[`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)。履歴収集配線は未。ANYmal-B 完了後）
 - 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
 ## 次機体（ANYmal-B）— 起動前に固定した方針
@@ -90,6 +92,13 @@ Spot は後続で足す。
 - [ ] 品質ゲート: 最終平均長 ≥200 → `model_300`。未満でもピーク ≥200 ならピーク近傍 ckpt へフォールバック（B1 教訓）
 - [ ] Adaptation 履歴 → 短評価スモーク
 - 監視表と失敗時の診断順は PREFLIGHT を正本にする
+
+## その次（Spot）— 起動しない・事前メモのみ
+
+詳細: [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)
+
+- Env / 立位 / 質量 QA は済。履歴収集 `-r spot` と連鎖スクリプトは **未**
+- ANYmal-B 第1波完了＋GPU 空きまで着手しない
 
 ## やらないこと（今）
 
