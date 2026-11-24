@@ -1,4 +1,4 @@
-> **2026-11-24 11:22 UTC:** ANYmal-B body は完走100%だが前進≈0（指令比≈**0.6%**）→ **立位のまま不合格**。PD 強化（kp40）再学習中（PID **2016379**）。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 12:30 UTC:** ANYmal-B kp40 **合格**（完走100%・指令比≈**95%**）。合格は **4 機**。Laikago 転倒判定 20° 再学習中（PID **2020338**）。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -19,9 +19,9 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
 10. ~~タスク2 B1~~: body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%）
-11. **タスク2 ANYmal-B**: matched/body とも前進≈0 → **kp40 再学習中**（`logs/anymalb-walking-kp40/`）
+11. ~~タスク2 ANYmal-B~~: matched/body 立位 → **kp40 合格**（完走100%・指令比≈95%）
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
-13. ~~タスク2 Laikago 初回~~ → 完走0%・学習崩壊 → **要再チューニング**
+13. **タスク2 Laikago**: 初回崩壊 → **term20 再学習中**（`logs/laikago-walking-term20/`）
 
 ## やらないこと（今）
 - 拡充機体の Adaptation 履歴収集
@@ -29,6 +29,15 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 12:30 UTC: ANYmal-B kp40 合格 → Laikago term20 起動
+
+- **分かったこと:**
+  - ANYmal-B kp40（\(h=0.50\), \(v_x=0.60\), kp=40, `model_300`）: 完走 **100%**、平均前進 ≈**0.568** m/s、指令比 ≈**94.6%**、RMSE≈0.073 → **完走・速度とも合格**（4 機目）
+  - 関節の硬さ（PD）を上げるだけで立位から歩行へ抜けた。高さ・指令だけでは足りなかった
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.60`＋動画。1 要因（転倒判定 10°→**20°**）で Laikago term20 PPO を密保存起動（PID **2020338**）
+- **結果:** `results/anymalb_kp40_expert_quality.json`、`figures/videos/anymalb_kp40_walk_model300.mp4`。ログ `logs/train_ppo/laikago_term20_seed1.out` / `logs/laikago-walking-term20/`
+- **次:** Laikago term20 完了 → 品質評価＋動画。不合格なら高さ罰／PD 1 要因
 
 ### 2026-11-24 11:22 UTC: ANYmal-B body も立位のまま → kp40 起動
 

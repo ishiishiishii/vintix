@@ -25,11 +25,11 @@
 
 | 順 | 機体 | 状態 |
 |----|------|------|
-| 1 | Aliengo | PPO＋完走済。動画・速度 RMSE を補強 |
+| 1 | Aliengo | **合格**（完走100%・指令比≈99%） |
 | 2 | B1 | body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%） |
-| 3 | ANYmal-B | matched/body とも前進≈0 → **kp40 再学習中**（`logs/anymalb-walking-kp40/`） |
+| 3 | ANYmal-B | matched/body 立位 → **kp40 合格**（完走100%・指令比≈95%） |
 | 4 | Spot | matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%） |
-| 5 | Laikago | 完走 **0%**・学習崩壊 → **要再チューン**（第1波初回不合格） |
+| 5 | Laikago | 初回崩壊 → **term20 再学習中**（`logs/laikago-walking-term20/`） |
 
 ## 報酬・設定
 
@@ -49,7 +49,7 @@
 
 - [x] matched PPO `model_300.pt` → 完走100%・前進≈0（不合格）
 - [x] body PPO（\(h=0.50\), \(v_x=0.60\), kp=20）→ 完走100%・前進≈0.0035（不合格・`results/anymalb_body_expert_quality.json`）
-- [ ] kp40 PPO（高さ・指令は body のまま）学習中（`logs/anymalb-walking-kp40/`）
+- [x] kp40 PPO（高さ・指令は body のまま）→ **合格**（完走100%・指令比≈94.6%・`results/anymalb_kp40_expert_quality.json`）
 - AD: **中止**（方針変更）
 
 ## Spot / Laikago
@@ -58,7 +58,8 @@
 - Spot matched: `logs/spot-walking/model_300.pt` + `results/spot_expert_quality.json`（完走 PASS / 速度 FAIL）
 - Spot body: `logs/spot-walking-body/model_300.pt` + `results/spot_body_expert_quality.json`（完走 FAIL / 速度比≈92%）
 - Spot mid: `logs/spot-walking-mid07/model_300.pt` + `results/spot_mid07_expert_quality.json`（**完走・速度とも PASS**・指令比≈99%）
-- Laikago: `logs/laikago-walking/model_300.pt` + `results/laikago_expert_quality.json`（完走0%・学習崩壊 → **要再チューン**）
+- Laikago 初回: `logs/laikago-walking/model_300.pt` + `results/laikago_expert_quality.json`（完走0%・学習崩壊）
+- Laikago term20: `logs/laikago-walking-term20/`（転倒判定 20°・密保存・学習中）
 - B1 body: `logs/b1-walking-body/model_300.pt` + `results/b1_body_expert_quality.json`（完走 PASS / 速度比≈49% FAIL）
 - B1 mid: `logs/b1-walking-mid05/model_300.pt` + `results/b1_mid05_expert_quality.json`（**完走・速度とも PASS**・指令比≈60%）
-- 第1波初回パス完了 → 合格は Aliengo / Spot mid / B1 mid。ANYmal-B kp40 再学習中。Laikago 再チューンは後続
+- 合格は Aliengo / Spot mid / B1 mid / **ANYmal-B kp40** の 4 機。残りは Laikago 再チューン
