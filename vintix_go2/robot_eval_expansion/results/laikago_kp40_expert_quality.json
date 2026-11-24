@@ -1,0 +1,18 @@
+{
+  "robot": "laikago",
+  "model_path": "robot_eval_expansion/logs/laikago-walking-kp40/model_300.pt",
+  "checked_at_utc": "2026-11-24T15:51:13Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.4,
+  "completion_rate": 0.0,
+  "mean_episode_length": 8.0,
+  "mean_return": 0.020518300941487055,
+  "mean_forward_vx": -0.03126199543476105,
+  "vx_tracking_rmse": 0.4366767108440399,
+  "speed_ratio_vs_cmd": -0.07815498858690262,
+  "pass_completion": false,
+  "pass_speed": false,
+  "video": "robot_eval_expansion/figures/videos/laikago_kp40_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

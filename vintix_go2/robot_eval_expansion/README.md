@@ -1,4 +1,4 @@
-> **2026-11-24 14:45 UTC:** Laikago bh10（高さ罰 -10）**不合格**（完走0%・平均長≈8）。PD（kp40）で再学習中（PID **2028204**）。合格は引き続き **4 機**。設計: `PARAMETER_DESIGN.md`。
+> **2026-11-24 15:55 UTC:** 第1波クローズ。合格 **4 機**（Aliengo / Spot mid / B1 mid / ANYmal-B kp40）。Laikago kp40 も不合格（完走0%・平均長≈8）。次本線は #11（DR 履歴 seed2 収集中）。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
@@ -21,14 +21,25 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 10. ~~タスク2 B1~~: body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%）
 11. ~~タスク2 ANYmal-B~~: matched/body 立位 → **kp40 合格**（完走100%・指令比≈95%）
 12. ~~タスク2 Spot~~: matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%）
-13. **タスク2 Laikago**: 初回／term20／bh10 とも崩壊 → **PD kp40 再学習中**（`logs/laikago-walking-kp40/`）
+13. ~~タスク2 Laikago~~: 初回／term20／bh10／kp40 とも崩壊 → **第1波見送り**（URDF／初期姿勢は別）
 
 ## やらないこと（今）
 - 拡充機体の Adaptation 履歴収集
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
+- Laikago の追加報酬チューン（第1波では打ち切り）
 
 ## 実行ログ
+
+### 2026-11-24 15:55 UTC: Laikago kp40 不合格 → 第1波クローズ・#11 起動
+
+- **分かったこと:**
+  - Laikago kp40（PD kp=40・転倒 20°・高さ罰 -10・指令 0.4・`model_300`）: 完走 **0%**、平均長 ≈**8**、平均前進 ≈**-0.031** m/s（指令比 ≈**-8%**）→ 完走・速度とも不合格
+  - 転倒判定／高さ罰／PD の 1 要因 4 試行はすべて平均長≈7–8。報酬側では救えない
+  - **第1波合格 4 機:** Aliengo / Spot mid / B1 mid / ANYmal-B kp40
+- **実行内容:** `eval_expert_quality.py --cmd_vx 0.4`＋動画。5 時間詰まりルールで #16 第1波を区切り、#11（DR narrow シード2）を `collect.py` 起動（PID **2031754**）
+- **結果:** `results/laikago_kp40_expert_quality.json`、`figures/videos/laikago_kp40_walk_model300.mp4`。比較表 `results/wave1_quality_compare.md`
+- **次:** #11 収集監視。Laikago の URDF／初期姿勢調査は別チケット（`later`）
 
 ### 2026-11-24 14:45 UTC: Laikago bh10 不合格 → PD kp40 起動
 

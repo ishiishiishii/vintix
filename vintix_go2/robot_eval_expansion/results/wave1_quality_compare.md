@@ -1,6 +1,6 @@
 # 第1波の専門家品質比較（拡充機体）
 
-更新: 2026-11-24 14:45 UTC（autopilot）。分かりやすい言葉で書く。
+更新: 2026-11-24 15:55 UTC（autopilot）。分かりやすい言葉で書く。
 目的: 未知ターゲット評価用の専門家が「転ばず・指令どおり進む」かを機体間で比べる（Adaptation 履歴は不要）。
 
 ## 要約表
@@ -18,21 +18,22 @@
 | **Spot body** | `model_300.pt` | **0%** | ≈**0.827**（指令 0.9・比 ≈**92%**） | **不合格** | 速いがすぐ転倒（平均長 ≈71） |
 | **Laikago** | `model_300.pt` | **0%** | ≈**-0.066**（指令 0.4・比 ≈**-16%**） | **不合格** | 学習崩壊（平均長 ≈7） |
 | **Laikago term20** | `model_300.pt` | **0%** | ≈**-0.055**（指令 0.4・比 ≈**-14%**） | **不合格** | 転倒判定だけでは直らず |
-| **Laikago bh10** | `model_300.pt` | **0%** | ≈**-0.071**（指令 0.4・比 ≈**-18%**） | **不合格** | 高さ罰だけでは直らず → PD kp40 再学習中 |
+| **Laikago bh10** | `model_300.pt` | **0%** | ≈**-0.071**（指令 0.4・比 ≈**-18%**） | **不合格** | 高さ罰だけでは直らず |
+| **Laikago kp40** | `model_300.pt` | **0%** | ≈**-0.031**（指令 0.4・比 ≈**-8%**） | **不合格** | PD 強化でも崩壊（平均長 ≈8）→ 第1波は 4 機で区切り |
 
-出典: `*_expert_quality.json` / `laikago_bh10_expert_quality.json` / `laikago_term20_expert_quality.json` / `anymalb_kp40_expert_quality.json` / `b1_mid05_expert_quality.json` / `spot_mid07_expert_quality.json`
+出典: `*_expert_quality.json` / `laikago_kp40_expert_quality.json` / `laikago_bh10_expert_quality.json` / `laikago_term20_expert_quality.json` / `anymalb_kp40_expert_quality.json` / `b1_mid05_expert_quality.json` / `spot_mid07_expert_quality.json`
 
 ## いま言えること
 
-- **合格は 4 機:** Aliengo・Spot mid・B1 mid・**ANYmal-B kp40**（指令比 ≈94.6%）
+- **第1波の合格は 4 機で区切り:** Aliengo・Spot mid・B1 mid・ANYmal-B kp40
 - **前進が出ない機体は PD（関節の硬さ）が効く:** ANYmal-B は高さ・指令では立位のまま → kp40 で歩行
 - **中間指令が効くのは「前進が出ている」とき:** Spot 0.7、B1 0.50
 - **完走だけでは不十分**＋「速さだけでは不十分」は引き続き正しい
-- **Laikago は転倒判定・高さ罰だけでは崩壊**（term10 / term20 / bh10 とも平均長≈7–8）→ 次は PD（kp40）
+- **Laikago は報酬側 1 要因（転倒判定・高さ罰・PD）では救えない**（4 試行とも平均長≈7–8）→ 次は URDF／初期姿勢の追加調査（別チケット）
 
 ## まだ言えないこと
 
-- Laikago が PD 強化・URDF／初期姿勢のどれで救えるか（kp40 学習中）
+- Laikago が URDF／初期姿勢／座標系のどれで救えるか（報酬側は一通り試した）
 - B1 mid の指令比≈60% がシードを変えても安定するか（いま seed=1 のみ）
 - ANYmal-B kp40 のシード再現性
 
@@ -40,4 +41,4 @@
 
 1. 完走率と前進速度（指令比）を必ずペアで記録する
 2. 前進が出てから巡航指令を抑える（Spot/B1）。前進≈0 なら PD／報酬／URDF 側へ
-3. 早期崩壊は転倒判定・高さ罰だけでは足りないことがある（Laikago）。次は PD →（だめなら）URDF／初期姿勢の追加調査
+3. 早期崩壊が報酬 1 要因で直らないなら、早めに URDF／初期姿勢へ移る（Laikago）

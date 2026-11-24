@@ -40,6 +40,13 @@ setsid nohup python -u dr_robots_multiseed_history/collect.py > dr_robots_multis
 
 ## 実行ログ
 
+### 2026-11-24 15:55 UTC: シード2 収集開始（#16 第1波クローズ後）
+
+- **分かったこと:** #16 第1波を合格 4 機で区切ったあと、合意キューどおり #11 に移行。seed1 narrow 100 体は済み、seed2 は 0/100
+- **実行内容:** `setsid nohup python -u collect.py`（PID **2031754**）。先頭は `dr_narrow_seed001` seed2（`model_seed2/` / `ppo_history_seed2/`）
+- **結果:** ログ `logs/collect.log`。空きディスク ≈839 GB（停止閾値 150 GB）
+- **次:** seed2×100 体を監視（1 体 ≈43 分・全体 ≈3 日）。区切りごとに Notion / Issue #11 へ進捗
+
 ### 2026-11-12 準備
 
 - 実行内容: 既存の状況を確認（狭い範囲 100 体はシード 1 の学習と履歴が済み、広い範囲 100 体は以前の一括実行がスクリプトの文法エラーで始まっていなかった）。

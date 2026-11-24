@@ -29,7 +29,7 @@
 | 2 | B1 | body（0.60）速度不合格 → **mid 0.50 合格**（完走100%・指令比≈60%） |
 | 3 | ANYmal-B | matched/body 立位 → **kp40 合格**（完走100%・指令比≈95%） |
 | 4 | Spot | matched/body 不合格 → **mid 0.7 合格**（完走100%・指令比≈99%） |
-| 5 | Laikago | 初回／term20／bh10 とも崩壊 → **PD kp40 再学習中**（`logs/laikago-walking-kp40/`） |
+| 5 | Laikago | 初回／term20／bh10／**kp40** とも崩壊（平均長≈7–8）→ **第1波は見送り**（URDF／初期姿勢は別） |
 
 ## 報酬・設定
 
@@ -61,7 +61,7 @@
 - Laikago 初回: `logs/laikago-walking/model_300.pt` + `results/laikago_expert_quality.json`（完走0%・学習崩壊）
 - Laikago term20: `logs/laikago-walking-term20/model_300.pt` + `results/laikago_term20_expert_quality.json`（完走0%・平均長≈7・不合格）
 - Laikago bh10: `logs/laikago-walking-bh10/model_300.pt` + `results/laikago_bh10_expert_quality.json`（完走0%・平均長≈8・不合格）
-- Laikago kp40: `logs/laikago-walking-kp40/`（PD kp40・転倒 20°・高さ罰 -10 維持・密保存・学習中）
+- Laikago kp40: `logs/laikago-walking-kp40/model_300.pt` + `results/laikago_kp40_expert_quality.json`（完走0%・平均長≈8・不合格）
 - B1 body: `logs/b1-walking-body/model_300.pt` + `results/b1_body_expert_quality.json`（完走 PASS / 速度比≈49% FAIL）
 - B1 mid: `logs/b1-walking-mid05/model_300.pt` + `results/b1_mid05_expert_quality.json`（**完走・速度とも PASS**・指令比≈60%）
-- 合格は Aliengo / Spot mid / B1 mid / **ANYmal-B kp40** の 4 機。残りは Laikago PD 再チューン
+- **第1波クローズ（2026-11-24 15:55）:** 合格は Aliengo / Spot mid / B1 mid / ANYmal-B kp40 の **4 機**。Laikago は報酬側 1 要因では救えないため URDF／初期姿勢の追加調査は別チケット
