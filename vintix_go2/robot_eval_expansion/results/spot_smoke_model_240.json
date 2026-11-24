@@ -1,0 +1,18 @@
+{
+  "robot": "spot",
+  "model_path": "logs/spot-walking/model_240.pt",
+  "checked_at_utc": "2026-11-24T05:17:29Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.5,
+  "completion_rate": 0.0,
+  "mean_episode_length": 853.0,
+  "mean_return": 5.0969860816774055,
+  "mean_forward_vx": 0.012712683528661728,
+  "vx_tracking_rmse": 0.490811288356781,
+  "speed_ratio_vs_cmd": 0.025425367057323456,
+  "pass_completion": false,
+  "pass_speed": false,
+  "video": null,
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

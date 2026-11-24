@@ -1,0 +1,26 @@
+{
+  "checked_at_utc": "2026-11-23T21:22:54Z",
+  "protocol": "8envs x 500steps, inference policy (no train noise)",
+  "results": {
+    "model_20.pt": {
+      "mean_len": 189.0,
+      "frac_full": 0.0
+    },
+    "model_40.pt": {
+      "mean_len": 500.0,
+      "mean_ret": 2.3,
+      "frac_full": 1.0
+    },
+    "model_60.pt": {
+      "mean_len": 13.0,
+      "frac_full": 0.0
+    },
+    "model_80.pt": {
+      "mean_len": 500.0,
+      "mean_ret": 1.85,
+      "frac_full": 1.0
+    }
+  },
+  "selected": "model_40.pt",
+  "note": "Train-log length under exploration underestimates deployable skill; use inference smoke."
+}

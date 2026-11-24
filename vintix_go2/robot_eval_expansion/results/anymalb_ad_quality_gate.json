@@ -1,0 +1,14 @@
+{
+  "checked_at_utc": "2026-11-24T03:48:07Z",
+  "train_log": "/workspace/vintix_go2/robot_eval_expansion/logs/train_ppo/anymalb_seed1.out",
+  "final_iteration": 300,
+  "final_mean_episode_length": 917.49,
+  "peak_iteration": 210,
+  "peak_mean_episode_length": 982.37,
+  "min_required_length": 200.0,
+  "selected_ckpt": "/workspace/vintix_go2/robot_eval_expansion/logs/anymalb-walking/model_300.pt",
+  "selection_mode": "final_ckpt",
+  "pass": true,
+  "reason": "",
+  "note": "B1 lesson: exploration-noise train length can understate deployable skill; peak ckpt fallback when final fails."
+}

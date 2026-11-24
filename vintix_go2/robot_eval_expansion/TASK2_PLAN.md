@@ -9,13 +9,17 @@
 ## 必須ルール（2026-11-24 訂正）
 
 - **Adaptation 用履歴（AD）収集は不要**（本線の Vintix 学習データではない）
+- **指令速度・胴体高さは体格に合わせる**（[`PARAMETER_DESIGN.md`](PARAMETER_DESIGN.md)）
+- 可能なら **Go2 同条件（\(v_x=0.5\)）の専門家も**別途取る（`--cmd_profile matched_go2`）
 - 手順は:
 
-1. PPO 学習（`Genesis/examples/locomotion/train.py -r <robot>`）
+1. PPO 学習（デフォルト=`body` 指令）  
+   `train.py -r <robot> ...`  
+   必要なら追加: `train.py -r <robot> --cmd_profile matched_go2 -e <name>-vx05 ...`
 2. `eval_expert_quality.py`（完走・前進速度・RMSE）＋歩行動画 → Notion
 3. 次機体へ（1 台ずつ）
 
-※ 既に取ってしまった Aliengo / B1 の AD データは残してよいが、完了条件には含めない。ANYmal-B の AD は途中停止済み。
+※ 既取得の Aliengo / B1 / ANYmal-B ckpt は **matched (\(v_x=0.5\))** として扱う。body 指令の再学習は任意／優先度付き。
 
 ## 対象機体（優先順）
 
@@ -24,7 +28,7 @@
 | 1 | Aliengo | PPO＋完走済。動画・速度 RMSE を補強 |
 | 2 | B1 | PPO＋完走済。追従弱 → 要再チューニング／動画 |
 | 3 | ANYmal-B | PPO 済（`model_300`）。品質評価＋動画が次 |
-| 4 | Spot | PPO 未。Env 済 |
+| 4 | Spot | matched (\(v_x=0.5\), h≈0.48) `model_300` 済。完走100%・速度比≈0.50（不合格）。**body** (\(v_x=0.9\), h=0.50) 学習中 |
 | 5 | Laikago | PPO 未。Env 済 |
 
 ## 報酬・設定
@@ -52,4 +56,7 @@
 ## Spot / Laikago
 
 - PPO → 品質評価＋動画のみ（AD 連鎖スクリプトは使わない）
-- Spot: GPU 空きで PPO 起動（ANYmal-B 再チューニングは並列で設計メモ、再学習は Spot 後でも可）
+- Spot matched: `logs/spot-walking/model_300.pt` + `results/spot_expert_quality.json`（完走 PASS / 速度 FAIL）
+- Spot body: `logs/spot-walking-body/`（PARAMETER_DESIGN 再監査 OK 後に起動）
+- Laikago: Spot body 後に PPO（h/vx は信頼度「弱」→失敗時再チューン）
+- ANYmal-B 速度不合格の再チューンは Spot body 後でも可

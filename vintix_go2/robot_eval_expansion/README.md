@@ -1,8 +1,8 @@
-> **2026-11-24 04:31 UTC:** Aliengo 品質合格（完走100%・速度比≈99%）。ANYmal-B は完走のみ・前進≈0で不合格。Spot PPO 起動中（PID **1990211**）。#22 closed。
+> **2026-11-24 05:20 UTC:** Spot **matched**（\(v_x=0.5\)）は完走100%・速度比≈**50%**で不合格。**body**（\(v_x=0.9\)）PPO 実行中（PID **1993541**）。設計: `PARAMETER_DESIGN.md`。
 # 評価対象ロボットの拡充（#16）
 
 Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)  
-稼働中 #18 ジョブには非介入。
+稼働中ジョブには非介入。
 
 ## 目的
 他論文で使われる評価ロボットを一通り導入し、**未知ターゲットとして評価**する。専門家 PPO と品質指標・動画まで。AD データは取らない。
@@ -20,7 +20,7 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 9. ~~タスク2 Aliengo~~（PPO＋**品質合格**: 完走100%・\(v_x\)比≈99%・動画済）
 10. ~~タスク2 B1~~（PPO＋完走。追従弱・**要再チューニング**）
 11. ~~タスク2 ANYmal-B PPO~~ → 品質: 完走100%だが前進≈0 → **要再チューニング**
-12. **タスク2 Spot**: PPO 起動中（AD なし）。計画: [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
+12. **タスク2 Spot**: matched 速度不合格 → body PPO 実行中。計画: [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`EXPERT_QUALITY.md`](EXPERT_QUALITY.md)
 
 ## やらないこと（今）
 - 拡充機体の Adaptation 履歴収集
@@ -28,6 +28,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 05:20 UTC: Spot matched は完走のみ・速度不足 → body 学習中
+
+- **分かったこと:**
+  - Spot matched（\(v_x=0.5\), `model_300`）: 完走 **100%**、平均前進 ≈**0.249** m/s（指令比 ≈**50%**）→ 速度不合格（閾値 60%）
+  - 密保存の中間重み（140–280）は決定論評価で完走 **0%**。学習ログのピークは探索ノイズ下で、推論では最終重みが最良
+  - ANYmal-B（前進≈0）よりは動くが、Aliengo（比≈99%）には遠く、再チューニング候補
+- **実行内容:** `eval_expert_quality.py`（`--cmd_vx 0.5`・動画）。body PPO（\(v_x=0.9\), h=0.50）は既起動のまま監視（PID **1993541**）。重複起動を 1 本停止済
+- **結果:** `results/spot_expert_quality.json`、`figures/videos/spot_walk_model300.mp4`。`PARAMETER_DESIGN.md` / `SPOT_PREFLIGHT.md` 更新
+- **次:** body 完了 → 品質評価（指令 0.9）。不合格なら報酬／PD 再チューン。Laikago は body の次
 
 ### 2026-11-24 04:31 UTC: Aliengo 合格・ANYmal-B 速度不合格・Spot PPO 起動
 

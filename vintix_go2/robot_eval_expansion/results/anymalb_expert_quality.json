@@ -1,0 +1,18 @@
+{
+  "robot": "anymalb",
+  "model_path": "vintix_go2/robot_eval_expansion/logs/anymalb-walking/model_300.pt",
+  "checked_at_utc": "2026-11-24T04:26:18Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.5,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 8.097879868990859,
+  "mean_forward_vx": 6.72090973239392e-05,
+  "vx_tracking_rmse": 0.49997925758361816,
+  "speed_ratio_vs_cmd": 0.0001344181946478784,
+  "pass_completion": true,
+  "pass_speed": false,
+  "video": "vintix_go2/robot_eval_expansion/figures/videos/anymalb_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

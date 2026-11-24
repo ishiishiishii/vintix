@@ -1,0 +1,12 @@
+{
+  "robot": "anymalb",
+  "expert_ckpt": "logs/anymalb-walking/model_300.pt",
+  "ad_status": "cancelled",
+  "ad_reason": "User 2026-11-24: expansion robots are unknown-eval targets only; AD history not needed.",
+  "checked_at_utc": "2026-11-24T04:16:20Z",
+  "next": [
+    "eval_expert_quality.py",
+    "walking video to Notion",
+    "Spot PPO (no AD)"
+  ]
+}
