@@ -49,26 +49,28 @@ else
   log "B1 AD collect not running (pid=${B1_PID:-none}); proceed if data present"
 fi
 
-# Summarize B1 wave1 (h5 lengths + prior smoke). Prefer SWMR/read without blocking writers.
+# Summarize B1 wave1 (h5 lengths + prior smoke). AD h5 uses chunk groups named "start-end".
 "${PY}" - <<'PY'
-import json, glob, os
+import json, re
 from pathlib import Path
 root = Path("/workspace/vintix_go2/robot_eval_expansion")
 ad = root / "data" / "b1_ad_parallel"
 files = sorted(ad.glob("trajectories_env_*.h5"))
-# file size proxy if h5 locked; try open
 steps_sum = 0
 per_env = []
 try:
     import h5py
     for f in files:
         with h5py.File(f, "r") as h:
-            n = None
-            for k in ("rewards", "actions", "observations", "obs", "dones"):
-                if k in h:
-                    n = int(h[k].shape[0]); break
-            if n is None:
-                n = 0
+            n = 0
+            for k in h.keys():
+                m = re.fullmatch(r"(\d+)-(\d+)", k)
+                if m:
+                    n += int(m.group(2)) - int(m.group(1)) + 1
+                else:
+                    for kk in ("rewards", "actions", "observations", "obs", "dones"):
+                        if kk in h:
+                            n = int(h[kk].shape[0]); break
             per_env.append({"file": f.name, "steps": n})
             steps_sum += n
 except Exception as e:
@@ -91,7 +93,7 @@ out = {
     "ad_target_steps_per_env": 200000,
     "ad_final_steps_sum": steps_sum,
     "ad_per_env": per_env,
-    "status": "wave1_ad_complete" if steps_sum >= 1_900_000 else "wave1_ad_partial_or_unreadable",
+    "status": "wave1_complete" if steps_sum >= 1_900_000 else "wave1_ad_partial_or_unreadable",
 }
 (root / "results" / "b1_wave1_summary.json").write_text(json.dumps(out, indent=2) + "\n")
 print(json.dumps({"ad_final_steps_sum": steps_sum, "status": out["status"]}, indent=2))

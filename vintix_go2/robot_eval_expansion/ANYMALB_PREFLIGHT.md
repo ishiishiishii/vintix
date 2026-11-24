@@ -1,8 +1,8 @@
 # ANYmal-B 第1波: 起動前チェック（B1 の教訓）
 
-更新: 2026-11-24 00:52 UTC（autopilot）。GPU を使わずに固定した監視・失敗時の方針。
+更新: 2026-11-24 03:12 UTC（autopilot）。GPU を使わずに固定した監視・失敗時の方針。
 
-## 配線（完了）
+## 配線（完了）／学習（進行中）
 
 | 項目 | 状態 |
 |------|------|
@@ -10,8 +10,15 @@
 | 立位レンダ | 済（`figures/standing/anymalb_standing.png`） |
 | 質量 QA | ≈30.4 kg・文献一致 |
 | 履歴収集 `-r anymalb` | 済（`collect_ad_data_parallel.py`） |
-| B1 完了後の連鎖 | `wait_after_b1_ad_start_anymalb.sh`（PID 監視中） |
-| 履歴待ち | `wait_collect_anymalb_ad.sh`（連鎖から起動） |
+| B1 完了後の連鎖 | **発火済**（2026-11-24 03:03 UTC） |
+| PPO 学習 | **進行中** PID **1981081**（`logs/train_ppo/anymalb_seed1.out`） |
+| 履歴待ち | PID **1981084**（`wait_collect_anymalb_ad.sh`） |
+
+### 学習スナップショット（2026-11-24 03:12）
+
+- 反復 ≈**52/301**、平均エピソード長 ≈**78**（序盤ピーク ≈**196**）、平均報酬 ≈**0.45**
+- ETA ≈**+35 min**（≈03:47 UTC）
+- 密保存: `model_0.pt` / `model_20.pt` / `model_40.pt` あり
 
 ## B1 から持ち越すルール
 

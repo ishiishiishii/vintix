@@ -1,0 +1,116 @@
+{
+  "robot": "b1",
+  "completed_at_utc": "2026-11-24T03:12:25Z",
+  "urdf": "unitree b1 (Go2-like angles / early-stop peak)",
+  "expert_ckpt": "logs/b1-walking/model_40.pt",
+  "smoke_eval": "results/b1_ckpt_smoke_eval.json",
+  "smoke_completion_rate": 1.0,
+  "smoke_mean_return": 2.3,
+  "smoke_mean_length": 500,
+  "smoke_protocol": "8envs x 500steps, inference",
+  "smoke": {
+    "checked_at_utc": "2026-11-23T21:22:54Z",
+    "protocol": "8envs x 500steps, inference policy (no train noise)",
+    "results": {
+      "model_20.pt": {
+        "mean_len": 189.0,
+        "frac_full": 0.0
+      },
+      "model_40.pt": {
+        "mean_len": 500.0,
+        "mean_ret": 2.3,
+        "frac_full": 1.0
+      },
+      "model_60.pt": {
+        "mean_len": 13.0,
+        "frac_full": 0.0
+      },
+      "model_80.pt": {
+        "mean_len": 500.0,
+        "mean_ret": 1.85,
+        "frac_full": 1.0
+      }
+    },
+    "selected": "model_40.pt",
+    "note": "Train-log length under exploration underestimates deployable skill; use inference smoke."
+  },
+  "ad_data_dir": "data/b1_ad_parallel",
+  "ad_num_envs": 10,
+  "ad_target_steps_per_env": 200000,
+  "ad_final_steps_sum": 2005870,
+  "ad_log_final_steps_sum": 2005870,
+  "ad_per_env": [
+    {
+      "file": "trajectories_env_0000.h5",
+      "steps_from_chunk_names": 200555,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0001.h5",
+      "steps_from_chunk_names": 200582,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0002.h5",
+      "steps_from_chunk_names": 200956,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0003.h5",
+      "steps_from_chunk_names": 200639,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0004.h5",
+      "steps_from_chunk_names": 200460,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0005.h5",
+      "steps_from_chunk_names": 200518,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0006.h5",
+      "steps_from_chunk_names": 200444,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0007.h5",
+      "steps_from_chunk_names": 200573,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0008.h5",
+      "steps_from_chunk_names": 200411,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    },
+    {
+      "file": "trajectories_env_0009.h5",
+      "steps_from_chunk_names": 200732,
+      "sample_chunk_len": null,
+      "n_chunks": 5
+    }
+  ],
+  "collect_quality": {
+    "epsilon_final": 0.0,
+    "mean_ep_len_near_end": 911.4,
+    "mean_reward_near_end": 3.6825
+  },
+  "status": "wave1_complete",
+  "chain_next": {
+    "anymalb_ppo_pid": 1981081,
+    "wait_collect_anymalb_pid": 1981084,
+    "started_at_utc": "2026-11-24T03:03:02Z"
+  },
+  "note": "Chunk-name sum may slightly differ from collect log Final steps; both \u22482.006M. Chain summary initially failed to read chunked h5 (looked for flat rewards key)."
+}

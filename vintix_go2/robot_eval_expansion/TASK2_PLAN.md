@@ -1,6 +1,6 @@
 # #16 タスク2計画: 専門家（PPO）＋学習履歴（Adaptation 用データ）
 
-更新: 2026-11-24 01:58（autopilot）。タスク1（URDF・Env・立位）は完了済み。
+更新: 2026-11-24 03:12（autopilot）。タスク1（URDF・Env・立位）は完了済み。
 
 ## 目的
 
@@ -58,7 +58,7 @@ Spot は後続で足す。
 
 試行メモ: unitree URDF では高さ・PD・転倒判定いじりでも平均長 ≈10 止まり。**MorFiC URDF 切替が決定打**。
 
-## 進行中（B1 第1波）
+## 完了（B1 第1波）— **完了 2026-11-24 03:03**
 
 - [x] PPO 試行（要点）:
   1. MorFiC URDF+kp90 → 平均長 ≈5（退避 `b1-walking_morfic_failed_*`）
@@ -69,28 +69,25 @@ Spot は後続で足す。
 - [x] 短評価スモーク:
   - 10 env×1000: `model_40/60/80` 完走率 **100%**、return ≈4–6（`results/b1_smoke_ckpt_compare.json`）
   - 8 env×500 再スモーク: `model_40/80` 完走 100%（return **2.3 / 1.85**）、`model_60` は崩壊（`results/b1_ckpt_smoke_eval.json`）
-- [ ] Adaptation 用履歴: **収集中**（PID **1961754**、**`model_40.pt`** → `data/b1_ad_parallel/`）
-  - 合格条件は短評価完走。再スモークで return が高い `model_40` を採用
-  - **進捗（2026-11-24 01:58）:** 合計 ≈**159万 / 200万**（≈**80%**）、ε≈**0.022**、直近平均長 **≈813**、直近報酬 ≈**+3.25**、ETA ≈**03:08 UTC**（`results/b1_ad_collect_mid.json`）
-  - **連鎖:** `wait_after_b1_ad_start_anymalb.sh`（PID **1970393**）が完了後にサマリ → ANYmal-B PPO → 履歴待ちを起動
-  - **品質比較:** [`results/wave1_quality_compare.md`](results/wave1_quality_compare.md)（Aliengo return≈22 vs B1 ≈2.3）
+- [x] Adaptation 用履歴: **`model_40.pt`** → `data/b1_ad_parallel/`（10×h5+json、合計 **2,005,870** transitions）→ `results/b1_wave1_summary.json`
+- [x] 品質比較: [`results/wave1_quality_compare.md`](results/wave1_quality_compare.md)（Aliengo return≈22.6 vs B1 ≈2.3）
 
 ### メモ（B1）
 
-- 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。ただし短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
-- 速度追従（return）は Aliengo（≈22）より弱い（≈2–6）。完走は同率 100% なので第1波最低ラインは満たす見込み
-- 収集中は ε 低下とともに報酬がプラスを維持（≈+3.2）。長さは ≈920→≈810 とやや下がったが 800 超を維持 → 健全
-- 次機体: ANYmal-B（Env 済・`get_anymalb_cfgs` あり。**`-r anymalb` / `wait_collect_anymalb_ad.sh` / `wait_after_b1_ad_start_anymalb.sh` 配線済み**）
+- 中盤崩壊型。密な保存＋短評価で歩行重みを取れる。短評価プロトコルで `model_60` の合否が変わる → 複数プロトコルで確認する
+- 速度追従（return）は Aliengo（≈22）より弱い（≈2.3）。完走は同率 100% なので第1波最低ラインは満たした
+- 収集終了時: ε=0、直近長 ≈911、直近報酬 ≈+3.7。チャンク名 `start-end` の h5 を数えるとログ最終と一致（連鎖の初回サマリは flat key 想定で 0 と誤読 → 再集計で修正）
+- 次機体: ANYmal-B（**進行中**）
 - その次: Spot（[`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)。履歴収集配線は未。ANYmal-B 完了後）
-- 次がダメなら: 目標高さ FK 再合わせ／接触・慣性診断／追従重視の追加学習
 
-## 次機体（ANYmal-B）— 起動前に固定した方針
+## 進行中（ANYmal-B 第1波）
 
 詳細: [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md)
 
-- [ ] PPO 301 iter（連鎖が起動。`cfgs.pkl` で **保存間隔 20** を事前配置）
-- [ ] 品質ゲート: 最終平均長 ≥200 → `model_300`。未満でもピーク ≥200 ならピーク近傍 ckpt へフォールバック（B1 教訓）
-- [ ] Adaptation 履歴 → 短評価スモーク
+- [x] PPO 起動（2026-11-24 03:03 UTC、PID **1981081**、`cfgs.pkl` で **保存間隔 20** 済み）
+- [ ] PPO 301 iter 完了（03:12 時点で ≈52/301、平均長 ≈78、序盤ピーク長 ≈196、ETA ≈**+35 min**）
+- [ ] 品質ゲート: 最終平均長 ≥200 → `model_300`。未満でもピーク ≥200 ならピーク近傍 ckpt へフォールバック
+- [ ] Adaptation 履歴（待ち PID **1981084** = `wait_collect_anymalb_ad.sh`）→ 短評価スモーク
 - 監視表と失敗時の診断順は PREFLIGHT を正本にする
 
 ## その次（Spot）— 起動しない・事前メモのみ

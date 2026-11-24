@@ -17,13 +17,20 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 7. ~~立位 QA 修正（aliengo / laikago）~~ → 下記実行ログ 05:19
 8. ~~タスク1仕上げ~~（2026-11-23）
 9. ~~タスク2 Aliengo 第1波~~（PPO + 履歴 + 短評価）
-10. **タスク2 進行中（B1）**: **`model_40`** から履歴収集中（≈**80%**・PID 1961754）。完了後は `wait_after_b1_ad_start_anymalb.sh`（PID 1970393）が ANYmal-B PPO を自動起動（密保存・ピークフォールバック済み）。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)
+10. ~~タスク2 B1 第1波~~（PPO + 履歴 + 短評価）— 合計 **2,005,870** transitions・完走 100%・return ≈2.3
+11. **タスク2 進行中（ANYmal-B）**: PPO PID **1981081**（密保存済み）／履歴待ち PID **1981084**。計画は [`TASK2_PLAN.md`](TASK2_PLAN.md) / [`ANYMALB_PREFLIGHT.md`](ANYMALB_PREFLIGHT.md) / [`SPOT_PREFLIGHT.md`](SPOT_PREFLIGHT.md)
 
 ## やらないこと（今）
 - 6 機体同時の本学習（1 台ずつ）
 - Go1 以外の体スケール崖評価（保留）
 
 ## 実行ログ
+
+### 2026-11-24 03:12: B1 第1波完了・ANYmal-B PPO 起動
+
+- **分かったこと:** B1 Adaptation 履歴が完了（合計 **2,005,870** transitions、ε=0、直近長 ≈911、直近報酬 ≈+3.7）。短評価は完走率 100%・平均報酬 ≈2.3（Aliengo ≈22.6 の約 1/10）。連鎖が ANYmal-B PPO を起動済み（PID **1981081**、03:12 時点 ≈52/301・平均長 ≈78・ETA ≈+35 min）。密保存で `model_0/20/40.pt` あり
+- **実行内容:** `results/b1_wave1_summary.json` をチャンク名集計で再作成（初回サマリは flat key 想定で 0 と誤読）。`wait_after_b1_ad_start_anymalb.sh` の h5 集計を修正。品質比較・TASK2_PLAN・README を同期。稼働中 ANYmal-B 学習には未介入
+- **次:** ANYmal-B 学習監視 → 履歴収集 → 短評価。#22 は合意で close 可
 
 ### 2026-11-24 01:58: B1 履歴≈80%・Aliengo比較と Spot 事前メモ
 
