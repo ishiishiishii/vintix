@@ -31,6 +31,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-25 22:40 JST（autopilot tick 20261125_133609）: Laikago 関節角寄せ 301 不合格 → 慣性寄せ再学習
+
+- **分かったこと:**
+  - RaisimGym 寄せ（高さ/PD/as＋関節角）`model_300`・指令 0.4: 完走 **0%**、平均長 ≈**6**、平均前進 ≈**0.005** m/s（指令比 ≈**1%**）→ 不合格
+  - 学習曲線も平均長 ≈4–5 で伸びず（延長しない）
+  - stock `laikago.urdf` の慣性テンソルが全ゼロのまま残っていた
+- **実行内容:** 1 要因で URDF を `laikago_inertia.urdf`（PyBullet `laikago_toes_zup` の慣性を Y-up 関節グラフへ移植）に変更し、`laikago-walking-raisim-inertia` で 301 起動（PID **2102499** / wait **2102501**、`--log_dir` 指定）
+- **結果:** `results/laikago_raisim_pose_expert_quality.json`、`figures/videos/laikago_raisim_pose_walk_model300.mp4`
+- **次:** 慣性版 `model_300` 品質評価。なお不合格なら代替 URDF（#23）。#11 は STOP
+
 ### 2026-11-25 21:30 JST（autopilot tick 20261125_122059）: Laikago Raisim 301 不合格 → 関節角寄せ再学習
 
 - **分かったこと:**

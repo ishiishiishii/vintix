@@ -1,0 +1,18 @@
+{
+  "robot": "laikago",
+  "model_path": "/workspace/vintix_go2/robot_eval_expansion/logs/laikago-walking-raisim-pose/model_300.pt",
+  "checked_at_utc": "2026-11-25T13:15:38Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.4,
+  "completion_rate": 0.0,
+  "mean_episode_length": 6.0,
+  "mean_return": 0.020190734417571885,
+  "mean_forward_vx": 0.004574374761432409,
+  "vx_tracking_rmse": 0.3977509140968323,
+  "speed_ratio_vs_cmd": 0.011435936903581023,
+  "pass_completion": false,
+  "pass_speed": false,
+  "video": "/workspace/vintix_go2/robot_eval_expansion/figures/videos/laikago_raisim_pose_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

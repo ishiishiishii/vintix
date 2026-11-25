@@ -259,8 +259,9 @@ def get_laikago_cfgs():
     - kp/kd = 40/1、action_scale = 0.6
     - 学習指令 = 0.40（外寸 vmax≈0.8 の半分。公開 RL 指令帯は無し）
     - 初期関節角: RaisimGym gc_init の 12 DoF（hip=0, thigh=0.5, calf=-1；RL calf のみ -0.7）
-      ※ 旧 raisim 試行は高さ/PD/as だけ揃え、関節角は 0/-0.75 のままだった → 即転倒。
-    旧ログ（laikago-walking / term20 / bh10 / kp40 / raisim）は上書きしない。
+    - URDF: `laikago_inertia.urdf`（stock の慣性ゼロを PyBullet toes_zup 値で置換。関節グラフは同一）
+      ※ pose 試行（慣性ゼロ）も平均長≈5 で崩壊 → 慣性を 1 要因で追加。
+    旧ログ（laikago-walking / term20 / bh10 / kp40 / raisim / raisim-pose）は上書きしない。
     GenLoco の PD は使わない。
     """
     env_cfg = {

@@ -68,7 +68,10 @@ class LaikagoEnv:
         # reset_idx()メソッドで既にset_quat()を使用しているため、ここでは回転なしで追加
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                file="/workspace/Genesis/genesis/assets/urdf/laikago/urdf/laikago.urdf",
+                # #16: stock laikago.urdf has all-zero inertia tensors; use PyBullet
+                # toes_zup inertia values patched onto the same Y-up joint graph
+                # (laikago_inertia.urdf). Old zero-inertia URDF left untouched.
+                file="/workspace/Genesis/genesis/assets/urdf/laikago/urdf/laikago_inertia.urdf",
                 pos=self.base_init_pos.cpu().numpy(),
                 quat=[1.0, 0.0, 0.0, 0.0],  # 回転なしで追加（reset_idx()でset_quat()により設定）
             ),

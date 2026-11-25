@@ -96,16 +96,20 @@
   - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
 - 途中: 301 は決定論で転倒、601 で完走・速度とも合格（901 は不要）
 
-### Laikago RaisimGym 寄せ再学習（2026-11-25）— **高さ/PD だけでは不合格 → 関節角寄せを学習中**
+### Laikago RaisimGym 寄せ再学習（2026-11-25）— **高さ/PD・関節角では不合格 → 慣性寄せを学習中**
 
 - 学習 A: `logs/laikago-walking-raisim/`（init=0.46、h=0.44、kp40/kd1、as=0.6、指令 0.40、関節角は旧 0/−0.75）
   - `model_300`・指令 0.4（10 env × 1000）: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.039** m/s（指令比 ≈**-10%**）
   - JSON `results/laikago_raisim_expert_quality.json`、動画 `figures/videos/laikago_raisim_walk_model300.mp4`
   - 学習中も平均長 ≈5–8 のまま（途中崩壊＝延長しない）
   - 補足: 待ちスクリプトは `robot_eval_expansion/logs/...` を見たが、実 ckpt は `Genesis/logs/laikago-walking-raisim/`（`--log_dir` 未指定）。評価は手動で実施
-- 学習 B（進行中）: `logs/laikago-walking-raisim-pose/` — **1 要因**で初期関節角だけ RaisimGym `gc_init` に変更（thigh=0.5、calf=-1、RL calf=-0.7）。`--log_dir` で expansion 配下に保存
-- 旧ログ（`laikago-walking` / term20 / bh10 / kp40 / raisim）は上書きしない
-- 追加の観察: Genesis 同梱 `laikago.urdf` は **全リンクの慣性テンソルが 0**（Aliengo は非ゼロ）。Unitree/MorFiC の URDF は慣性ありだが関節名が違う。関節角でもだめなら URDF 慣性／代替 URDF（#23）
+- 学習 B: `logs/laikago-walking-raisim-pose/` — **1 要因**で初期関節角だけ RaisimGym `gc_init` に変更（thigh=0.5、calf=-1、RL calf=-0.7）
+  - `model_300`・指令 0.4（10 env × 1000）: 完走 **0%**、平均長 ≈**6**、平均前進 ≈**0.005** m/s（指令比 ≈**1%**）
+  - JSON `results/laikago_raisim_pose_expert_quality.json`、動画 `figures/videos/laikago_raisim_pose_walk_model300.mp4`
+  - 学習中も平均長 ≈4–5 のまま（延長しない）
+- 学習 C（進行中）: `logs/laikago-walking-raisim-inertia/` — **1 要因**で URDF を `laikago_inertia.urdf` に変更（PyBullet `laikago_toes_zup` の慣性を Genesis Y-up 関節グラフへ移植。質量・関節名・メッシュは同じ）
+- 旧ログ（`laikago-walking` / term20 / bh10 / kp40 / raisim / raisim-pose）は上書きしない
+- Unitree/MorFiC の URDF は慣性ありだが関節名が違う。慣性でもだめなら代替 URDF（#23）
 
 ### Aliengo 品質評価メモ（2026-11-24）
 
