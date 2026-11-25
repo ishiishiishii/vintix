@@ -10,8 +10,10 @@ Outputs stay inside each robot package:
 - seed 1: ``model/`` and ``ppo_history/`` (the layout already used by dr_robots_ppo_history)
 - seed k>=2: ``model_seed<k>/`` and ``ppo_history_seed<k>/``
 
-Order is seed-major (every robot gets seed k before any robot gets seed k+1) so stopping at any
-time leaves a balanced dataset. A run is done when ``<history>/<robot_id>.json`` and
+Order is seed-major within the selected sets (default: narrow only): for seed k, run all
+robots in that set, then move to seed k+1. Prefer robot diversity over finishing all seeds
+on one body. Wide set is opt-in via ``--sets narrow,wide``. Stopping mid-run still yields
+many morphologies at fewer seeds. A run is done when ``<history>/<robot_id>.json`` and
 ``<model>/model_300.pt`` exist; a crashed partial run is moved aside (``*_incomplete_<time>``),
 never deleted. Stops when free disk space falls below --min_free_gb or when ``STOP`` exists here.
 
@@ -26,6 +28,7 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 from pathlib import Path
 from typing import List, Tuple
@@ -57,15 +60,19 @@ def done(pkg: Path, seed: int) -> bool:
     return (hist / f"{pkg.name}.json").exists() and (model / FINAL_CKPT).exists()
 
 
-def robots() -> List[Tuple[str, Path]]:
+def robots(set_names: List[str]) -> List[Tuple[str, Path]]:
     out = []
-    for name, root in SETS.items():
+    for name in set_names:
+        if name not in SETS:
+            raise SystemExit(f"unknown set {name!r}; choose from {sorted(SETS)}")
+        root = SETS[name]
         out += [(name, p) for p in sorted(root.iterdir()) if (p / "manifest.json").exists()]
     return out
 
 
-def jobs(seeds: List[int]) -> List[Tuple[str, Path, int]]:
-    return [(s, p, seed) for seed in seeds for s, p in robots()]
+def jobs(seeds: List[int], set_names: List[str]) -> List[Tuple[str, Path, int]]:
+    # seed-major, robots within each seed: seed1×all robots → seed2×all robots → …
+    return [(s, p, seed) for seed in seeds for s, p in robots(set_names)]
 
 
 def env() -> dict:
@@ -107,6 +114,10 @@ def write_status(all_jobs, current=None, note="") -> None:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=str, default="1-10")
+    ap.add_argument(
+        "--sets", type=str, default="narrow",
+        help="Comma-separated robot sets in order (default: narrow). Add wide later via narrow,wide.",
+    )
     ap.add_argument("--min_free_gb", type=float, default=150.0)
     ap.add_argument("--num_envs", type=int, default=4096)
     ap.add_argument("--record_num_envs", type=int, default=256)
@@ -114,7 +125,8 @@ def main() -> None:
     a = ap.parse_args()
     lo, _, hi = a.seeds.partition("-")
     seeds = list(range(int(lo), int(hi or lo) + 1))
-    all_jobs = jobs(seeds)
+    set_names = [x.strip() for x in a.sets.split(",") if x.strip()]
+    all_jobs = jobs(seeds, set_names)
     if a.dry_run:
         for seed in seeds:
             sj = [j for j in all_jobs if j[2] == seed]
@@ -144,9 +156,10 @@ def main() -> None:
         for d in (model, hist):
             if d.exists():
                 d.rename(d.with_name(f"{d.name}_incomplete_{time.strftime('%Y%m%d_%H%M%S')}"))
+        py = sys.executable  # follow the interpreter that launched collect (not PATH's python)
         if needs_reward_design(pkg):
-            run(["python", str(LOCO_ROOT / "auto_reward_design.py"), "--package", str(pkg)], log)
-        rc = run(["python", "scripts/train_with_history.py", "--robot_package", str(pkg),
+            run([py, str(LOCO_ROOT / "auto_reward_design.py"), "--package", str(pkg)], log)
+        rc = run([py, "scripts/train_with_history.py", "--robot_package", str(pkg),
                   "-B", str(a.num_envs), "--max_iterations", str(ITERATIONS), "--seed", str(seed),
                   "--log_dir", str(model), "--record_output", str(hist), "--task_name", robot_id,
                   "--record_num_envs", str(a.record_num_envs), "--relax_output_permissions"], log)

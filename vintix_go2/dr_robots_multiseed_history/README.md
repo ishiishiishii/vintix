@@ -32,19 +32,23 @@ Vintix の学習データとして保存する。
 
 ```bash
 cd /workspace/vintix_go2
-python dr_robots_multiseed_history/collect.py --dry_run    # シードごとの完了数と空きディスク
-setsid nohup python -u dr_robots_multiseed_history/collect.py > dr_robots_multiseed_history/logs/collect.log 2>&1 < /dev/null &
+# Genesis / rsl-rl-lib が入っている base conda を使う（isaacgym_py38 だと import 失敗する）
+/opt/conda/bin/python dr_robots_multiseed_history/collect.py --dry_run
+PATH="/opt/conda/bin:$PATH" setsid nohup /opt/conda/bin/python -u dr_robots_multiseed_history/collect.py \
+  > dr_robots_multiseed_history/logs/collect.log 2>&1 < /dev/null &
 ```
+
+子プロセスも起動時のインタプリタ（`sys.executable`）を使う。
 
 1 回ごとのログは `logs/<narrow|wide>/<robot_id>_seed<k>.log`、進捗は `status.json`。
 
 ## 実行ログ
 
-### 2026-11-25 16:52 UTC: #16 完了後に seed2 収集を再開（33/100）
+### 2026-11-25 16:54 UTC: #16 完了後に seed2 収集を再開（33/100）
 
 - **分かったこと:** #16 で Laikago を含む 5 機専門家が揃った。#11 は `STOP` で seed2 **33/100** で止まっていた
-- **実行内容:** `STOP` を削除し `setsid nohup python -u collect.py` で再開（スキップ済みの 33 体は自動で飛ばす）
-- **結果:** 空き ≈769 GB（閾値 150 GB）。残り 67 体 × ≈23 分 ≈ **26 時間**（完了見込み ≈2026-11-26 19:00 UTC）
+- **実行内容:** `STOP` 削除後、PATH 先頭の `isaacgym_py38` だと `h5py`/`rsl-rl-lib` が無く即失敗したため、`/opt/conda/bin/python` で再起動。`collect.py` は子も `sys.executable` を使うよう修正
+- **結果:** `dr_narrow_seed034` seed2 が学習中（PID **2118916** / 子 **2118917**）。空き ≈825 GB。残り 67 体 × ≈23 分 ≈ **26 時間**（完了見込み ≈2026-11-26 19:00 UTC）
 - **次:** seed2 完了で再記録 → seed3。区切りは 50/100 と完了時
 
 ### 2026-11-25 00:44 UTC: seed2 が 23/100 まで進んだ
