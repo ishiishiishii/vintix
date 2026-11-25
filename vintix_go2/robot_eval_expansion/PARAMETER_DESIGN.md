@@ -50,8 +50,10 @@
 | Aliengo | [HIMLoco aliengo_config.py](https://raw.githubusercontent.com/OpenRobotLab/HIMLoco/main/legged_gym/legged_gym/envs/aliengo/aliengo_config.py) | target **0.30**、init z **0.55**、kp=40 | 標準 legged_gym 範囲（±1 系） |
 | B1 | [Improbable-AI learning-compliance](https://github.com/Improbable-AI/learning-compliance) | stand height / init **0.54**；指令 x∈**[-1,1]** | 同上 |
 | B1 | [harelab-ucsc b1_rl_locomotion](https://github.com/harelab-ucsc/b1_rl_locomotion) | 理想高さ **0.54–0.565** | 起立タスクで明示 |
-| Spot | Isaac Lab SpotFlat（NVIDIA ブログ / 公開 cfg） | 高さ指令・目標まわり **0.5 m**、足上げ 0.1 | 学習範囲例 **x∈[-2, 3〜4]**（広い） |
+| Spot | Isaac Lab SpotFlat（公開 cfg / NVIDIA ブログ） | init z **0.5 m**、足上げ 0.1。runner 例は最大 **35000** iter、ブログ例 **15000** iter・4096 env | 指令範囲は広い（単一点評価には不使用） |
 | Spot | OSU quadruped_locomotion Spot | height 指令 **0.5** 固定 | カテゴリで ±2 等 |
+| Laikago | [RaisimGym `Environment.hpp`](https://github.com/leggedrobotics/raisimGym/blob/master/raisim_gym/env/env/laikago/Environment.hpp) | init z **0.46**、観測平均高さ **0.44**、kp=**40** / kd=**1**、action_scale **0.6** | 歩行 RL の主参照（GenLoco は使わない） |
+| Laikago | Dynamics Randomization Revisited（Xie et al.） | kp=**40** / kd=**0.5**、最大約 **1000** iter | iter・PD の補助 |
 | ANYmal | [IsaacGymEnvs Anymal.yaml](https://raw.githubusercontent.com/isaac-sim/IsaacGymEnvs/main/isaacgymenvs/cfg/task/Anymal.yaml) | init z **0.62** | x∈**[-2,2]** |
 | ANYmal | Raisim gym 例 | 観測平均高さ **0.44** | — |
 | ANYmal SubT | CERBERUS 仕様 | 実運用の固定速 ≈**±0.45** | 競技用の遅い巡航 |
@@ -85,9 +87,28 @@
 | B1 | **0.55** | **0.58** | 0.10 | **0.60** | RL 0.54；0.5·1.2vmax | **0.50** |
 | ANYmal-B | **0.50** | **0.55** | 0.09 | **0.60** | 論文トロット帯のやや下；SubT≈0.45 より速い巡航 | **0.50** |
 | Spot | **0.50** | **0.55** | 0.10 | **0.90** | Isaac h=0.5；IFU Med | **0.50** |
-| Laikago | **0.45** | 0.50 | 0.09 | **0.40** | 0.5·vmax(0.8)；外寸0.6≠CoM | **0.50** |
+| Laikago | **0.44** | **0.46** | 0.09 | **0.40** | RaisimGym 平均高さ 0.44 / init 0.46；kp40。外寸0.6≠CoM | **0.50** |
 
 注意: Aliengo の **現行成功 ckpt** は h≈0.36 / vx=0.5。ネット推奨 h=0.30 への変更は **再学習時**に適用。動いている Spot matched（vx=0.5, 旧 h=0.48）は Isaac の 0.5 に近く、matched としては許容。
+
+## MorFiC の Aliengo 設定（URDF と同系統なので参照すべき）
+
+学習時の Aliengo URDF は **MorFiC リポジトリのもの**を使っている（`aliengo_env.py`）。
+パス: `vintix_go2/general_locomotion_baselines/third_party/MorFiC/resources/robots/aliengo_description/urdf/aliengo.urdf`  
+設定: 同リポジトリ `go2_gym/envs/robots/aliengo_config.py`（＋ `config_shared.py`）。
+
+| 項目 | MorFiC | いまの `get_aliengo_cfgs()` | メモ |
+|------|--------|---------------------------|------|
+| init z | **0.36** | 0.55 | MorFiC は目標高さと揃えている |
+| `base_height_target` | **0.36** | 0.30（HIMLoco 由来） | URDF を MorFiC にするなら **0.36 に合わせる方が整合** |
+| kp / kd | 40 / 1.0 | 40 / 1.0 | 一致 |
+| `action_scale` | **0.30** | 0.25 | MorFiC の方が大きい |
+| 指令 \(v_x\) | 共有設定で **[-0.6, 0.6]**（範囲学習） | 固定 0.75 または 0.5 | 単一点専門家なので範囲はそのまま使えない。MorFiC 帯の代表点なら **0.5〜0.6** が近い |
+| 既定関節角 | FL/FR thigh 0.8、RL/RR 1.0 など | 同型 | 一致 |
+
+いま通っている Aliengo（指令 0.5・完走 100%・前進≈0.49）は MorFiC URDF＋PD 40/1 が効いている一方、高さは HIMLoco の 0.30 を混ぜていた。
+
+**2026-11-25:** `get_aliengo_cfgs()` を MorFiC 揃えに変更（h/init=0.36, action_scale=0.30, 指令 ±0.6）。学習ログは `logs/aliengo-walking-morfic/`（旧 `aliengo-walking` は触らない）。
 
 ## 実装
 
@@ -103,7 +124,8 @@
 | HIMLoco Aliengo cfg | h=0.30, init=0.55 | **採用**（Aliengo 高さ） |
 | unitree_rl_gym Go2 | h=0.25, init=0.42 | **参考**（本線 0.30 を維持） |
 | Improbable-AI / harelab B1 | h≈0.54, vx±1 | **採用**（B1 高さ） |
-| Isaac Lab Spot | h≈0.5, 広い vx 範囲 | **採用**（高さ）；範囲は単一点評価には不使用 |
+| Isaac Lab Spot | h≈0.5, 長い学習 iter | **採用**（高さ・「301 では足りない場合あり」の根拠） |
+| RaisimGym Laikago | h≈0.44 / init 0.46 / kp40 | **採用**（Laikago の主参照。GenLoco は不採用） |
 | Hutter ANYmal 論文 | 0.3 walk / 0.8 trot | **採用**（ANYmal 巡航帯） |
 | Fu et al. Froude gaits | Fr→歩容 | **参考**（遷移）。巡航の主式にはしない |
 | 前回の \(v=0.5\sqrt{h/0.3}\) | — | **不採用（主根拠）** |

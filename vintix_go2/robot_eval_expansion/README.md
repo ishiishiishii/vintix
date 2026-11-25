@@ -31,6 +31,17 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-25 14:05 JST: Aliengo MorFiC 再学習 — 完走100%・指令比≈97% → B1 MorFiC 起動
+
+- **分かったこと:**
+  - Aliengo（MorFiC 揃え: h/init=0.36, as=0.30, kp/kd=40/1, 指令帯 ±0.6, `model_300`）を指令 0.5 で評価: 完走 **100%**、平均前進 ≈**0.486** m/s（指令の **≈97%**）、RMSE≈0.060。胴体高さは ≈0.37 m で安定（目標 0.36）
+  - 判定条件（完走 ≥95% かつ指令比 ≥95%）の数値は満たす。カメラが原点固定のため後半フレームは遠方の塊に見える点に注意（`MESH_VISUAL_QA.md`）
+  - #11 は `STOP` 維持（seed2 は 33/100 で停止）。専門家再学習を先に進める
+- **実行内容:** 品質評価＋動画（`/opt/conda/bin/python`）。続けて B1（MorFiC 制御値 + unitree URDF）PPO を起動（PID **2066682**）
+- **結果:** `results/aliengo_morfic_expert_quality.json`、`figures/videos/aliengo_morfic_walk_model300.mp4`、ログ `logs/aliengo-walking-morfic/` / `logs/b1-walking-morfic/`
+- **次:** B1 完了 → 品質評価＋動画。続けて ANYmal-B → Spot → Laikago
+
+
 ### 2026-11-24 15:55 UTC: Laikago kp40 不合格 → 第1波クローズ・#11 起動
 
 - **分かったこと:**

@@ -170,7 +170,7 @@ def main():
         "vx_tracking_rmse": rmse_vx,
         "speed_ratio_vs_cmd": speed_ratio,
         "pass_completion": completion >= 0.95,
-        "pass_speed": speed_ratio >= 0.60 if abs(cmd_vx) > 1e-6 else False,
+        "pass_speed": speed_ratio >= 0.95 if abs(cmd_vx) > 1e-6 else False,
         "video": args.video or None,
         "note": "Judge by completion + speed tracking; return is reference only.",
     }

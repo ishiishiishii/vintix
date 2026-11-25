@@ -1,0 +1,18 @@
+{
+  "robot": "aliengo",
+  "model_path": "/workspace/vintix_go2/robot_eval_expansion/logs/aliengo-walking-morfic/model_300.pt",
+  "checked_at_utc": "2026-11-25T04:57:43Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.5,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 20.7272168871487,
+  "mean_forward_vx": 0.4864414930343628,
+  "vx_tracking_rmse": 0.0600505992770195,
+  "speed_ratio_vs_cmd": 0.9728829860687256,
+  "pass_completion": true,
+  "pass_speed": true,
+  "video": "/workspace/vintix_go2/robot_eval_expansion/figures/videos/aliengo_morfic_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

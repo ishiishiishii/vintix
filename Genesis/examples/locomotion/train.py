@@ -309,7 +309,7 @@ def get_laikago_cfgs():
         # 固定座標系での回転: Y軸90度→X軸90度（R_x @ R_y の順序）
         # Genesis座標系: X=前後（前進方向）、Y=左右（横方向）、Z=上下（高さ方向）
         # transform_quat_by_quat(v, u)は R_u @ R_v を計算するため、固定座標系での回転
-        "base_init_pos": [0.0, 0.0, 0.50],  # Laikagoのスタンディング高さ（50cm）
+        "base_init_pos": [0.0, 0.0, 0.50],
         "base_init_quat": [0.5, 0.5, 0.5, 0.5],  # Y軸90度→X軸90度（固定座標系、正面=X軸、足=-Z軸）
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -328,8 +328,9 @@ def get_laikago_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.45,  # Laikagoの目標ベース高さ（45cm）
-        "feet_height_target": 0.095,  # 足の目標高さ
+        # PARAMETER_DESIGN.md: 外寸≈0.60 ≠ CoM。body vx≈0.5*vmax(0.8)=0.40
+        "base_height_target": 0.45,
+        "feet_height_target": 0.09,
         "reward_scales": {
             "tracking_lin_vel": 1.0,      # 線形速度追従
             "tracking_ang_vel": 0.2,      # 角速度追従
@@ -341,7 +342,7 @@ def get_laikago_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],  # 前進速度コマンド（最大0.8m/秒だが、訓練時は0.5m/秒）
+        "lin_vel_x_range": [0.40, 0.40],
         "lin_vel_y_range": [0, 0],      # 横方向速度コマンド
         "ang_vel_range": [0, 0],         # 角速度コマンド
     }
@@ -721,8 +722,8 @@ def get_aliengo_cfgs():
     Env 既定 URDF は MorFiC の aliengo_description（ゼロ行動で 80+ step 耐える）。
     unitree_ros 取り込み URDF は Genesis 上で即ロール転倒するため使わない（MASS_QA / SOURCE.md）。
 
-    試行履歴: unitree URDF + 種々の z/kp/term → 平均長 5 以下のまま失敗。
-    MorFiC URDF + 本設定で立位が安定することを 2026-11-24 に確認。
+    学習パラメータは MorFiC ``aliengo_config.py`` + ``config_shared.py`` に揃える
+   （init/h=0.36, action_scale=0.30, kp/kd=40/1, 指令 vx/vy∈[-0.6,0.6], yaw∈[-1,1]）。
     """
     env_cfg = {
         "num_actions": 12,
@@ -761,8 +762,8 @@ def get_aliengo_cfgs():
         "base_init_pos": [0.0, 0.0, 0.36],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,
+        "resampling_time_s": 10.0,
+        "action_scale": 0.30,
         "simulate_action_latency": True,
         "clip_actions": 100.0,
     }
@@ -778,7 +779,7 @@ def get_aliengo_cfgs():
     reward_cfg = {
         "tracking_sigma": 0.25,
         "base_height_target": 0.36,
-        "feet_height_target": 0.075,
+        "feet_height_target": 0.08,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
@@ -790,9 +791,10 @@ def get_aliengo_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
+        # MorFiC config_shared: lin_vel_x/y [-0.6, 0.6], ang_vel_yaw [-1, 1]
+        "lin_vel_x_range": [-0.6, 0.6],
+        "lin_vel_y_range": [-0.6, 0.6],
+        "ang_vel_range": [-1.0, 1.0],
     }
     return env_cfg, obs_cfg, reward_cfg, command_cfg
 
@@ -802,27 +804,27 @@ def get_b1_cfgs():
     Unitree B1（#16）。関節名は Go2 と同系。質量 URDF Σ≈62.6 kg（公式~50 / ManyQ~52.7・MASS_QA）。
 
     Env 既定 URDF は unitree_ros `b1.urdf`（Genesis assets）。
-    試行履歴（2026-11-23）:
-    - MorFiC URDF+kp90 → 平均長 ≈5
-    - unitree+MorFiC角+kp90+term20 → ≈12 頭打ち
-    - unitree+Go2系角+kp40+高さ罰-10 → 中盤で一時完走(1001@83)後崩壊、最終 ≈14
-    本設定は 3 回目と同じ角・PD で **高さ罰を -10→-2**（ピーク時報酬が高さ罰支配だったため）。
+    MorFiC の b1_description はゼロ行動で沈むため使わない（制御値だけ移植）。
+
+    制御・高さ・指令は MorFiC ``b1_config.py`` + ``config_shared.py`` に揃える
+    （kp/kd=90/2.5, action_scale=0.35, init z=0.60, h=0.56, vx/vy∈[-0.6,0.6]）。
+    ※カタログ立位 636 mm は外寸であり base_height_target に使わない。
     """
     env_cfg = {
         "num_actions": 12,
         "default_joint_angles": {
-            "FL_hip_joint": 0.0,
-            "FR_hip_joint": 0.0,
-            "RL_hip_joint": 0.0,
-            "RR_hip_joint": 0.0,
+            "FL_hip_joint": 0.1,
+            "FR_hip_joint": -0.1,
+            "RL_hip_joint": 0.1,
+            "RR_hip_joint": -0.1,
             "FL_thigh_joint": 0.8,
             "FR_thigh_joint": 0.8,
-            "RL_thigh_joint": 1.0,
-            "RR_thigh_joint": 1.0,
-            "FL_calf_joint": -1.5,
-            "FR_calf_joint": -1.5,
-            "RL_calf_joint": -1.5,
-            "RR_calf_joint": -1.5,
+            "RL_thigh_joint": 0.8,
+            "RR_thigh_joint": 0.8,
+            "FL_calf_joint": -1.6,
+            "FR_calf_joint": -1.6,
+            "RL_calf_joint": -1.6,
+            "RR_calf_joint": -1.6,
         },
         "joint_names": [
             "FR_hip_joint",
@@ -838,16 +840,15 @@ def get_b1_cfgs():
             "RL_thigh_joint",
             "RL_calf_joint",
         ],
-        "kp": 40.0,
-        "kd": 1.0,
+        "kp": 90.0,
+        "kd": 2.5,
         "termination_if_roll_greater_than": 20,
         "termination_if_pitch_greater_than": 20,
-        # FK standing ≈0.64 m (Go2-like angles); slight lift
-        "base_init_pos": [0.0, 0.0, 0.66],
+        "base_init_pos": [0.0, 0.0, 0.60],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
-        "action_scale": 0.25,
+        "resampling_time_s": 10.0,
+        "action_scale": 0.35,
         "simulate_action_latency": True,
         "clip_actions": 100.0,
     }
@@ -862,8 +863,8 @@ def get_b1_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.64,
-        "feet_height_target": 0.08,
+        "base_height_target": 0.56,
+        "feet_height_target": 0.10,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
@@ -875,9 +876,10 @@ def get_b1_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
+        # MorFiC config_shared: lin_vel_x/y [-0.6, 0.6], ang_vel_yaw [-1, 1]
+        "lin_vel_x_range": [-0.6, 0.6],
+        "lin_vel_y_range": [-0.6, 0.6],
+        "ang_vel_range": [-1.0, 1.0],
     }
     return env_cfg, obs_cfg, reward_cfg, command_cfg
 
@@ -885,7 +887,8 @@ def get_b1_cfgs():
 def get_anymalb_cfgs():
     """
     ANYmal-B simple_description（#16）。関節名は ANYmal-C と同系。質量 ≈30.4 kg で文献と一致。
-    立位角は C を暫定流用（レンダ後に調整）。
+    速度・高さ: PARAMETER_DESIGN.md。論文トロット≈0.8 / 歩行≈0.3。IsaacGym init z=0.62。
+    body vx=0.60（トロット帯のやや下）。
     """
     env_cfg = {
         "num_actions": 12,
@@ -921,7 +924,7 @@ def get_anymalb_cfgs():
         "kd": 0.5,
         "termination_if_roll_greater_than": 10,
         "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.50],
+        "base_init_pos": [0.0, 0.0, 0.55],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -940,8 +943,8 @@ def get_anymalb_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.45,
-        "feet_height_target": 0.075,
+        "base_height_target": 0.50,
+        "feet_height_target": 0.09,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
@@ -953,7 +956,7 @@ def get_anymalb_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_x_range": [0.60, 0.60],
         "lin_vel_y_range": [0, 0],
         "ang_vel_range": [0, 0],
     }
@@ -963,7 +966,9 @@ def get_anymalb_cfgs():
 def get_spot_cfgs():
     """
     Boston Dynamics Spot（#16, RAI spot_simple）。関節: fl/fr/hl/hr × hx/hy/kn。
-    質量 Σ≈50.3 kg（Isaac Sim 由来・公式~32.5 より重い・MASS_QA）。立位は暫定。
+    質量 Σ≈50.3 kg（Isaac 由来・公式~32.5 より重い・MASS_QA）。
+    速度・高さ: PARAMETER_DESIGN.md。Isaac Lab / OSU は h≈0.50。IFU Med=0.9 m/s。
+    カタログ歩行デフォルト 610 mm は外寸寄り → RL は 0.50 を採用。
     """
     env_cfg = {
         "num_actions": 12,
@@ -1018,8 +1023,8 @@ def get_spot_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.48,
-        "feet_height_target": 0.08,
+        "base_height_target": 0.50,
+        "feet_height_target": 0.10,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
@@ -1031,7 +1036,7 @@ def get_spot_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.5, 0.5],
+        "lin_vel_x_range": [0.90, 0.90],  # BD IFU Med
         "lin_vel_y_range": [0, 0],
         "ang_vel_range": [0, 0],
     }
@@ -1082,7 +1087,22 @@ def main():
                         help="Maximum mass scale for domain randomization")
     parser.add_argument("--seed", type=int, default=1,
                         help="Random seed for reproducibility")
-    
+    parser.add_argument(
+        "--cmd_vx",
+        type=float,
+        default=None,
+        help="Override lin_vel_x command (m/s). Use 0.5 for matched_go2 profile "
+        "(see robot_eval_expansion/PARAMETER_DESIGN.md).",
+    )
+    parser.add_argument(
+        "--cmd_profile",
+        type=str,
+        choices=["body", "matched_go2"],
+        default="body",
+        help="body=morphology defaults in get_*_cfgs; matched_go2 forces vx=0.5 "
+        "(ignored if --cmd_vx is set).",
+    )
+
     args = parser.parse_args()
     robot_type = resolve_robot_type(args.robot_type)
 
@@ -1120,6 +1140,18 @@ def main():
         env_cfg, obs_cfg, reward_cfg, command_cfg = get_spot_cfgs()
     else:
         raise ValueError(f"Unknown robot type: {args.robot_type}")
+
+    # Command velocity profile (PARAMETER_DESIGN.md)
+    if args.cmd_vx is not None:
+        vx = float(args.cmd_vx)
+    elif args.cmd_profile == "matched_go2":
+        vx = 0.5
+    else:
+        vx = None
+    if vx is not None:
+        command_cfg = dict(command_cfg)
+        command_cfg["lin_vel_x_range"] = [vx, vx]
+        print(f"[cmd] lin_vel_x_range overridden → [{vx}, {vx}] (profile={args.cmd_profile})")
     
     # ドメインランダマイゼーション設定を取得
     dr_cfg = {
@@ -1127,8 +1159,8 @@ def main():
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
-    # B1: mid-train peak ~iter 80 then policy collapses; denser checkpoints keep a walking expert.
-    if args.robot_type == "b1":
+    # denser checkpoints for robots that mid-train peak then collapse (B1 / Aliengo MorFiC retune).
+    if args.robot_type in ("b1", "aliengo"):
         train_cfg["save_interval"] = 20
 
     # 既存のログディレクトリがある場合、resumeする場合は削除しない
