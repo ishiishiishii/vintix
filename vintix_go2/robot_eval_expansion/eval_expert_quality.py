@@ -83,8 +83,13 @@ def main():
         loaded = pickle.load(open(cfgs_pkl, "rb"))
         env_cfg, obs_cfg, reward_cfg, command_cfg = loaded[0], loaded[1], loaded[2], loaded[3]
     if args.cmd_vx is not None:
+        # Forward-only expert check: pin lateral and yaw commands to 0.
+        # Leaving training ranges (e.g. vy∈[-0.6,0.6], yaw∈[-1,1]) makes the
+        # policy walk diagonally / turn while still "tracking" its commands.
         command_cfg = dict(command_cfg)
         command_cfg["lin_vel_x_range"] = [args.cmd_vx, args.cmd_vx]
+        command_cfg["lin_vel_y_range"] = [0.0, 0.0]
+        command_cfg["ang_vel_range"] = [0.0, 0.0]
 
     cmd_vx = float(command_cfg["lin_vel_x_range"][0])
     gs.init(logging_level="warning", precision="64")
