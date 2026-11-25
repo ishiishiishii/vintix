@@ -258,29 +258,32 @@ def get_laikago_cfgs():
     - init z ≈ 0.46、高さ目標 ≈ 0.44
     - kp/kd = 40/1、action_scale = 0.6
     - 学習指令 = 0.40（外寸 vmax≈0.8 の半分。公開 RL 指令帯は無し）
-    旧ログ（laikago-walking / term20 / bh10 / kp40）は上書きしない。
+    - 初期関節角: RaisimGym gc_init の 12 DoF（hip=0, thigh=0.5, calf=-1；RL calf のみ -0.7）
+      ※ 旧 raisim 試行は高さ/PD/as だけ揃え、関節角は 0/-0.75 のままだった → 即転倒。
+    旧ログ（laikago-walking / term20 / bh10 / kp40 / raisim）は上書きしない。
     GenLoco の PD は使わない。
     """
     env_cfg = {
         "num_actions": 12,
         # joint/link names (URDFから確認済み)
-        "default_joint_angles": {  # [rad] - Laikagoの適切なスタンディング姿勢
-            # Front Right leg (FR) - 1st
-            "FR_hip_motor_2_chassis_joint": 0.0,      # Chassis: 0
-            "FR_upper_leg_2_hip_motor_joint": 0.0,    # Upperleg: 0
-            "FR_lower_leg_2_upper_leg_joint": -0.75,  # Lowerleg: -0.75
-            # Front Left leg (FL) - 2nd
-            "FL_hip_motor_2_chassis_joint": 0.0,      # Chassis: 0
-            "FL_upper_leg_2_hip_motor_joint": 0.0,   # Upperleg: 0
-            "FL_lower_leg_2_upper_leg_joint": -0.75, # Lowerleg: -0.75
-            # Rear Right leg (RR) - 3rd
-            "RR_hip_motor_2_chassis_joint": 0.0,      # Chassis: 0
-            "RR_upper_leg_2_hip_motor_joint": 0.0,   # Upperleg: 0
-            "RR_lower_leg_2_upper_leg_joint": -0.75, # Lowerleg: -0.75
-            # Rear Left leg (RL) - 4th
-            "RL_hip_motor_2_chassis_joint": 0.0,      # Chassis: 0
-            "RL_upper_leg_2_hip_motor_joint": 0.0,   # Upperleg: 0
-            "RL_lower_leg_2_upper_leg_joint": -0.75  # Lowerleg: -0.75
+        # RaisimGym Environment.hpp gc_init_ の関節部分（1 要因変更・2026-11-25）
+        "default_joint_angles": {  # [rad]
+            # Front Right leg (FR)
+            "FR_hip_motor_2_chassis_joint": 0.0,
+            "FR_upper_leg_2_hip_motor_joint": 0.5,
+            "FR_lower_leg_2_upper_leg_joint": -1.0,
+            # Front Left leg (FL)
+            "FL_hip_motor_2_chassis_joint": 0.0,
+            "FL_upper_leg_2_hip_motor_joint": 0.5,
+            "FL_lower_leg_2_upper_leg_joint": -1.0,
+            # Rear Right leg (RR)
+            "RR_hip_motor_2_chassis_joint": 0.0,
+            "RR_upper_leg_2_hip_motor_joint": 0.5,
+            "RR_lower_leg_2_upper_leg_joint": -1.0,
+            # Rear Left leg (RL) — RaisimGym 原文どおり calf=-0.7
+            "RL_hip_motor_2_chassis_joint": 0.0,
+            "RL_upper_leg_2_hip_motor_joint": 0.5,
+            "RL_lower_leg_2_upper_leg_joint": -0.7,
         },
         "joint_names": [
             # Front Right leg (FR) - 1st

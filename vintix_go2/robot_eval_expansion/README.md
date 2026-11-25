@@ -31,6 +31,17 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-25 21:30 JST（autopilot tick 20261125_122059）: Laikago Raisim 301 不合格 → 関節角寄せ再学習
+
+- **分かったこと:**
+  - RaisimGym 寄せ（高さ/PD/as のみ）`model_300`・指令 0.4: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.039** m/s（指令比 ≈**-10%**）→ 不合格
+  - 学習曲線も平均長 ≈5–8 で伸びず（延長しても直らないパターン）
+  - 待ち評価は `--log_dir` 未指定のため ckpt パス不一致で空振り → 手動評価で数値確定
+  - Genesis `laikago.urdf` は慣性テンソルが全リンク 0（Aliengo は非ゼロ）— 次候補
+- **実行内容:** 1 要因で初期関節角を RaisimGym `gc_init`（thigh 0.5 / calf −1）に変更し、`laikago-walking-raisim-pose` で 301 起動（PID **2098332** / wait **2098334**、`--log_dir` 指定）
+- **結果:** `results/laikago_raisim_expert_quality.json`、`figures/videos/laikago_raisim_walk_model300.mp4`
+- **次:** pose 版 `model_300` 品質評価。なお不合格なら URDF 慣性／代替 URDF（#23）。#11 は STOP
+
 ### 2026-11-25 20:15 JST（autopilot tick 20261125_111533）: Spot Isaac 601 採用 → Laikago RaisimGym 寄せ起動
 
 - **分かったこと:** Spot `model_600`（指令 0.7、10 env×1000）は完走 **100%**、平均前進 ≈**0.681** m/s（指令比 ≈**97.2%**）、RMSE≈0.073 → 完走≥95%・指令比≥80% を満たし **採用**。動画でも四足で立って前進している
