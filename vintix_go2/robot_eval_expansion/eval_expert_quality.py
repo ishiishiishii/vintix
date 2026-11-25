@@ -68,6 +68,11 @@ def main():
     ap.add_argument("--out_json", type=str, default="")
     ap.add_argument("--video", type=str, default="", help="optional mp4 path (1 env camera)")
     ap.add_argument("--cmd_vx", type=float, default=None, help="override lin_vel_x command")
+    ap.add_argument(
+        "--follow_cam",
+        action="store_true",
+        help="keep recording camera close and follow env-0 base (for gait QA)",
+    )
     args = ap.parse_args()
 
     env_cfg, obs_cfg, reward_cfg, command_cfg, EnvCls, get_train_cfg = _load_cfgs(args.robot)
@@ -105,6 +110,9 @@ def main():
     record = bool(args.video)
     if record:
         Path(args.video).parent.mkdir(parents=True, exist_ok=True)
+        if args.follow_cam:
+            # Closer than env default (7.5, 0, 3); follow updates each step below.
+            env.cam.set_pose(pos=(2.2, -2.0, 1.1), lookat=(0.0, 0.0, 0.35))
         env.cam.start_recording()
 
     ep_len = torch.zeros(n, device=gs.device)
@@ -138,7 +146,13 @@ def main():
             ep_ret = torch.where(done, torch.zeros_like(ep_ret), ep_ret)
         alive = alive & (~reset)
 
-        if record and t % 1 == 0:
+        if record:
+            if args.follow_cam and hasattr(env, "base_pos"):
+                p = env.base_pos[0].detach().float().cpu().numpy()
+                env.cam.set_pose(
+                    pos=(float(p[0]) + 2.2, float(p[1]) - 2.0, float(p[2]) + 0.9),
+                    lookat=(float(p[0]), float(p[1]), float(p[2]) + 0.25),
+                )
             env.cam.render()
 
     if alive.any():
