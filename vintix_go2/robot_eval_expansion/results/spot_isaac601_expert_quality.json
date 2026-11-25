@@ -1,0 +1,18 @@
+{
+  "robot": "spot",
+  "model_path": "/workspace/vintix_go2/robot_eval_expansion/logs/spot-walking-isaac/model_600.pt",
+  "checked_at_utc": "2026-11-25T10:50:23Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.7,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 20.303811411658526,
+  "mean_forward_vx": 0.680733323097229,
+  "vx_tracking_rmse": 0.07295379787683487,
+  "speed_ratio_vs_cmd": 0.9724761758531844,
+  "pass_completion": true,
+  "pass_speed": true,
+  "video": "/workspace/vintix_go2/robot_eval_expansion/figures/videos/spot_isaac601_walk_model600.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

@@ -31,7 +31,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-25 20:15 JST（autopilot tick 20261125_111533）: Spot Isaac 601 採用 → Laikago RaisimGym 寄せ起動
 
+- **分かったこと:** Spot `model_600`（指令 0.7、10 env×1000）は完走 **100%**、平均前進 ≈**0.681** m/s（指令比 ≈**97.2%**）、RMSE≈0.073 → 完走≥95%・指令比≥80% を満たし **採用**。動画でも四足で立って前進している
+- **実行内容:**
+  - 待ちスクリプトが 10:50 UTC に `model_600` 評価＋寄りカメラ動画を完了済み（本 tick で確認）
+  - `get_laikago_cfgs` を RaisimGym 寄せ（init 0.46・h 0.44・kp40/kd1・as 0.6・指令 0.40）に更新
+  - 別ログ `laikago-walking-raisim/` で 301 iter 起動（PID **2094013**）。旧ログは上書きしない
+  - 完了後自動評価: `wait_laikago_raisim_eval.sh`（PID **2094050**、指令 0.4）
+- **結果:** JSON `results/spot_isaac601_expert_quality.json`、動画 `figures/videos/spot_isaac601_walk_model600.mp4`
+- **次:** Laikago `model_300` 品質評価＋動画。不合格なら曲線を見て 601／URDF・姿勢（#23）。#11 は STOP 維持
 
 ### 2026-11-25 19:15 JST（autopilot tick 20261125_100722）: Spot Isaac 301 は完走0%・指令比≈32% → 601延長
 

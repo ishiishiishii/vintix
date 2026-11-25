@@ -252,12 +252,14 @@ def get_minicheetah_cfgs():
 
 def get_laikago_cfgs():
     """
-    Laikago専用の設定（URDFと物理的特性に基づく）
-    Laikagoの仕様:
-    - 高さ: 60cm（立ち姿勢）
-    - 重量: 約22kg
-    - ベース質量: 13.715kg（URDFから）
-    - 最大歩行速度: 0.8m/秒
+    Laikago（#16 再学習）。URDF 座標系のクォータニオンは既存どおり。
+
+    RaisimGym Environment.hpp 寄せ（PARAMETER_DESIGN / RETRAIN_ALL_EXPERTS）:
+    - init z ≈ 0.46、高さ目標 ≈ 0.44
+    - kp/kd = 40/1、action_scale = 0.6
+    - 学習指令 = 0.40（外寸 vmax≈0.8 の半分。公開 RL 指令帯は無し）
+    旧ログ（laikago-walking / term20 / bh10 / kp40）は上書きしない。
+    GenLoco の PD は使わない。
     """
     env_cfg = {
         "num_actions": 12,
@@ -283,37 +285,32 @@ def get_laikago_cfgs():
         "joint_names": [
             # Front Right leg (FR) - 1st
             "FR_hip_motor_2_chassis_joint",
-            "FR_upper_leg_2_hip_motor_joint", 
+            "FR_upper_leg_2_hip_motor_joint",
             "FR_lower_leg_2_upper_leg_joint",
             # Front Left leg (FL) - 2nd
             "FL_hip_motor_2_chassis_joint",
             "FL_upper_leg_2_hip_motor_joint",
-            "FL_lower_leg_2_upper_leg_joint", 
+            "FL_lower_leg_2_upper_leg_joint",
             # Rear Right leg (RR) - 3rd
             "RR_hip_motor_2_chassis_joint",
             "RR_upper_leg_2_hip_motor_joint",
             "RR_lower_leg_2_upper_leg_joint",
             # Rear Left leg (RL) - 4th
-            "RL_hip_motor_2_chassis_joint", 
+            "RL_hip_motor_2_chassis_joint",
             "RL_upper_leg_2_hip_motor_joint",
             "RL_lower_leg_2_upper_leg_joint"
         ],
-        # PD control parameters (Laikagoに適した値)
-        "kp": 20.0,  # 位置ゲイン
-        "kd": 0.5,   # 速度ゲイン
-        # termination conditions
-        "termination_if_roll_greater_than": 10,   # degree
-        "termination_if_pitch_greater_than": 10,  # degree
-        # base pose (Laikagoの立ち姿勢高さ60cmを考慮、初期高さを50cmに設定)
-        # 初期状態（回転なし）: 正面=Z軸、足=-Y軸 → 目標状態: 正面=X軸、足=-Z軸
-        # 固定座標系での回転: Y軸90度→X軸90度（R_x @ R_y の順序）
-        # Genesis座標系: X=前後（前進方向）、Y=左右（横方向）、Z=上下（高さ方向）
-        # transform_quat_by_quat(v, u)は R_u @ R_v を計算するため、固定座標系での回転
-        "base_init_pos": [0.0, 0.0, 0.50],
-        "base_init_quat": [0.5, 0.5, 0.5, 0.5],  # Y軸90度→X軸90度（固定座標系、正面=X軸、足=-Z軸）
+        # RaisimGym: kp=40 / kd=1
+        "kp": 40.0,
+        "kd": 1.0,
+        "termination_if_roll_greater_than": 10,
+        "termination_if_pitch_greater_than": 10,
+        # RaisimGym init z≈0.46。URDF 正面が Z なのでクォータニオンは既存（Y90→X90）
+        "base_init_pos": [0.0, 0.0, 0.46],
+        "base_init_quat": [0.5, 0.5, 0.5, 0.5],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
-        "action_scale": 0.25,  # アクションスケール
+        "action_scale": 0.6,  # RaisimGym
         "simulate_action_latency": True,
         "clip_actions": 100.0,
     }
@@ -328,23 +325,23 @@ def get_laikago_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        # PARAMETER_DESIGN.md: 外寸≈0.60 ≠ CoM。body vx≈0.5*vmax(0.8)=0.40
-        "base_height_target": 0.45,
+        # RaisimGym 観測平均高さ ≈0.44。外寸≈0.60 ≠ CoM
+        "base_height_target": 0.44,
         "feet_height_target": 0.09,
         "reward_scales": {
-            "tracking_lin_vel": 1.0,      # 線形速度追従
-            "tracking_ang_vel": 0.2,      # 角速度追従
-            "lin_vel_z": -1.0,            # Z方向速度ペナルティ
-            "base_height": -50.0,         # ベース高さペナルティ
-            "action_rate": -0.005,       # アクション変化率ペナルティ
-            "similar_to_default": -0.1,  # デフォルト姿勢からの乖離ペナルティ
+            "tracking_lin_vel": 1.0,
+            "tracking_ang_vel": 0.2,
+            "lin_vel_z": -1.0,
+            "base_height": -50.0,
+            "action_rate": -0.005,
+            "similar_to_default": -0.1,
         },
     }
     command_cfg = {
         "num_commands": 3,
         "lin_vel_x_range": [0.40, 0.40],
-        "lin_vel_y_range": [0, 0],      # 横方向速度コマンド
-        "ang_vel_range": [0, 0],         # 角速度コマンド
+        "lin_vel_y_range": [0, 0],
+        "ang_vel_range": [0, 0],
     }
 
     return env_cfg, obs_cfg, reward_cfg, command_cfg
