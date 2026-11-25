@@ -32,6 +32,15 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 ## 実行ログ
 
 
+
+### 2026-11-25 19:15 JST（autopilot tick 20261125_100722）: Spot Isaac 301 は完走0%・指令比≈32% → 601延長
+
+- **分かったこと:** Isaac Lab 高さ寄せ（init/h=0.50・足上げ0.10・指令0.7）の `model_300` を決定論評価（指令 0.7、10 env×1000）すると、完走 **0%**（平均長 ≈246）、平均前進 ≈**0.222** m/s（指令比 ≈**31.8%**）。学習中の平均長・報酬は終盤まで上昇（崩壊パターンではない）
+- **実行内容:** 品質評価＋寄りカメラ動画。同じログ dir で 300→601 延長（PID **2090334**）。再開時の `--max_iterations` は rsl_rl の加算仕様のため **301**（誤って 601 を渡すと 901 まで走る）。zombie 耐性付き待ち評価 `wait_spot_isaac601_eval.sh`（PID **2090336**）
+- **結果:** JSON `results/spot_isaac_expert_quality.json`、動画 `figures/videos/spot_isaac_walk_model300.mp4`
+- **考察:** B1 と同様に延長を先に試す。901 でもだめなら高さ／PD／指令の 1 要因変更
+- **次:** `model_600` 品質評価＋動画。その後 Laikago。#11 は STOP 維持
+
 ### 2026-11-25 18:33 JST（autopilot tick 20261125_092626）: ANYmal-B MorFiC 採用 → Spot Isaac 寄せ起動
 
 - **分かったこと:** ANYmal-B `model_300`（指令 0.5、10 env×1000）は完走 **100%**、平均前進 ≈**0.503** m/s（指令比 ≈**101%**）、RMSE≈0.075 → 完走≥95%・指令比≥80% を満たし **採用**

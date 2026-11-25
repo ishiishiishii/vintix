@@ -85,11 +85,14 @@
   - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
 - 旧ログ `anymalb-walking*` は上書きしていない
 
-### Spot Isaac Lab 寄せ再学習（2026-11-25）— **学習中（301）**
+### Spot Isaac Lab 寄せ再学習（2026-11-25）— **301 不合格 → 601 延長中**
 
-- 学習: `logs/spot-walking-isaac/`（init/h=0.50、足上げ 0.10、指令 0.7、kp40/kd1）
+- 学習: `logs/spot-walking-isaac/`（init/h=0.50、feet_height=0.10、kp40/kd1、as=0.25、指令学習 0.7）
 - 旧ログ（`spot-walking` / `spot-walking-body` / `spot-walking-mid07`）は上書きしない
-- 評価予定: 指令 0.7・寄りカメラ
+- `model_300`・指令 0.7（10 env × 1000）: 完走 **0%**、平均長 ≈**246**、平均前進 ≈**0.222** m/s（指令比 ≈**31.8%**）、RMSE≈0.569
+  - JSON `results/spot_isaac_expert_quality.json`、動画 `figures/videos/spot_isaac_walk_model300.mp4`
+- 学習曲線: 平均長 15→≈137、報酬 -4.8→≈1.09 と終盤まで上昇（途中崩壊ではない）
+- 対応: 同じ設定で 300→601 延長中（再開の `--max_iterations` は rsl_rl 加算仕様のため **301**）
 
 ### Aliengo 品質評価メモ（2026-11-24）
 
