@@ -31,6 +31,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-25 15:15 JST: B1 MorFiC 301 不合格（完走0%）→ 601 延長起動
+
+- **分かったこと:**
+  - B1（MorFiC 制御: kp90/kd2.5・as=0.35・h=0.56・指令±0.6・unitree URDF・`model_300`）を指令 0.5 で評価: 完走 **0%**、平均長 ≈**12**、平均前進 ≈**0.19** m/s（指令比 ≈**38%**）
+  - 中間 ckpt（200/240/280）も完走 0%・平均長 ≈10–13。学習ログ上の平均長 ≈500–600・報酬 ≈3.5 でも決定論ではすぐ転倒
+  - 行動ノイズ std が 1.0→1.31 と下がらない。並行の PD(kp40) 起動は GPU OOM で失敗（本延長が先に占有）
+- **実行内容:** 品質評価＋動画。同じログ dir で 301→601 延長（PID **2073778**）。完了後自動評価 `wait_b1_morfic601_eval.sh`
+- **結果:** `results/b1_morfic_expert_quality.json`、`figures/videos/b1_morfic_walk_model300.mp4`
+- **次:** `model_600` 評価。不合格なら PD のみ kp40/kd1（別ログ `b1-walking-morfic-kp40/`）
+
 ### 2026-11-25 14:05 JST: Aliengo MorFiC 再学習 — 完走100%・指令比≈97% → B1 MorFiC 起動
 
 - **分かったこと:**

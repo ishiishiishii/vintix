@@ -1102,6 +1102,18 @@ def main():
         help="body=morphology defaults in get_*_cfgs; matched_go2 forces vx=0.5 "
         "(ignored if --cmd_vx is set).",
     )
+    parser.add_argument(
+        "--kp",
+        type=float,
+        default=None,
+        help="Override env_cfg kp (1-factor PD retune; leave unset for robot default).",
+    )
+    parser.add_argument(
+        "--kd",
+        type=float,
+        default=None,
+        help="Override env_cfg kd (1-factor PD retune; leave unset for robot default).",
+    )
 
     args = parser.parse_args()
     robot_type = resolve_robot_type(args.robot_type)
@@ -1152,7 +1164,15 @@ def main():
         command_cfg = dict(command_cfg)
         command_cfg["lin_vel_x_range"] = [vx, vx]
         print(f"[cmd] lin_vel_x_range overridden → [{vx}, {vx}] (profile={args.cmd_profile})")
-    
+    if args.kp is not None or args.kd is not None:
+        env_cfg = dict(env_cfg)
+        if args.kp is not None:
+            env_cfg["kp"] = float(args.kp)
+            print(f"[pd] kp overridden → {env_cfg['kp']}")
+        if args.kd is not None:
+            env_cfg["kd"] = float(args.kd)
+            print(f"[pd] kd overridden → {env_cfg['kd']}")
+
     # ドメインランダマイゼーション設定を取得
     dr_cfg = {
         "domain_randomization": args.domain_randomization,

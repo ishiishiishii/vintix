@@ -189,7 +189,8 @@ def main():
         "vx_tracking_rmse": rmse_vx,
         "speed_ratio_vs_cmd": speed_ratio,
         "pass_completion": completion >= 0.95,
-        "pass_speed": speed_ratio >= 0.95 if abs(cmd_vx) > 1e-6 else False,
+        # Speed bar: user 2026-11-25 — command ratio ≥80% (EXPERT_QUALITY.md).
+        "pass_speed": speed_ratio >= 0.80 if abs(cmd_vx) > 1e-6 else False,
         "video": args.video or None,
         "note": "Judge by completion + speed tracking; return is reference only.",
     }
