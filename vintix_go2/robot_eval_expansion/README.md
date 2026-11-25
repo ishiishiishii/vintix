@@ -32,6 +32,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 ## 実行ログ
 
 
+### 2026-11-25 18:33 JST（autopilot tick 20261125_092626）: ANYmal-B MorFiC 採用 → Spot Isaac 寄せ起動
+
+- **分かったこと:** ANYmal-B `model_300`（指令 0.5、10 env×1000）は完走 **100%**、平均前進 ≈**0.503** m/s（指令比 ≈**101%**）、RMSE≈0.075 → 完走≥95%・指令比≥80% を満たし **採用**
+- **実行内容:**
+  - 品質評価＋寄りカメラ動画は待ちスクリプトが 09:18 UTC に自動完了
+  - `get_spot_cfgs` を Isaac Lab SpotFlat 寄せ（init/h=0.50、足上げ 0.10、指令 0.7）に更新し、別ログ `spot-walking-isaac/` で 301 iter 起動（PID **2087285**）
+  - 完了後自動評価: `wait_spot_isaac_eval.sh`（PID **2087397**、指令 0.7）
+- **結果:** JSON `results/anymalb_morfic_expert_quality.json`、動画 `figures/videos/anymalb_morfic_walk_model300.mp4`
+- **次:** Spot `model_300` 品質評価＋動画。続けて Laikago。#11 は STOP 維持
+
 ### 2026-11-25 17:25 JST（autopilot tick 20261125_082055）: B1 MorFiC 901 採用 → ANYmal-B MorFiC-C 寄せ起動
 
 - **分かったこと:** B1 `model_900`（指令 0.5、10 env×1000）は完走 **100%**、平均前進 ≈**0.493** m/s（指令比 ≈**98.6%**）、RMSE≈0.118 → 完走≥95%・指令比≥80% を満たし **採用**

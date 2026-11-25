@@ -972,8 +972,12 @@ def get_spot_cfgs():
     """
     Boston Dynamics Spot（#16, RAI spot_simple）。関節: fl/fr/hl/hr × hx/hy/kn。
     質量 Σ≈50.3 kg（Isaac 由来・公式~32.5 より重い・MASS_QA）。
-    速度・高さ: PARAMETER_DESIGN.md。Isaac Lab / OSU は h≈0.50。IFU Med=0.9 m/s。
-    カタログ歩行デフォルト 610 mm は外寸寄り → RL は 0.50 を採用。
+
+    Isaac Lab SpotFlat 寄せ（#16 再学習）:
+    - init z / 高さ目標 = 0.50（Isaac Lab / OSU。カタログ 610 mm は外寸）
+    - 足上げ目標 0.10
+    - 学習指令 = 0.7（以前 body 0.9 は完走 0%。IFU Med 0.9 は評価参照のみ）
+    報酬一式は Isaac を丸コピーしない（既存 Genesis 報酬）。
     """
     env_cfg = {
         "num_actions": 12,
@@ -1009,7 +1013,7 @@ def get_spot_cfgs():
         "kd": 1.0,
         "termination_if_roll_greater_than": 10,
         "termination_if_pitch_greater_than": 10,
-        "base_init_pos": [0.0, 0.0, 0.55],
+        "base_init_pos": [0.0, 0.0, 0.50],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
@@ -1041,7 +1045,8 @@ def get_spot_cfgs():
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.90, 0.90],  # BD IFU Med
+        # Isaac Lab 高さ寄せ＋学習しやすい 0.7（body 0.9 は完走失敗実績）
+        "lin_vel_x_range": [0.7, 0.7],
         "lin_vel_y_range": [0, 0],
         "ang_vel_range": [0, 0],
     }
@@ -1184,8 +1189,8 @@ def main():
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
-    # denser checkpoints for robots that mid-train peak then collapse (MorFiC retune).
-    if args.robot_type in ("b1", "aliengo", "anymalb"):
+    # denser checkpoints for robots that mid-train peak then collapse (MorFiC / Isaac retune).
+    if args.robot_type in ("b1", "aliengo", "anymalb", "spot"):
         train_cfg["save_interval"] = 20
 
     # 既存のログディレクトリがある場合、resumeする場合は削除しない

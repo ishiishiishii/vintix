@@ -10,8 +10,8 @@ MorFiC に機体別 config があるものはそれを優先。**Spot / Laikago 
 |------|--------|------------|------|
 | Aliengo | MorFiC `aliengo_config`（URDF も同系統） | **採用**（完走100%・指令比≈89%） | 完了 |
 | B1 | MorFiC `b1_config`（kp90 / kd2.5 / h=0.56 / as=0.35 / 指令±0.6） | **採用**（901・完走100%・指令比≈98.6%） | unitree URDF + MorFiC 制御値。完了 |
-| ANYmal-B | MorFiC は **C** のみ（kp80 / h=0.55） | **学習中**（301・`anymalb-walking-morfic`） | C 設定を B に寄せる近似 |
-| Spot | **Isaac Lab SpotFlat**（init z≈**0.5**、足上げ 0.1。公開 runner は最大数万 iter） | 採用中は指令 0.7 | 高さ 0.5・指令は IFU Med 0.9 または学習しやすい 0.7。報酬一式の丸コピーはしない |
+| ANYmal-B | MorFiC は **C** のみ（kp80 / h=0.55） | **採用**（301・完走100%・指令比≈101%） | C 設定を B に寄せる近似。完了 |
+| Spot | **Isaac Lab SpotFlat**（init z≈**0.5**、足上げ 0.1。公開 runner は最大数万 iter） | **学習中**（301・`spot-walking-isaac`・指令 0.7） | 高さ 0.5・指令は学習しやすい 0.7（body 0.9 は完走失敗実績）。報酬一式の丸コピーはしない |
 | Laikago | **RaisimGym**（init z≈**0.46**、観測平均高さ≈**0.44**、kp=**40** / kd=**1**、action_scale≈0.6） | まだ歩けていない | RaisimGym の高さ・PD を優先。関連論文は kp=40・最大≈1000 iter。GenLoco は使わない |
 
 MorFiC 共有指令帯（Aliengo/B1 向け）: \(v_x,v_y\in[-0.6,0.6]\)、yaw \(\in[-1,1]\)。

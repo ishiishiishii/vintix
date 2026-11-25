@@ -77,10 +77,19 @@
   - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
 - 途中: 301 は決定論で即転倒、601 で完走回復・速度不足、901 で速度も合格
 
-### ANYmal-B MorFiC-C 寄せ再学習（2026-11-25）— **学習中（301）**
+### ANYmal-B MorFiC-C 寄せ再学習（2026-11-25）— **採用（301）**
 
 - 学習: `logs/anymalb-walking-morfic/`（MorFiC C: kp80/kd2.0、as=0.25、h/init=0.55、指令±0.6。関節角は ANYmal-B 既定）
-- 旧ログ `anymalb-walking*` は上書きしない。評価は指令 0.5・寄りカメラ
+- `model_300`・指令 0.5（10 env × 1000）: 完走 **100%**、平均前進 ≈**0.503** m/s（指令比 ≈**101%**）、RMSE≈0.075
+  - JSON `results/anymalb_morfic_expert_quality.json`、動画 `figures/videos/anymalb_morfic_walk_model300.mp4`
+  - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
+- 旧ログ `anymalb-walking*` は上書きしていない
+
+### Spot Isaac Lab 寄せ再学習（2026-11-25）— **学習中（301）**
+
+- 学習: `logs/spot-walking-isaac/`（init/h=0.50、足上げ 0.10、指令 0.7、kp40/kd1）
+- 旧ログ（`spot-walking` / `spot-walking-body` / `spot-walking-mid07`）は上書きしない
+- 評価予定: 指令 0.7・寄りカメラ
 
 ### Aliengo 品質評価メモ（2026-11-24）
 
