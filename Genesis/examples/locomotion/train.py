@@ -887,8 +887,11 @@ def get_b1_cfgs():
 def get_anymalb_cfgs():
     """
     ANYmal-B simple_description（#16）。関節名は ANYmal-C と同系。質量 ≈30.4 kg で文献と一致。
-    速度・高さ: PARAMETER_DESIGN.md。論文トロット≈0.8 / 歩行≈0.3。IsaacGym init z=0.62。
-    body vx=0.60（トロット帯のやや下）。
+
+    MorFiC は ANYmal-**C** のみ公開（``anymal_c_config.py`` + ``config_shared.py``）。
+    制御・高さ・指令だけ B に寄せる近似:
+    kp/kd=80/2.0, action_scale=0.25, init/h=0.55, vx/vy∈[-0.6,0.6], yaw∈[-1,1]。
+    関節角は ANYmal-B URDF の既定（MorFiC C の Go2 系関節名は使わない）。
     """
     env_cfg = {
         "num_actions": 12,
@@ -920,14 +923,14 @@ def get_anymalb_cfgs():
             "RF_KFE",
             "LF_KFE",
         ],
-        "kp": 20.0,
-        "kd": 0.5,
+        "kp": 80.0,
+        "kd": 2.0,
         "termination_if_roll_greater_than": 10,
         "termination_if_pitch_greater_than": 10,
         "base_init_pos": [0.0, 0.0, 0.55],
         "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
-        "resampling_time_s": 4.0,
+        "resampling_time_s": 10.0,
         "action_scale": 0.25,
         "simulate_action_latency": True,
         "clip_actions": 100.0,
@@ -943,22 +946,24 @@ def get_anymalb_cfgs():
     }
     reward_cfg = {
         "tracking_sigma": 0.25,
-        "base_height_target": 0.50,
+        "base_height_target": 0.55,
         "feet_height_target": 0.09,
         "reward_scales": {
             "tracking_lin_vel": 1.0,
             "tracking_ang_vel": 0.2,
             "lin_vel_z": -1.0,
-            "base_height": -50.0,
+            # MorFiC config_shared base_height=-30（Genesis 側も同係数）
+            "base_height": -30.0,
             "action_rate": -0.005,
             "similar_to_default": -0.1,
         },
     }
     command_cfg = {
         "num_commands": 3,
-        "lin_vel_x_range": [0.60, 0.60],
-        "lin_vel_y_range": [0, 0],
-        "ang_vel_range": [0, 0],
+        # MorFiC config_shared: lin_vel_x/y [-0.6, 0.6], ang_vel_yaw [-1, 1]
+        "lin_vel_x_range": [-0.6, 0.6],
+        "lin_vel_y_range": [-0.6, 0.6],
+        "ang_vel_range": [-1.0, 1.0],
     }
     return env_cfg, obs_cfg, reward_cfg, command_cfg
 
@@ -1179,8 +1184,8 @@ def main():
         "mass_range": (args.mass_range_min, args.mass_range_max),
     }
     train_cfg = get_train_cfg(args.exp_name, args.max_iterations, seed=args.seed)
-    # denser checkpoints for robots that mid-train peak then collapse (B1 / Aliengo MorFiC retune).
-    if args.robot_type in ("b1", "aliengo"):
+    # denser checkpoints for robots that mid-train peak then collapse (MorFiC retune).
+    if args.robot_type in ("b1", "aliengo", "anymalb"):
         train_cfg["save_interval"] = 20
 
     # 既存のログディレクトリがある場合、resumeする場合は削除しない

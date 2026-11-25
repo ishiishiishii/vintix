@@ -32,6 +32,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 ## 実行ログ
 
 
+### 2026-11-25 17:25 JST（autopilot tick 20261125_082055）: B1 MorFiC 901 採用 → ANYmal-B MorFiC-C 寄せ起動
+
+- **分かったこと:** B1 `model_900`（指令 0.5、10 env×1000）は完走 **100%**、平均前進 ≈**0.493** m/s（指令比 ≈**98.6%**）、RMSE≈0.118 → 完走≥95%・指令比≥80% を満たし **採用**
+- **実行内容:**
+  - 品質評価＋寄りカメラ動画は待ちスクリプトが自動完了（08:13 UTC）
+  - `get_anymalb_cfgs` を MorFiC ANYmal-C 公開値（kp80/kd2・h=0.55・指令±0.6）に更新し、別ログ `anymalb-walking-morfic/` で 301 iter 起動（PID **2082949**）
+  - 完了後自動評価: `wait_anymalb_morfic_eval.sh`（PID **2082953**）
+- **結果:** JSON `results/b1_morfic901_expert_quality.json`、動画 `figures/videos/b1_morfic901_walk_model900.mp4`
+- **次:** ANYmal-B `model_300` 品質評価＋動画。続けて Spot → Laikago。#11 は STOP 維持
+
 ### 2026-11-25 16:20 JST（autopilot tick 20261125_064559）: B1 MorFiC 601 は完走100%・指令比≈75% → 901延長
 
 - **分かったこと:** `model_600` の決定論評価（指令 0.5、10 env×1000）で完走は **100%** まで回復したが、平均前進 ≈**0.373** m/s（指令比 ≈**74.6%**）で合格線 80% に未達。動画ではしゃがんだ歩行が続く
