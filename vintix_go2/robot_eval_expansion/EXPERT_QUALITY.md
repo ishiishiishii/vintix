@@ -65,13 +65,16 @@
 - 指令 (0.5, 0, 0)・`model_300`: 完走 **100%**、平均前進 ≈**0.444** m/s（指令比 ≈**89%**）→ 完走≥95%・指令比≥80% を満たす。**採用**
 - 参考（左右・旋回が乱数の旧評価）: 指令比 ≈97%。旧 `aliengo-walking` は上書きしていない
 
-### B1 MorFiC 再学習（2026-11-25）— **301 不合格 → 601 延長中**
+### B1 MorFiC 再学習（2026-11-25）— **601: 完走合格・指令比不足 → 901 延長中**
 
 - 学習: `logs/b1-walking-morfic/`（kp90/kd2.5、as=0.35、h/init=0.56/0.60、指令±0.6、unitree URDF）
 - `model_300`・指令 0.5: 完走 **0%**、平均長 ≈**12**、平均前進 ≈**0.19** m/s（指令比 ≈**38%**）
   - JSON `results/b1_morfic_expert_quality.json`、動画 `figures/videos/b1_morfic_walk_model300.mp4`
-- 中間 ckpt（200/240/280）も完走 0%・平均長 ≈10–13。学習中平均長 ≈500–600 でも決定論では転倒
-- 次: 同じ設定で 601 まで延長（`model_600`）。だめなら PD のみ kp40/kd1（`logs/b1-walking-morfic-kp40/`）
+- `model_600`・指令 0.5（10 env × 1000）: 完走 **100%**、平均前進 ≈**0.373** m/s（指令比 ≈**74.6%**）、RMSE≈0.205
+  - JSON `results/b1_morfic601_expert_quality.json`、動画 `figures/videos/b1_morfic601_walk_model600.mp4`
+  - 動画ではしゃがんだ歩行が続く（腹ばい滑走ではない）。指令比は合格線 80% に届かず
+- 学習中の報酬は 301 時点 ≈3.5 → 600 時点 ≈6.3 と上昇中。ノイズ std は ≈1.27 でなお高い
+- 次: 同じ設定で 901 まで延長（`model_900`、PID 記録は README／Issue）。だめなら PD のみ kp40/kd1（`logs/b1-walking-morfic-kp40/`）
 
 ### Aliengo 品質評価メモ（2026-11-24）
 

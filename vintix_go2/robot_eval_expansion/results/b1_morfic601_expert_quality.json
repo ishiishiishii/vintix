@@ -1,0 +1,18 @@
+{
+  "robot": "b1",
+  "model_path": "/workspace/vintix_go2/robot_eval_expansion/logs/b1-walking-morfic/model_600.pt",
+  "checked_at_utc": "2026-11-25T07:15:46Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.5,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 12.943073519940413,
+  "mean_forward_vx": 0.3731231093406677,
+  "vx_tracking_rmse": 0.20471416413784027,
+  "speed_ratio_vs_cmd": 0.7462462186813354,
+  "pass_completion": true,
+  "pass_speed": false,
+  "video": "/workspace/vintix_go2/robot_eval_expansion/figures/videos/b1_morfic601_walk_model600.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}

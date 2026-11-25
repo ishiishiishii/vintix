@@ -31,6 +31,17 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+
+### 2026-11-25 16:20 JST（autopilot tick 20261125_064559）: B1 MorFiC 601 は完走100%・指令比≈75% → 901延長
+
+- **分かったこと:** `model_600` の決定論評価（指令 0.5、10 env×1000）で完走は **100%** まで回復したが、平均前進 ≈**0.373** m/s（指令比 ≈**74.6%**）で合格線 80% に未達。動画ではしゃがんだ歩行が続く
+- **実行内容:**
+  - 601 学習完了後、待ちスクリプトが zombie PID で停止していたため評価を手動実行
+  - 続けて同じログ dir で 601→901 延長起動（PID **2078730**）。zombie 耐性付き待ち評価 `wait_b1_morfic901_eval.sh`（PID **2078990**）
+- **結果:** JSON `results/b1_morfic601_expert_quality.json`、動画 `figures/videos/b1_morfic601_walk_model600.mp4`
+- **考察:** 延長で転倒は直った。速度はあと約 5pt。報酬はなお上昇中なので先に 901。だめなら PD を kp40/kd1 へ 1 要因変更
+- **次:** `model_900` 品質評価＋動画。その後 ANYmal-B → Spot → Laikago。#11 は STOP 維持
+
 ### 2026-11-25 15:15 JST: B1 MorFiC 301 不合格（完走0%）→ 601 延長起動
 
 - **分かったこと:**
