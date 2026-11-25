@@ -252,66 +252,60 @@ def get_minicheetah_cfgs():
 
 def get_laikago_cfgs():
     """
-    Laikago（#16 再学習）。URDF 座標系のクォータニオンは既存どおり。
+    Laikago（#16 再学習）。
 
-    RaisimGym Environment.hpp 寄せ（PARAMETER_DESIGN / RETRAIN_ALL_EXPERTS）:
+    RaisimGym Environment.hpp 寄せ（PD / 高さ / 指令）+ Unitree URDF:
     - init z ≈ 0.46、高さ目標 ≈ 0.44
-    - kp/kd = 40/1、action_scale = 0.6
-    - 学習指令 = 0.40（外寸 vmax≈0.8 の半分。公開 RL 指令帯は無し）
-    - 初期関節角: RaisimGym gc_init の 12 DoF（hip=0, thigh=0.5, calf=-1；RL calf のみ -0.7）
-    - URDF: `laikago_inertia.urdf`（stock の慣性ゼロを PyBullet toes_zup 値で置換。関節グラフは同一）
-      ※ pose 試行（慣性ゼロ）も平均長≈5 で崩壊 → 慣性を 1 要因で追加。
-    旧ログ（laikago-walking / term20 / bh10 / kp40 / raisim / raisim-pose）は上書きしない。
+    - kp/kd = 40/1、action_scale = 0.6、学習指令 = 0.40
+    - URDF: MorFiC/Unitree `laikago_description`（慣性・足リンクあり、Z-up）
+      ※ Genesis Y-up / toes_zup はゼロ行動で ~11–12 step 転倒（LaikagoEnv 実測）。
+      Unitree + Go2 系立位角は tip@10° まで ~174 step（同条件スモーク）。
+    - 関節名: FR_hip_joint / FR_thigh_joint / FR_calf_joint 系
+    - 初期関節角: Go2 系（thigh 0.8/1.0, calf -1.5）。RaisimGym gc_init は Unitree 上で
+      tip@10°≈30 step と短いため、URDF 切替に合わせて立位角も変更。
+    - base_init_quat: identity
+    旧ログ（…/raisim / raisim-pose / raisim-inertia）は上書きしない。
     GenLoco の PD は使わない。
     """
     env_cfg = {
         "num_actions": 12,
-        # joint/link names (URDFから確認済み)
-        # RaisimGym Environment.hpp gc_init_ の関節部分（1 要因変更・2026-11-25）
-        "default_joint_angles": {  # [rad]
-            # Front Right leg (FR)
-            "FR_hip_motor_2_chassis_joint": 0.0,
-            "FR_upper_leg_2_hip_motor_joint": 0.5,
-            "FR_lower_leg_2_upper_leg_joint": -1.0,
-            # Front Left leg (FL)
-            "FL_hip_motor_2_chassis_joint": 0.0,
-            "FL_upper_leg_2_hip_motor_joint": 0.5,
-            "FL_lower_leg_2_upper_leg_joint": -1.0,
-            # Rear Right leg (RR)
-            "RR_hip_motor_2_chassis_joint": 0.0,
-            "RR_upper_leg_2_hip_motor_joint": 0.5,
-            "RR_lower_leg_2_upper_leg_joint": -1.0,
-            # Rear Left leg (RL) — RaisimGym 原文どおり calf=-0.7
-            "RL_hip_motor_2_chassis_joint": 0.0,
-            "RL_upper_leg_2_hip_motor_joint": 0.5,
-            "RL_lower_leg_2_upper_leg_joint": -0.7,
+        # Unitree/MorFiC laikago_description の関節名
+        "default_joint_angles": {  # [rad] Go2 系立位（Unitree 上でゼロ行動が長い）
+            "FR_hip_joint": 0.0,
+            "FR_thigh_joint": 0.8,
+            "FR_calf_joint": -1.5,
+            "FL_hip_joint": 0.0,
+            "FL_thigh_joint": 0.8,
+            "FL_calf_joint": -1.5,
+            "RR_hip_joint": 0.0,
+            "RR_thigh_joint": 1.0,
+            "RR_calf_joint": -1.5,
+            "RL_hip_joint": 0.0,
+            "RL_thigh_joint": 1.0,
+            "RL_calf_joint": -1.5,
         },
         "joint_names": [
-            # Front Right leg (FR) - 1st
-            "FR_hip_motor_2_chassis_joint",
-            "FR_upper_leg_2_hip_motor_joint",
-            "FR_lower_leg_2_upper_leg_joint",
-            # Front Left leg (FL) - 2nd
-            "FL_hip_motor_2_chassis_joint",
-            "FL_upper_leg_2_hip_motor_joint",
-            "FL_lower_leg_2_upper_leg_joint",
-            # Rear Right leg (RR) - 3rd
-            "RR_hip_motor_2_chassis_joint",
-            "RR_upper_leg_2_hip_motor_joint",
-            "RR_lower_leg_2_upper_leg_joint",
-            # Rear Left leg (RL) - 4th
-            "RL_hip_motor_2_chassis_joint",
-            "RL_upper_leg_2_hip_motor_joint",
-            "RL_lower_leg_2_upper_leg_joint"
+            "FR_hip_joint",
+            "FR_thigh_joint",
+            "FR_calf_joint",
+            "FL_hip_joint",
+            "FL_thigh_joint",
+            "FL_calf_joint",
+            "RR_hip_joint",
+            "RR_thigh_joint",
+            "RR_calf_joint",
+            "RL_hip_joint",
+            "RL_thigh_joint",
+            "RL_calf_joint",
         ],
         # RaisimGym: kp=40 / kd=1
         "kp": 40.0,
         "kd": 1.0,
         "termination_if_roll_greater_than": 10,
         "termination_if_pitch_greater_than": 10,
-        # RaisimGym init z≈0.46。URDF 正面が Z なのでクォータニオンは既存（Y90→X90）
+        # RaisimGym init z≈0.46。Unitree Z-up → identity
         "base_init_pos": [0.0, 0.0, 0.46],
-        "base_init_quat": [0.5, 0.5, 0.5, 0.5],
+        "base_init_quat": [1.0, 0.0, 0.0, 0.0],
         "episode_length_s": 20.0,
         "resampling_time_s": 4.0,
         "action_scale": 0.6,  # RaisimGym

@@ -68,12 +68,15 @@ class LaikagoEnv:
         # reset_idx()メソッドで既にset_quat()を使用しているため、ここでは回転なしで追加
         self.robot = self.scene.add_entity(
             gs.morphs.URDF(
-                # #16: stock laikago.urdf has all-zero inertia tensors; use PyBullet
-                # toes_zup inertia values patched onto the same Y-up joint graph
-                # (laikago_inertia.urdf). Old zero-inertia URDF left untouched.
-                file="/workspace/Genesis/genesis/assets/urdf/laikago/urdf/laikago_inertia.urdf",
+                # #16: Genesis/PyBullet Y-up・Z-up toes はゼロ行動で ~11–12 step 転倒。
+                # Unitree/MorFiC laikago_description（慣性あり・足あり・Z-up）へ切替。
+                # 関節名は FR_hip_joint 系（get_laikago_cfgs と一致）。旧 URDF は残す。
+                file=(
+                    "/workspace/vintix_go2/general_locomotion_baselines/third_party/"
+                    "MorFiC/resources/robots/laikago_description/urdf/laikago.urdf"
+                ),
                 pos=self.base_init_pos.cpu().numpy(),
-                quat=[1.0, 0.0, 0.0, 0.0],  # 回転なしで追加（reset_idx()でset_quat()により設定）
+                quat=self.base_init_quat.cpu().numpy(),
             ),
         )
 

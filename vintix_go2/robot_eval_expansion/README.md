@@ -31,6 +31,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-26 00:09 JST（autopilot tick 20261125_144204）: Laikago 慣性寄せ 301 不合格 → Unitree URDF 再学習
+
+- **分かったこと:**
+  - RaisimGym 寄せ＋関節角＋Y-up 慣性（`model_300`・指令 0.4）: 完走 **0%**、平均長 ≈**5**、平均前進 ≈**0.028** m/s（指令比 ≈**7%**）→ 不合格
+  - 学習曲線も平均長 ≈5 で伸びず（延長しない）
+  - ゼロ行動スモーク: Y-up / Z-up toes は転倒まで ≈11–12 step。Unitree URDF＋Go2 系立位角は ≈**175** step
+- **実行内容:** Env を Unitree/MorFiC `laikago_description` に切替（関節名 `FR_hip_joint` 系、立位角は Go2 系、RaisimGym の PD/高さ/指令は維持）。`laikago-walking-unitree` で 301 起動（PID **2109919** / wait **2109923**）
+- **結果:** `results/laikago_raisim_inertia_expert_quality.json`、`figures/videos/laikago_raisim_inertia_walk_model300.mp4`
+- **次:** Unitree 版 `model_300` 品質評価。#11 は STOP
+
 ### 2026-11-25 22:40 JST（autopilot tick 20261125_133609）: Laikago 関節角寄せ 301 不合格 → 慣性寄せ再学習
 
 - **分かったこと:**

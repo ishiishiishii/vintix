@@ -96,20 +96,24 @@
   - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
 - 途中: 301 は決定論で転倒、601 で完走・速度とも合格（901 は不要）
 
-### Laikago RaisimGym 寄せ再学習（2026-11-25）— **高さ/PD・関節角では不合格 → 慣性寄せを学習中**
+### Laikago RaisimGym 寄せ再学習（2026-11-25）— **Y-up 系不合格 → Unitree URDF 再学習中**
 
 - 学習 A: `logs/laikago-walking-raisim/`（init=0.46、h=0.44、kp40/kd1、as=0.6、指令 0.40、関節角は旧 0/−0.75）
   - `model_300`・指令 0.4（10 env × 1000）: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.039** m/s（指令比 ≈**-10%**）
   - JSON `results/laikago_raisim_expert_quality.json`、動画 `figures/videos/laikago_raisim_walk_model300.mp4`
   - 学習中も平均長 ≈5–8 のまま（途中崩壊＝延長しない）
-  - 補足: 待ちスクリプトは `robot_eval_expansion/logs/...` を見たが、実 ckpt は `Genesis/logs/laikago-walking-raisim/`（`--log_dir` 未指定）。評価は手動で実施
-- 学習 B: `logs/laikago-walking-raisim-pose/` — **1 要因**で初期関節角だけ RaisimGym `gc_init` に変更（thigh=0.5、calf=-1、RL calf=-0.7）
-  - `model_300`・指令 0.4（10 env × 1000）: 完走 **0%**、平均長 ≈**6**、平均前進 ≈**0.005** m/s（指令比 ≈**1%**）
-  - JSON `results/laikago_raisim_pose_expert_quality.json`、動画 `figures/videos/laikago_raisim_pose_walk_model300.mp4`
-  - 学習中も平均長 ≈4–5 のまま（延長しない）
-- 学習 C（進行中）: `logs/laikago-walking-raisim-inertia/` — **1 要因**で URDF を `laikago_inertia.urdf` に変更（PyBullet `laikago_toes_zup` の慣性を Genesis Y-up 関節グラフへ移植。質量・関節名・メッシュは同じ）
-- 旧ログ（`laikago-walking` / term20 / bh10 / kp40 / raisim / raisim-pose）は上書きしない
-- Unitree/MorFiC の URDF は慣性ありだが関節名が違う。慣性でもだめなら代替 URDF（#23）
+- 学習 B: `logs/laikago-walking-raisim-pose/` — 初期関節角 RaisimGym `gc_init`
+  - `model_300`・指令 0.4: 完走 **0%**、平均長 ≈**6**、指令比 ≈**1%**
+  - JSON `results/laikago_raisim_pose_expert_quality.json`
+- 学習 C: `logs/laikago-walking-raisim-inertia/` — Y-up + PyBullet 慣性のみ
+  - `model_300`・指令 0.4: 完走 **0%**、平均長 ≈**5**、平均前進 ≈**0.028** m/s（指令比 ≈**7%**）
+  - JSON `results/laikago_raisim_inertia_expert_quality.json`、動画 `figures/videos/laikago_raisim_inertia_walk_model300.mp4`
+  - 学習中も平均長 ≈5（延長しない）
+- **立位スモーク（ゼロ行動・LaikagoEnv）:**
+  - Y-up inertia / Z-up toes_inertia: 転倒閾値 10° でエピソード長 ≈**11–12**
+  - Unitree `laikago_description` + Go2 系立位角: 同条件で ≈**175**
+- 学習 D（進行中）: `logs/laikago-walking-unitree/` — Unitree/MorFiC URDF + Go2 系立位角（RaisimGym の PD/高さ/指令は維持）
+- 旧ログは上書きしない
 
 ### Aliengo 品質評価メモ（2026-11-24）
 
