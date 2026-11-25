@@ -31,6 +31,16 @@ Issue: [#16](https://github.com/ishiishiishii/vintix/issues/16)
 
 ## 実行ログ
 
+### 2026-11-26 01:50 JST（autopilot tick 20261125_165048）: Laikago Unitree 301 採用 → #16 完了・#11 再開
+
+- **分かったこと:**
+  - Unitree URDF＋Go2 系立位角（`model_300`・指令 0.4、10 env×1000）: 完走 **100%**、平均前進 ≈**0.397** m/s（指令比 ≈**99.3%**）、RMSE≈0.036 → 完走≥95%・指令比≥80% を満たし **採用**
+  - 学習末尾の平均長 ≈980–990（崩壊パターンではない）
+  - これで拡充 5 機（Aliengo / B1 / ANYmal-B / Spot / Laikago）すべて採用
+- **実行内容:** 待ち評価（15:32 UTC）の JSON／動画を確認。寄りカメラはメッシュに食い込みやすいため、画角違いの撮り直しも試したが、判定は定量を正とする。#16 をクローズし、#11 の `STOP` を外して収集再開
+- **結果:** `results/laikago_unitree_expert_quality.json`、`figures/videos/laikago_unitree_walk_model300.mp4`、ログ `logs/laikago-walking-unitree/`
+- **次:** #11 narrow seed2 の残り（33→100）を監視。A1/MC/Go2 体スケールは停止のまま
+
 ### 2026-11-26 00:09 JST（autopilot tick 20261125_144204）: Laikago 慣性寄せ 301 不合格 → Unitree URDF 再学習
 
 - **分かったこと:**

@@ -53,6 +53,7 @@
 | Laikago term20 | **0%**（平均長 ≈7） | **不合格**（\(v_x\)≈-0.055 / 指令 0.4、比 ≈**-14%**） | 済 | 転倒判定だけでは直らず |
 | Laikago bh10 | **0%**（平均長 ≈8） | **不合格**（\(v_x\)≈-0.071 / 指令 0.4、比 ≈**-18%**） | 済 | 高さ罰だけでは直らず |
 | Laikago kp40 | **0%**（平均長 ≈8） | **不合格**（\(v_x\)≈-0.031 / 指令 0.4、比 ≈**-8%**） | 済 | PD 強化でも崩壊。第1波は 4 機で区切り（URDF／初期姿勢は別） |
+| Laikago Unitree URDF | **100%** | **合格**（\(v_x\)≈0.397 / 指令 0.4、比 ≈**99.3%**、RMSE≈0.036） | 済 | **採用（301）**。Y-up 系は全滅、Unitree URDF が決定打 |
 | Spot mid (\(v_x=0.7\)) | **100%** | **合格**（\(v_x\)≈0.691 / 指令 0.7、比 ≈**99%**、RMSE≈0.12） | 済 | **再チューン合格**（matched/body のあいだで両立） |
 | B1 body (\(v_x=0.60\), \(h=0.55\)) | **100%** | **不合格**（\(v_x\)≈0.292 / 指令 0.6、比 ≈**49%**） | 済 | 不合格（絶対速度≈0.3 頭打ち） |
 | B1 mid (\(v_x=0.50\), \(h=0.55\)) | **100%** | **合格**（\(v_x\)≈0.302 / 指令 0.5、比 ≈**60%**） | 済 | **再チューン合格**（閾値ぎりぎり超え・3 機目） |
@@ -96,24 +97,20 @@
   - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
 - 途中: 301 は決定論で転倒、601 で完走・速度とも合格（901 は不要）
 
-### Laikago RaisimGym 寄せ再学習（2026-11-25）— **Y-up 系不合格 → Unitree URDF 再学習中**
+### Laikago Unitree URDF 再学習（2026-11-25）— **採用（301）**
 
-- 学習 A: `logs/laikago-walking-raisim/`（init=0.46、h=0.44、kp40/kd1、as=0.6、指令 0.40、関節角は旧 0/−0.75）
-  - `model_300`・指令 0.4（10 env × 1000）: 完走 **0%**、平均長 ≈**7**、平均前進 ≈**-0.039** m/s（指令比 ≈**-10%**）
-  - JSON `results/laikago_raisim_expert_quality.json`、動画 `figures/videos/laikago_raisim_walk_model300.mp4`
-  - 学習中も平均長 ≈5–8 のまま（途中崩壊＝延長しない）
-- 学習 B: `logs/laikago-walking-raisim-pose/` — 初期関節角 RaisimGym `gc_init`
-  - `model_300`・指令 0.4: 完走 **0%**、平均長 ≈**6**、指令比 ≈**1%**
-  - JSON `results/laikago_raisim_pose_expert_quality.json`
-- 学習 C: `logs/laikago-walking-raisim-inertia/` — Y-up + PyBullet 慣性のみ
-  - `model_300`・指令 0.4: 完走 **0%**、平均長 ≈**5**、平均前進 ≈**0.028** m/s（指令比 ≈**7%**）
-  - JSON `results/laikago_raisim_inertia_expert_quality.json`、動画 `figures/videos/laikago_raisim_inertia_walk_model300.mp4`
-  - 学習中も平均長 ≈5（延長しない）
-- **立位スモーク（ゼロ行動・LaikagoEnv）:**
-  - Y-up inertia / Z-up toes_inertia: 転倒閾値 10° でエピソード長 ≈**11–12**
-  - Unitree `laikago_description` + Go2 系立位角: 同条件で ≈**175**
-- 学習 D（進行中）: `logs/laikago-walking-unitree/` — Unitree/MorFiC URDF + Go2 系立位角（RaisimGym の PD/高さ/指令は維持）
-- 旧ログは上書きしない
+- 学習: `logs/laikago-walking-unitree/`（Unitree/MorFiC `laikago_description`、関節名 `FR_hip_joint` 系、立位角は Go2 系 thigh 0.8/1.0・calf −1.5。RaisimGym の PD/高さ/指令は維持: init=0.46、h=0.44、kp40/kd1、as=0.6、指令 0.40）
+- 旧ログ（`laikago-walking-raisim*` 含む）は上書きしない
+- `model_300`・指令 0.4（10 env × 1000）: 完走 **100%**、平均長 **1000**、平均前進 ≈**0.397** m/s（指令比 ≈**99.3%**）、RMSE≈0.036
+  - JSON `results/laikago_unitree_expert_quality.json`
+  - 動画 `figures/videos/laikago_unitree_walk_model300.mp4`（寄りカメラ。Unitree メッシュが大きくクリップしやすい）
+  - 完走 ≥95%・指令比 ≥80% を満たす → **採用**
+- 途中不合格（いずれも平均長 ≈5–8・延長せず）:
+  - RaisimGym 高さ/PD のみ: 完走 0%・指令比 ≈−10%（`laikago-walking-raisim/`）
+  - ＋関節角 `gc_init`: 完走 0%・指令比 ≈1%（`laikago-walking-raisim-pose/`）
+  - ＋Y-up 慣性非ゼロ: 完走 0%・指令比 ≈7%（`laikago-walking-raisim-inertia/`）
+- **立位スモーク（ゼロ行動）:** Y-up/Z-up toes ≈11–12 step、Unitree＋Go2 立位 ≈**175** → URDF 切替の根拠
+- **#16 全機（Aliengo / B1 / ANYmal-B / Spot / Laikago）採用完了**
 
 ### Aliengo 品質評価メモ（2026-11-24）
 

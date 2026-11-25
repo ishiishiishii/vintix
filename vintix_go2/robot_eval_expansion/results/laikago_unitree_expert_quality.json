@@ -1,0 +1,18 @@
+{
+  "robot": "laikago",
+  "model_path": "/workspace/vintix_go2/robot_eval_expansion/logs/laikago-walking-unitree/model_300.pt",
+  "checked_at_utc": "2026-11-25T15:32:57Z",
+  "num_envs": 10,
+  "rollout_steps": 1000,
+  "cmd_vx": 0.4,
+  "completion_rate": 1.0,
+  "mean_episode_length": 1000.0,
+  "mean_return": 21.308180715293595,
+  "mean_forward_vx": 0.39719417691230774,
+  "vx_tracking_rmse": 0.03608238697052002,
+  "speed_ratio_vs_cmd": 0.9929854422807693,
+  "pass_completion": true,
+  "pass_speed": true,
+  "video": "/workspace/vintix_go2/robot_eval_expansion/figures/videos/laikago_unitree_walk_model300.mp4",
+  "note": "Judge by completion + speed tracking; return is reference only."
+}
